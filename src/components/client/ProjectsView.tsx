@@ -96,12 +96,13 @@ const MOCK_PROJECTS: ProjectData[] = [
   },
 ];
 
-type FilterTab = 'all' | 'submitted' | 'info_required' | 'quote_sent' | 'in_progress' | 'draft' | 'delivered';
+type FilterTab = 'all' | 'submitted' | 'info_required' | 'proposal_validated' | 'quote_sent' | 'in_progress' | 'draft' | 'delivered';
 
 const FILTER_TABS: { value: FilterTab; label: string }[] = [
   { value: 'all', label: 'Tous' },
   { value: 'submitted', label: 'Demandes' },
   { value: 'info_required', label: 'À compléter' },
+  { value: 'proposal_validated', label: 'Propositions' },
   { value: 'quote_sent', label: 'Devis' },
   { value: 'in_progress', label: 'En cours' },
   { value: 'draft', label: 'Brouillons' },
@@ -110,6 +111,7 @@ const FILTER_TABS: { value: FilterTab; label: string }[] = [
 
 function getStatusVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
   if (status === 'in_progress') return 'default';
+  if (status === 'proposal_validated') return 'outline';
   if (status === 'info_required') return 'destructive';
   if (status === 'draft') return 'secondary';
   if (status === 'delivered') return 'outline';
@@ -230,6 +232,7 @@ export function ProjectsView() {
     ? projects
     : projects.filter(p => {
       if (activeTab === 'in_progress') return ['in_progress', 'planning', 'studying', 'verifying'].includes(p.status);
+      if (activeTab === 'quote_sent') return ['quote_sent', 'proposal_ready'].includes(p.status);
       return p.status === activeTab;
     });
 
@@ -237,6 +240,7 @@ export function ProjectsView() {
     submitted: projects.filter(p => p.status === 'submitted').length,
     info_required: projects.filter(p => p.status === 'info_required').length,
     delivered: projects.filter(p => p.status === 'delivered').length,
+    proposal_validated: projects.filter(p => p.status === 'proposal_validated').length,
     quote_sent: projects.filter(p => p.status === 'quote_sent').length,
   };
 
@@ -269,6 +273,7 @@ export function ProjectsView() {
   const statCards = [
     { label: 'Demandes', value: stats.submitted, icon: FolderKanban },
     { label: 'À compléter', value: stats.info_required, icon: FileEdit },
+    { label: 'Propositions', value: stats.proposal_validated, icon: CheckCircle2 },
     { label: 'Terminés', value: stats.delivered, icon: CheckCircle2 },
     { label: 'Devis en attente', value: stats.quote_sent, icon: Clock },
   ];

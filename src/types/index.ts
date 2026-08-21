@@ -100,6 +100,8 @@ export interface ProjectData {
   formData?: Record<string, unknown>;
   documents?: ProjectDocumentData[];
   quotes?: ProjectQuoteData[];
+  visualProposal?: ProjectVisualProposalData;
+  financing?: ProjectFinancingData;
   activityLog?: ProjectActivityData[];
   createdAt: string;
  updatedAt: string;
@@ -123,11 +125,52 @@ export interface ProjectQuoteData {
   documentUrl?: string;
 }
 
+export interface ProjectVisualProposalData {
+  id: string;
+  title: string;
+  category: string;
+  image: string;
+  description: string;
+  estimate: string;
+  duration: string;
+  confidence: string;
+  deliverable: string;
+  validatedAt: string;
+  validatedBy?: string;
+}
+
+export interface ProjectPaymentMilestoneData {
+  id: string;
+  label: string;
+  trigger: string;
+  percent: number;
+  expectedAmount?: number;
+  status: 'planned' | 'due' | 'paid' | 'blocked';
+}
+
+export interface ProjectFinancingData {
+  mode: string;
+  readiness: 'confirmed' | 'bank_review' | 'to_structure' | 'unknown';
+  paymentPrinciple: string;
+  estimatedBudget?: number;
+  monthlyIncome?: number;
+  ownContribution?: number;
+  bankName?: string;
+  bankContact?: string;
+  notaryContract: boolean;
+  escrowRequested: boolean;
+  bankSupportRequested: boolean;
+  landSupportRequested: boolean;
+  notes?: string;
+  milestones: ProjectPaymentMilestoneData[];
+  updatedAt: string;
+}
+
 export interface ProjectActivityData {
   id: string;
   label: string;
   actor: string;
-  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status';
+  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status' | 'proposal';
   createdAt: string;
 }
 
@@ -174,6 +217,7 @@ export const PROJECT_STATUS_LABELS: Record<string, string> = {
   studying: 'Étude en cours',
   estimating: 'Estimation',
   proposal_ready: 'Proposition disponible',
+  proposal_validated: 'Proposition validée',
   quote_sent: 'Devis transmis',
   modification_requested: 'Modification demandée',
   awaiting_validation: 'En attente',

@@ -3,11 +3,14 @@
 import { useMemo, useState } from 'react';
 import {
   ArrowLeft,
+  CheckCircle2,
   ClipboardCheck,
   FileText,
+  Landmark,
   MessageSquareText,
   ReceiptText,
   Send,
+  ShieldCheck,
   UserCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,6 +37,25 @@ function quoteStatusLabel(status: string) {
   if (status === 'accepted') return 'Accepté';
   if (status === 'refused') return 'Refusé';
   return 'Brouillon';
+}
+
+function financingModeLabel(mode?: string) {
+  const labels: Record<string, string> = {
+    'confirmed-bank': 'Financement confirmé',
+    'bank-support': 'Aide banque demandée',
+    'progress-payment': 'Paiement par avancement',
+    'notary-secured': 'Contrat notarié',
+    'land-and-finance': 'Terrain + financement',
+    'to-structure': 'À structurer',
+  };
+  return mode ? labels[mode] || mode : 'À structurer';
+}
+
+function financingReadinessLabel(readiness?: string) {
+  if (readiness === 'confirmed') return 'Confirmé';
+  if (readiness === 'bank_review') return 'Banque à suivre';
+  if (readiness === 'to_structure') return 'À structurer';
+  return 'À confirmer';
 }
 
 export function AdminProjectDetail() {
@@ -77,6 +99,8 @@ export function AdminProjectDetail() {
 
   const statusLabel = PROJECT_STATUS_LABELS[project.status] || project.status;
   const quoteDisabled = !Number.isFinite(Number(quoteAmount)) || Number(quoteAmount) <= 0;
+  const financing = project.financing || (project.formData?.financing as typeof project.financing);
+  const visualProposal = project.visualProposal;
 
   const handleAssign = () => {
     if (!leadName.trim()) return;
@@ -236,6 +260,70 @@ export function AdminProjectDetail() {
         </div>
 
         <div className="space-y-4">
+          <Card className="py-0 gap-0">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold">Financement</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">{financingReadinessLabel(financing?.readiness)}</p>
+                </div>
+                <Landmark className="size-4 text-muted-foreground" />
+              </div>
+              <div className="mt-3 grid gap-2">
+                <div className="rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mode</p>
+                  <p className="mt-1 text-sm font-semibold">{financingModeLabel(financing?.mode)}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Revenu</p>
+                    <p className="mt-1 text-xs font-semibold">{financing?.monthlyIncome ? FORMAT_XOF(financing.monthlyIncome) : 'À compléter'}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Apport</p>
+                    <p className="mt-1 text-xs font-semibold">{financing?.ownContribution ? FORMAT_XOF(financing.ownContribution) : 'À compléter'}</p>
+                  </div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Banque</p>
+                  <p className="mt-1 text-sm font-semibold">{financing?.bankName || 'À contacter'}</p>
+                  {financing?.bankContact && <p className="mt-1 text-xs text-muted-foreground">{financing.bankContact}</p>}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant={financing?.notaryContract ? 'default' : 'outline'} className="gap-1">
+                    <ShieldCheck className="size-3" />
+                    Notaire
+                  </Badge>
+                  <Badge variant={financing?.bankSupportRequested ? 'default' : 'outline'} className="gap-1">
+                    <Landmark className="size-3" />
+                    Banque
+                  </Badge>
+                  <Badge variant={financing?.escrowRequested ? 'default' : 'outline'} className="gap-1">
+                    <CheckCircle2 className="size-3" />
+                    Séquestre
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="py-0 gap-0">
+            <CardContent className="p-4">
+              <h2 className="text-sm font-semibold">Proposition visuelle retenue</h2>
+              {visualProposal ? (
+                <div className="mt-3 rounded-lg border p-3">
+                  <p className="text-sm font-semibold">{visualProposal.title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{visualProposal.category} · {new Date(visualProposal.validatedAt).toLocaleString('fr-FR')}</p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{visualProposal.deliverable}</p>
+                </div>
+              ) : (
+                <p className="mt-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  Le client n’a pas encore validé de proposition visuelle.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className="py-0 gap-0">
             <CardContent className="p-4">
               <h2 className="text-sm font-semibold">Documents</h2>

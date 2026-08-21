@@ -12,6 +12,8 @@ import type {
   ProjectData,
   ProjectDocumentData,
   ProjectActivityData,
+  ProjectFinancingData,
+  ProjectVisualProposalData,
   NotificationData,
 } from '@/types';
 
@@ -90,6 +92,8 @@ interface AppState {
   requestProjectInfo: (projectId: string, message: string) => void;
   sendProjectQuote: (projectId: string, amount: number, label?: string) => void;
   updateProjectQuoteStatus: (projectId: string, quoteId: string, status: 'accepted' | 'refused') => void;
+  validateProjectVisualProposal: (projectId: string, proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
+  updateProjectFinancing: (projectId: string, financing: ProjectFinancingData) => void;
   updateProjectStatus: (projectId: string, status: string, label?: string) => void;
   toggleFavorite: (modelId: string) => void;
   setUserFavorites: (ids: string[]) => void;
@@ -303,6 +307,8 @@ export const useAppStore = create<AppState>()(
           formData: input.formData,
           documents: input.documents ?? [],
           quotes: input.quotes ?? [],
+          visualProposal: input.visualProposal,
+          financing: input.financing,
           activityLog: [
             activity('Demande client soumise', user?.name || 'Client', 'client'),
             ...(input.activityLog ?? []),
@@ -465,6 +471,68 @@ export const useAppStore = create<AppState>()(
             quotes,
             activityLog: [
               activity(status === 'accepted' ? 'Devis accepté par le client' : 'Devis refusé par le client', s.user?.name || 'Client', 'quote'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        return { userProjects: projects };
+      }),
+      validateProjectVisualProposal: (projectId, proposal) => set(s => {
+        const now = new Date().toISOString();
+        let projectRef = '';
+        let proposalTitle = proposal.title;
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          projectRef = project.referenceNumber;
+          proposalTitle = proposal.title;
+          const visualProposal: ProjectVisualProposalData = {
+            ...proposal,
+            validatedAt: now,
+            validatedBy: s.user?.name || project.clientName || 'Client',
+          };
+
+          return {
+            ...project,
+            status: ['submitted', 'verifying', 'studying', 'estimating', 'proposal_ready'].includes(project.status)
+              ? 'proposal_validated'
+              : project.status,
+            progress: Math.max(project.progress ?? 0, 25),
+            visualProposal,
+            activityLog: [
+              activity(`Proposition visuelle validée : ${proposal.title}`, s.user?.name || project.clientName || 'Client', 'proposal'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+        const notifications = [
+          {
+            id: uniqueId('notif'),
+            title: 'Proposition validée',
+            message: `${proposalTitle} a été retenue pour ${projectRef || 'le projet'}.`,
+            type: 'proposal',
+            link: 'project-detail',
+            projectId,
+            actionLabel: 'Consulter',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications) };
+      }),
+      updateProjectFinancing: (projectId, financing) => set(s => {
+        const now = new Date().toISOString();
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          return {
+            ...project,
+            financing: { ...financing, updatedAt: financing.updatedAt || now },
+            activityLog: [
+              activity('Plan de financement mis à jour', s.user?.name || 'Administration', 'status'),
               ...(project.activityLog ?? []),
             ],
             updatedAt: now,

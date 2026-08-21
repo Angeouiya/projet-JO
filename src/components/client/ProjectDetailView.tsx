@@ -21,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
-import type { ProjectData, ProjectDocumentData } from '@/types';
+import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectVisualProposalData } from '@/types';
 
 // ── Mock data ──────────────────────────────────────────────
 
@@ -44,6 +44,8 @@ type ProjectDetailData = {
   documents: { type: string; name: string; date: string; icon: LucideIcon }[];
   messages: { id: string; sender: string; senderRole: string; text: string; time: string; isOwn: boolean }[];
   quotes: { id: string; label: string; amount: number; status: 'pending' | 'accepted' | 'refused'; date: string; }[];
+  visualProposal?: ProjectVisualProposalData;
+  financing?: ProjectFinancingData;
   phases: { name: string; status: 'done' | 'in_progress' | 'pending'; progress: number }[];
   photos: { id: string; caption: string; date: string }[];
 };
@@ -271,6 +273,7 @@ const PROJECT_MAP: Record<string, ProjectDetailData> = {
 
 function getStatusVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
   if (status === 'in_progress' || status === 'accepted') return 'default';
+  if (status === 'proposal_validated') return 'outline';
   if (status === 'draft') return 'secondary';
   if (status === 'delivered') return 'outline';
   return 'secondary';
@@ -327,10 +330,12 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
       status: quote.status === 'accepted' || quote.status === 'refused' ? quote.status : 'pending',
       date: quote.date,
     })),
+    visualProposal: project.visualProposal,
+    financing: project.financing || (project.formData?.financing as ProjectFinancingData | undefined),
     phases: [
       { name: 'Demande reçue', status: 'done', progress: 100 },
       { name: 'Vérification', status: project.status === 'submitted' ? 'in_progress' : 'done', progress: project.status === 'submitted' ? 40 : 100 },
-      { name: 'Étude & devis', status: ['quote_sent', 'accepted', 'planning', 'in_progress', 'delivered'].includes(project.status) ? 'done' : 'pending', progress: ['quote_sent', 'accepted', 'planning', 'in_progress', 'delivered'].includes(project.status) ? 100 : 0 },
+      { name: 'Étude & devis', status: ['proposal_validated', 'quote_sent', 'accepted', 'planning', 'in_progress', 'delivered'].includes(project.status) ? 'done' : 'pending', progress: ['proposal_validated', 'quote_sent', 'accepted', 'planning', 'in_progress', 'delivered'].includes(project.status) ? 100 : 0 },
       { name: 'Planification', status: project.status === 'planning' ? 'in_progress' : ['in_progress', 'delivered'].includes(project.status) ? 'done' : 'pending', progress: project.status === 'planning' ? 50 : ['in_progress', 'delivered'].includes(project.status) ? 100 : 0 },
       { name: 'Chantier', status: project.status === 'in_progress' ? 'in_progress' : project.status === 'delivered' ? 'done' : 'pending', progress: project.status === 'in_progress' ? Math.max(project.progress, 25) : project.status === 'delivered' ? 100 : 0 },
       { name: 'Livraison', status: project.status === 'delivered' ? 'done' : 'pending', progress: project.status === 'delivered' ? 100 : 0 },
@@ -510,6 +515,54 @@ function buildVisualProposals(data: ProjectDetailData): VisualProposal[] {
       strengths: ['Surfaces utiles', 'Technique anticipée', 'Validation rapide'],
     },
   ];
+}
+
+function buildDefaultFinancing(data: ProjectDetailData): ProjectFinancingData {
+  const estimatedBudget = data.budgetMax || data.budgetMin || undefined;
+  const phases = [
+    { id: 'foundation', label: 'Fondations validées', trigger: 'Décaissement après contrôle et photos des fondations.', percent: 10 },
+    { id: 'structure', label: 'Élévation / structure', trigger: 'Décaissement après avancement structurel conforme.', percent: 20 },
+    { id: 'roofing', label: 'Toiture / clos couvert', trigger: 'Décaissement après toiture, menuiseries ou étape équivalente.', percent: 15 },
+    { id: 'secondary', label: 'Second œuvre', trigger: 'Décaissement après réseaux, plomberie, électricité et cloisons.', percent: 25 },
+    { id: 'finishes', label: 'Finitions', trigger: 'Décaissement après validation des finitions et équipements.', percent: 20 },
+    { id: 'handover', label: 'Réception', trigger: 'Solde à la réception selon contrat.', percent: 10 },
+  ];
+
+  return {
+    mode: 'progress-payment',
+    readiness: 'to_structure',
+    paymentPrinciple: 'Aucune avance de démarrage imposée : paiements déclenchés par niveaux d’avancement vérifiés.',
+    estimatedBudget,
+    notaryContract: true,
+    escrowRequested: false,
+    bankSupportRequested: true,
+    landSupportRequested: false,
+    milestones: phases.map(phase => ({
+      ...phase,
+      expectedAmount: estimatedBudget ? Math.round((estimatedBudget * phase.percent) / 100) : undefined,
+      status: 'planned' as const,
+    })),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function financingModeLabel(mode: string) {
+  const labels: Record<string, string> = {
+    'confirmed-bank': 'Financement confirmé',
+    'bank-support': 'Aide avec la banque',
+    'progress-payment': 'Paiement par avancement',
+    'notary-secured': 'Contrat notarié',
+    'land-and-finance': 'Terrain + financement',
+    'to-structure': 'À structurer',
+  };
+  return labels[mode] || 'À structurer';
+}
+
+function financingReadinessLabel(readiness: ProjectFinancingData['readiness']) {
+  if (readiness === 'confirmed') return 'Financement confirmé';
+  if (readiness === 'bank_review') return 'En échange banque';
+  if (readiness === 'to_structure') return 'À structurer';
+  return 'À confirmer';
 }
 
 // ── Sub-views ──────────────────────────────────────────────
@@ -768,23 +821,31 @@ function MessagesTab({ data }: { data: ProjectDetailData }) {
   );
 }
 
-function ProposalsTab({ data }: { data: ProjectDetailData }) {
+function ProposalsTab({
+  data,
+  onValidate,
+}: {
+  data: ProjectDetailData;
+  onValidate?: (proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
+}) {
   const proposals = useMemo(() => buildVisualProposals(data), [data]);
   const storageKey = getProposalStorageKey(data.referenceNumber);
   const [selectedId, setSelectedId] = useState(proposals[0]?.id ?? '');
-  const [validatedId, setValidatedId] = useState<string | null>(() => {
+  const [localValidatedId, setLocalValidatedId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const savedId = window.localStorage.getItem(storageKey);
     return savedId && proposals.some((proposal) => proposal.id === savedId) ? savedId : null;
   });
 
   const selectedProposal = proposals.find((proposal) => proposal.id === selectedId) ?? proposals[0];
+  const validatedId = data.visualProposal?.id || localValidatedId;
   const validatedProposal = proposals.find((proposal) => proposal.id === validatedId);
 
   const handleValidate = () => {
     if (!selectedProposal) return;
     window.localStorage.setItem(storageKey, selectedProposal.id);
-    setValidatedId(selectedProposal.id);
+    setLocalValidatedId(selectedProposal.id);
+    onValidate?.(selectedProposal);
   };
 
   if (!selectedProposal) {
@@ -865,7 +926,7 @@ function ProposalsTab({ data }: { data: ProjectDetailData }) {
                 <div>
                   <p className="text-sm font-semibold">Choix client enregistré pour {data.referenceNumber}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Proposition retenue : {validatedProposal.title}. Cette validation reste disponible sur cet appareil pour poursuivre l’échange avec l’équipe projet.
+                    Proposition retenue : {validatedProposal.title}. Cette validation est reliée au dossier pour préparer le chiffrage, le contrat et le planning.
                   </p>
                 </div>
               </div>
@@ -934,6 +995,97 @@ function ProposalsTab({ data }: { data: ProjectDetailData }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function FinancingTab({ data }: { data: ProjectDetailData }) {
+  const financing = data.financing ?? buildDefaultFinancing(data);
+  const flags = [
+    { label: 'Contrat notarié', active: financing.notaryContract },
+    { label: 'Compte bloqué / séquestre', active: financing.escrowRequested },
+    { label: 'Aide banque', active: financing.bankSupportRequested },
+    { label: 'Aide terrain', active: financing.landSupportRequested },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <Card className="py-0 gap-0">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-2xl">
+              <Badge variant="outline">{financingReadinessLabel(financing.readiness)}</Badge>
+              <h3 className="mt-3 text-lg font-semibold">Financement sécurisé par avancement</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{financing.paymentPrinciple}</p>
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mode prévu</p>
+              <p className="mt-1 text-sm font-semibold">{financingModeLabel(financing.mode)}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Budget base</p>
+              <p className="mt-1 text-sm font-semibold">{financing.estimatedBudget ? FORMAT_XOF(financing.estimatedBudget) : 'À estimer'}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Revenu déclaré</p>
+              <p className="mt-1 text-sm font-semibold">{financing.monthlyIncome ? FORMAT_XOF(financing.monthlyIncome) : 'À compléter'}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Apport</p>
+              <p className="mt-1 text-sm font-semibold">{financing.ownContribution ? FORMAT_XOF(financing.ownContribution) : 'À compléter'}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Banque</p>
+              <p className="mt-1 text-sm font-semibold">{financing.bankName || 'À contacter'}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {flags.map(flag => (
+              <Badge key={flag.label} variant={flag.active ? 'default' : 'outline'} className="gap-1.5">
+                {flag.active ? <CheckCircle2 className="size-3" /> : <Clock className="size-3" />}
+                {flag.label}
+              </Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="py-0 gap-0">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold">Échéancier d’exécution et de paiement</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Le paiement se déclenche quand l’étape est réalisée, vérifiée et documentée.
+              </p>
+            </div>
+            <Badge variant="secondary">{financing.milestones.reduce((total, item) => total + item.percent, 0)}%</Badge>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            {financing.milestones.map((milestone, index) => (
+              <div key={milestone.id} className="rounded-lg border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{index + 1}. {milestone.label}</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{milestone.trigger}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold">{milestone.percent}%</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {milestone.expectedAmount ? FORMAT_XOF(milestone.expectedAmount) : 'Montant à calculer'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -1121,10 +1273,10 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
 
 // ── Main View ──────────────────────────────────────────────
 
-type TabValue = 'resume' | 'propositions' | 'documents' | 'messages' | 'devis' | 'chantier';
+type TabValue = 'resume' | 'propositions' | 'financement' | 'documents' | 'messages' | 'devis' | 'chantier';
 
 export function ProjectDetailView() {
-  const { goBack, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus } = useAppStore();
+  const { goBack, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabValue>('resume');
 
   const projectId = viewParams?.id || 'prj-001';
@@ -1134,6 +1286,7 @@ export function ProjectDetailView() {
   const tabs = [
     { value: 'resume' as const, label: 'Résumé' },
     { value: 'propositions' as const, label: 'Propositions' },
+    { value: 'financement' as const, label: 'Financement' },
     { value: 'documents' as const, label: 'Documents' },
     { value: 'messages' as const, label: 'Messages' },
     { value: 'devis' as const, label: 'Devis' },
@@ -1195,7 +1348,13 @@ export function ProjectDetailView() {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'resume' && <ResumeTab data={data} />}
-            {activeTab === 'propositions' && <ProposalsTab data={data} />}
+            {activeTab === 'propositions' && (
+              <ProposalsTab
+                data={data}
+                onValidate={storedProject ? (proposal) => validateProjectVisualProposal(storedProject.id, proposal) : undefined}
+              />
+            )}
+            {activeTab === 'financement' && <FinancingTab data={data} />}
             {activeTab === 'documents' && (
               <DocumentsTab
                 data={data}

@@ -21,6 +21,7 @@ const STATUS_COLORS: Record<string, string> = {
   'Étude en cours': 'bg-muted text-foreground',
   'En attente': 'bg-muted text-foreground',
   'Devis transmis': 'bg-muted text-foreground',
+  'Proposition validée': 'bg-foreground text-background',
   'Accepté': 'bg-foreground text-background',
   'Refusé': 'bg-secondary text-muted-foreground',
 };
@@ -52,7 +53,7 @@ function groupFromStatus(status: string) {
   if (status === 'submitted') return 'Nouvelles';
   if (status === 'verifying' || status === 'studying' || status === 'estimating') return 'Vérification';
   if (status === 'info_required' || status === 'awaiting_validation') return 'À compléter';
-  if (status === 'quote_sent' || status === 'proposal_ready') return 'Devis';
+  if (status === 'quote_sent' || status === 'proposal_ready' || status === 'proposal_validated') return 'Devis';
   if (status === 'accepted') return 'Acceptées';
   if (status === 'refused') return 'Refusées';
   return 'Vérification';

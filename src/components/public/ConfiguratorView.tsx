@@ -57,6 +57,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAppStore } from '@/stores/app-store';
 import { CITIES_CI, COMMUNES_ABIDJAN } from '@/types';
 import type { LucideIcon } from 'lucide-react';
+import type { ProjectFinancingData, ProjectPaymentMilestoneData } from '@/types';
 
 type ProjectFamily = 'maison' | 'rplus' | 'vrd' | 'lot' | 'hydraulique' | 'etude' | 'promotion';
 type FieldType = 'text' | 'number' | 'select' | 'textarea';
@@ -201,6 +202,24 @@ const TIMELINE_OPTIONS: ChoiceOption[] = [
   { value: '6-months', label: 'Sous 6 mois', icon: Calendar, description: 'Projet en préparation' },
   { value: '1-year', label: 'Sous 1 an', icon: Calendar, description: 'Projet à moyen terme' },
   { value: 'unknown', label: 'À définir', icon: HelpCircle, description: 'Calendrier ouvert' },
+];
+
+const FINANCING_OPTIONS: ChoiceOption[] = [
+  { value: 'confirmed-bank', label: 'Financement confirmé', icon: BadgeCheck, description: 'Banque, fonds propres ou enveloppe déjà disponible' },
+  { value: 'bank-support', label: 'Aide avec ma banque', icon: Landmark, description: 'Structurer le dossier et discuter avec la banque' },
+  { value: 'progress-payment', label: 'Paiement par avancement', icon: Calendar, description: 'Paiement à chaque étape réalisée du chantier' },
+  { value: 'notary-secured', label: 'Contrat notarié', icon: ShieldCheck, description: 'Sécuriser les engagements avant démarrage' },
+  { value: 'land-and-finance', label: 'Terrain + financement', icon: MapPin, description: 'Besoin d’appui terrain, banque et budget global' },
+  { value: 'to-structure', label: 'À structurer', icon: HelpCircle, description: 'Besoin d’évaluer la capacité et le montage' },
+];
+
+const PAYMENT_SECURITY_OPTIONS: ChoiceOption[] = [
+  { value: 'notary-contract', label: 'Contrat notarié', icon: FileText },
+  { value: 'bank-disbursement', label: 'Décaissement banque', icon: Landmark },
+  { value: 'escrow', label: 'Blocage / séquestre', icon: ShieldCheck },
+  { value: 'progress-photos', label: 'Photos par étape', icon: Eye },
+  { value: 'milestone-payment', label: 'Paiement par jalons', icon: ClipboardList },
+  { value: 'bank-support', label: 'Accompagnement banque', icon: BadgeCheck },
 ];
 
 const MAISON_SPACES: ChoiceOption[] = [
@@ -814,6 +833,41 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       skipLabel: 'À estimer',
     },
     {
+      id: 'financing',
+      title: 'Financement du projet',
+      subtitle: 'Dites comment sécuriser les paiements par avancement',
+      responseKey: 'financingMode',
+      type: 'choice-single',
+      options: FINANCING_OPTIONS,
+      skippable: true,
+      skipLabel: 'À structurer avec l’équipe',
+    },
+    {
+      id: 'financing-profile',
+      title: 'Capacité et banque',
+      subtitle: 'Ces informations servent à préparer le montage, sans encaisser d’avance',
+      responseKey: '__financing_profile__',
+      type: 'field-group',
+      fields: [
+        { key: 'monthlyIncome', label: 'Revenu mensuel indicatif', type: 'number', placeholder: 'Ex : 1500000', unit: 'F CFA' },
+        { key: 'ownContribution', label: 'Apport disponible', type: 'number', placeholder: 'Ex : 5000000', unit: 'F CFA' },
+        { key: 'bankName', label: 'Banque ou institution', type: 'text', placeholder: 'Ex : BNI, SGCI, NSIA, banque à contacter' },
+        { key: 'bankContact', label: 'Contact banque', type: 'text', placeholder: 'Nom, agence, téléphone ou email si disponible' },
+      ],
+      skippable: true,
+      skipLabel: 'À compléter plus tard',
+    },
+    {
+      id: 'payment-security',
+      title: 'Sécurisation des paiements',
+      subtitle: 'Choisissez les garanties souhaitées pour payer par niveau d’avancement',
+      responseKey: 'paymentSecurity',
+      type: 'choice-multi',
+      options: PAYMENT_SECURITY_OPTIONS,
+      skippable: true,
+      skipLabel: 'À cadrer au contrat',
+    },
+    {
       id: 'timeline',
       title: 'Démarrage souhaité',
       subtitle: 'Quand souhaitez-vous lancer les travaux ?',
@@ -887,6 +941,57 @@ function buildAutoDescription(responses: Record<string, unknown>): string {
   ];
   const lotText = lots.length ? ` - lots: ${lots.join(', ')}` : '';
   return `${type}${city}${lotText}`;
+}
+
+function numberResponse(value: unknown): number | undefined {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function buildPaymentMilestones(estimatedBudget?: number): ProjectPaymentMilestoneData[] {
+  const phases = [
+    { id: 'foundation', label: 'Fondations validées', trigger: 'Paiement après contrôle des fondations et photos chantier.', percent: 10 },
+    { id: 'structure', label: 'Élévation / structure', trigger: 'Paiement après élévation conforme au planning d’exécution.', percent: 20 },
+    { id: 'roofing', label: 'Toiture / clos couvert', trigger: 'Paiement après couverture, menuiseries ou étape équivalente.', percent: 15 },
+    { id: 'secondary', label: 'Second œuvre', trigger: 'Paiement après réseaux, plomberie, électricité et cloisons principales.', percent: 25 },
+    { id: 'finishes', label: 'Finitions', trigger: 'Paiement après validation des finitions, équipements et réserves mineures.', percent: 20 },
+    { id: 'handover', label: 'Réception', trigger: 'Solde à la réception provisoire ou définitive selon contrat.', percent: 10 },
+  ];
+
+  return phases.map(phase => ({
+    ...phase,
+    expectedAmount: estimatedBudget ? Math.round((estimatedBudget * phase.percent) / 100) : undefined,
+    status: 'planned' as const,
+  }));
+}
+
+function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: number, budgetMax?: number): ProjectFinancingData {
+  const mode = String(responses.financingMode || 'to-structure');
+  const paymentSecurity = Array.isArray(responses.paymentSecurity) ? responses.paymentSecurity.map(String) : [];
+  const estimatedBudget = budgetMax || budgetMin || undefined;
+  const readiness: ProjectFinancingData['readiness'] =
+    mode === 'confirmed-bank' ? 'confirmed'
+      : mode === 'bank-support' ? 'bank_review'
+        : mode === 'to-structure' || mode === 'land-and-finance' ? 'to_structure'
+          : 'unknown';
+
+  return {
+    mode,
+    readiness,
+    paymentPrinciple: 'Aucune avance de démarrage imposée : paiements déclenchés par niveaux d’avancement vérifiés.',
+    estimatedBudget,
+    monthlyIncome: numberResponse(responses.monthlyIncome),
+    ownContribution: numberResponse(responses.ownContribution),
+    bankName: String(responses.bankName || '').trim() || undefined,
+    bankContact: String(responses.bankContact || '').trim() || undefined,
+    notaryContract: mode === 'notary-secured' || paymentSecurity.includes('notary-contract'),
+    escrowRequested: paymentSecurity.includes('escrow'),
+    bankSupportRequested: mode === 'bank-support' || paymentSecurity.includes('bank-support'),
+    landSupportRequested: mode === 'land-and-finance' || responses.terrainStatus === 'searching',
+    notes: String(responses.financingNotes || '').trim() || undefined,
+    milestones: buildPaymentMilestones(estimatedBudget),
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export function ConfiguratorView() {
@@ -996,6 +1101,7 @@ export function ConfiguratorView() {
       const [budgetMin, budgetMax] = getBudgetRange(responses.budget as string | undefined);
       const localBudgetMin = budgetMin ?? undefined;
       const localBudgetMax = budgetMax ?? undefined;
+      const financing = buildProjectFinancing(responses, localBudgetMin, localBudgetMax);
       const city = responses.city as string | undefined;
       const declaredDocuments = Array.isArray(responses.documents) ? responses.documents as string[] : [];
       setReferenceNumber(ref);
@@ -1015,6 +1121,7 @@ export function ConfiguratorView() {
         budgetMax: localBudgetMax,
         formData: {
           ...responses,
+          financing,
           referenceNumber: ref,
           formVersion: 'advanced-construction-v2',
           submittedAt: new Date().toISOString(),
@@ -1039,6 +1146,7 @@ export function ConfiguratorView() {
         progress: 5,
         status: 'submitted',
         formData: payload.formData,
+        financing,
         documents: declaredDocuments.map((documentId) => ({
           id: `doc-${ref}-${documentId}`,
           name: getLabel(DOCUMENT_OPTIONS, documentId),
@@ -1069,6 +1177,7 @@ export function ConfiguratorView() {
       const [budgetMin, budgetMax] = getBudgetRange(responses.budget as string | undefined);
       const localBudgetMin = budgetMin ?? undefined;
       const localBudgetMax = budgetMax ?? undefined;
+      const financing = buildProjectFinancing(responses, localBudgetMin, localBudgetMax);
       const city = responses.city as string | undefined;
       createProjectRequest({
         id: `local-${ref}`,
@@ -1090,11 +1199,13 @@ export function ConfiguratorView() {
         status: 'submitted',
         formData: {
           ...responses,
+          financing,
           referenceNumber: ref,
           formVersion: 'advanced-construction-v2',
           submittedAt: new Date().toISOString(),
           serverStatus: 'service-non-configure-ou-indisponible',
         },
+        financing,
       });
       setReferenceNumber(ref);
       goNext();
