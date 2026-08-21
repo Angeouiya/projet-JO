@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
+import { BrandLogo } from './BrandLogo';
 import type { ViewName } from '@/types';
 
 type NavItem = {
@@ -212,11 +213,7 @@ export function DesktopDashboardShell({
         <aside className="sticky top-0 flex h-screen flex-col border-r bg-card">
           <div className="border-b p-5">
             <button type="button" onClick={() => navigate('home')} className="flex items-center gap-3 text-left">
-              <span className="flex size-10 items-center justify-center rounded-lg bg-foreground text-sm font-bold text-background">B</span>
-              <span>
-                <span className="block text-sm font-bold">BÂTI·CI</span>
-                <span className="block text-xs text-muted-foreground">Console de projet</span>
-              </span>
+              <BrandLogo size="lg" subtitle="Console de projet" />
             </button>
           </div>
 

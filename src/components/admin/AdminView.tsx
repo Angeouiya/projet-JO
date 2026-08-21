@@ -49,6 +49,7 @@ import { AdminProjectDetail } from './AdminProjectDetail';
 import { AdminProjects } from './AdminProjects';
 import { AdminRequests } from './AdminRequests';
 import { AdminSettings } from './AdminSettings';
+import { BrandLogo, BrandMark } from '@/components/shared/BrandLogo';
 
 type AdminNavItem = {
   id: string;
@@ -381,15 +382,7 @@ export function AdminView() {
     <div className="flex h-screen bg-background">
       <aside className={`hidden ${sidebarWidth} lg:fixed lg:inset-y-0 lg:flex lg:flex-col border-r border-border bg-card transition-[width] duration-300`}>
         <div className={`flex items-center gap-3 border-b border-border py-5 ${adminSidebarCollapsed ? 'justify-center px-3' : 'px-5'}`}>
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground">
-            <span className="text-xs font-bold text-background">B</span>
-          </div>
-          {!adminSidebarCollapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">BÂTI·CI</p>
-              <p className="text-xs text-muted-foreground">Administration</p>
-            </div>
-          )}
+          {adminSidebarCollapsed ? <BrandMark size="md" /> : <BrandLogo size="md" subtitle="Administration" className="min-w-0 flex-1" />}
           <button
             type="button"
             onClick={toggleAdminSidebar}
@@ -448,14 +441,8 @@ export function AdminView() {
               className="fixed bottom-0 left-0 top-0 z-50 flex w-72 flex-col bg-card shadow-2xl lg:hidden"
             >
               <div className="flex items-center justify-between border-b border-border px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-foreground">
-                    <span className="text-xs font-bold text-background">B</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">BÂTI·CI</p>
-                    <p className="text-xs text-muted-foreground">Admin</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                  <BrandLogo size="sm" subtitle="Admin" />
                 </div>
                 <button type="button" onClick={() => setSidebarOpen(false)} className="rounded-lg p-2 hover:bg-muted">
                   <X className="size-5" />

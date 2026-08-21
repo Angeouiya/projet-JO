@@ -64,7 +64,7 @@ function requestFromProject(project: ProjectData): AdminRequestRow {
   return {
     id: project.id,
     ref: project.referenceNumber,
-    client: project.clientName || 'Client BÂTI·CI',
+    client: project.clientName || 'Client Buildify',
     type: project.categoryName || project.modelName || 'Projet BTP',
     city: project.city || 'Non défini',
     date: project.createdAt.slice(0, 10),

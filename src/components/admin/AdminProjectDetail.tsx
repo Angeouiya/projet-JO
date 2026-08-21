@@ -135,7 +135,7 @@ export function AdminProjectDetail() {
           </Button>
           <p className="text-xs font-mono text-muted-foreground">{project.referenceNumber}</p>
           <h1 className="mt-1 truncate text-2xl font-bold">{project.title || project.modelName || 'Dossier BTP'}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{project.clientName || 'Client BÂTI·CI'} · {project.city || 'Localisation à préciser'}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{project.clientName || 'Client Buildify'} · {project.city || 'Localisation à préciser'}</p>
         </div>
         <Badge className="w-fit">{statusLabel}</Badge>
       </div>

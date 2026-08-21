@@ -42,7 +42,7 @@ function rowFromProject(project: ProjectData): AdminProjectRow {
     id: project.id,
     ref: project.referenceNumber,
     title: project.title || project.modelName || 'Projet BTP',
-    client: project.clientName || 'Client BÂTI·CI',
+    client: project.clientName || 'Client Buildify',
     type: project.categoryName || project.modelName || 'Projet',
     city: project.city || 'Non défini',
     status: project.status,

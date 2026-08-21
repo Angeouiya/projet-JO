@@ -8,22 +8,22 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "BÂTI·CI — Construction & Architecture",
+  title: "Buildify — Construction & Architecture",
   description: "Votre projet de construction, bien construit. Villas, duplex, immeubles, promotion immobilière, VRD, hydraulique.",
   keywords: ["construction", "BTP", "villa", "duplex", "immeuble", "Côte d'Ivoire", "Abidjan", "architecture"],
-  authors: [{ name: "BÂTI·CI" }],
+  authors: [{ name: "Buildify" }],
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "BÂTI·CI",
+    title: "Buildify",
   },
   icons: {
-    icon: "/icons/bati-ci-icon.svg",
-    apple: "/icons/bati-ci-icon.svg",
+    icon: "/icons/buildify-logo.png",
+    apple: "/icons/buildify-logo.png",
   },
   openGraph: {
-    title: "BÂTI·CI — Construction & Architecture",
+    title: "Buildify — Construction & Architecture",
     description: "Votre projet de construction, bien construit.",
     type: "website",
   },

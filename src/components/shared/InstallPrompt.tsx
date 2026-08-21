@@ -79,7 +79,7 @@ export function InstallPrompt() {
         </div>
         <div className="flex-1">
           <p className="text-sm font-semibold">Installer l'app</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Accédez rapidement à BÂTI·CI depuis votre écran d'accueil</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Accédez rapidement à Buildify depuis votre écran d'accueil</p>
           <div className="flex gap-2 mt-3">
             <Button size="sm" onClick={handleInstall}>
               <Download className="w-3.5 h-3.5 mr-1" /> Installer

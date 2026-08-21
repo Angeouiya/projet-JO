@@ -13,13 +13,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Building2, Users, Bell, CreditCard, Plus, Shield, Trash2, Pencil, User as UserIcon } from 'lucide-react';
 
 const teamMembers = [
-  { id: '1', name: 'Diabaté Ibrahim', role: 'super_admin', email: 'diabate@bati.ci', active: true },
-  { id: '2', name: 'Coulibaly Awa', role: 'commercial', email: 'coulibaly@bati.ci', active: true },
-  { id: '3', name: 'Konan Yao', role: 'architecte', email: 'konan@bati.ci', active: true },
-  { id: '4', name: 'Yao Koffi', role: 'ingenieur', email: 'yao@bati.ci', active: true },
-  { id: '5', name: 'Brou Éric', role: 'economiste', email: 'brou@bati.ci', active: true },
-  { id: '6', name: 'Nguessan Mariam', role: 'conducteur', email: 'nguessan@bati.ci', active: true },
-  { id: '7', name: 'Touré Moussa', role: 'comptable', email: 'toure@bati.ci', active: false },
+  { id: '1', name: 'Diabaté Ibrahim', role: 'super_admin', email: 'diabate@buildify.ci', active: true },
+  { id: '2', name: 'Coulibaly Awa', role: 'commercial', email: 'coulibaly@buildify.ci', active: true },
+  { id: '3', name: 'Konan Yao', role: 'architecte', email: 'konan@buildify.ci', active: true },
+  { id: '4', name: 'Yao Koffi', role: 'ingenieur', email: 'yao@buildify.ci', active: true },
+  { id: '5', name: 'Brou Éric', role: 'economiste', email: 'brou@buildify.ci', active: true },
+  { id: '6', name: 'Nguessan Mariam', role: 'conducteur', email: 'nguessan@buildify.ci', active: true },
+  { id: '7', name: 'Touré Moussa', role: 'comptable', email: 'toure@buildify.ci', active: false },
 ];
 
 const ROLES: Record<string, string> = {
@@ -74,10 +74,10 @@ export function AdminSettings() {
             <CardHeader><CardTitle className="text-sm">Informations de l'entreprise</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5"><Label className="text-xs">Nom de l'entreprise</Label><Input defaultValue="BÂTI·CI" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Nom de l'entreprise</Label><Input defaultValue="Buildify" /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Slogan</Label><Input defaultValue="Votre projet. Bien construit." /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Téléphone</Label><Input defaultValue="+225 01 02 03 04" /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Email</Label><Input defaultValue="contact@bati.ci" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Email</Label><Input defaultValue="contact@buildify.ci" /></div>
                 <div className="space-y-1.5 sm:col-span-2"><Label className="text-xs">Adresse</Label><Input defaultValue="Zone 4, Abidjan, Côte d'Ivoire" /></div>
               </div>
               <div className="space-y-1.5">

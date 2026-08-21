@@ -1,5 +1,5 @@
 const CACHE_NAME = 'bati-ci-shell-v1';
-const CORE_ASSETS = ['/', '/manifest.json', '/icons/bati-ci-icon.svg'];
+const CORE_ASSETS = ['/', '/manifest.json', '/icons/buildify-logo.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(

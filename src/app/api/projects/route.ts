@@ -54,13 +54,13 @@ export async function POST(request: Request) {
     await db.user.upsert({
       where: { id: userId },
       update: {
-        name: clientName || 'Client BÂTI·CI',
+        name: clientName || 'Client Buildify',
         email: clientEmail || undefined,
         phone: clientPhone || undefined,
       },
       create: {
         id: userId,
-        name: clientName || 'Client BÂTI·CI',
+        name: clientName || 'Client Buildify',
         email: clientEmail || null,
         phone: clientPhone || null,
         type: 'client',

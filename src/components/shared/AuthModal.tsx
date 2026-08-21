@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
+import { BrandLogo } from './BrandLogo';
 
 type AuthMode = 'choice' | 'login' | 'register' | 'forgot' | 'reset-sent';
 
@@ -109,7 +110,7 @@ export function AuthModal() {
     await new Promise(resolve => setTimeout(resolve, 650));
     login({
       id: `client-${identifier.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 32) || 'bati'}`,
-      name: form.name || 'Client BÂTI·CI',
+      name: form.name || 'Client Buildify',
       email: identifierIsEmail ? identifier : undefined,
       phone: identifierIsEmail ? form.phone || undefined : normalizedPhone,
       type: 'client',
@@ -178,7 +179,7 @@ export function AuthModal() {
     login({
       id: 'demo-admin-1',
       name: 'Diabaté Ibrahim',
-      email: 'admin@bati.ci',
+      email: 'admin@buildify.ci',
       phone: '+225 01 02 03 04',
       type: 'admin',
       role: 'super_admin',
@@ -202,7 +203,7 @@ export function AuthModal() {
             ) : (
               <div />
             )}
-            <h2 className="text-base font-semibold">BÂTI·CI</h2>
+            <BrandLogo size="xs" />
             <button type="button" onClick={dismissAuth} className="p-1 hover:bg-muted rounded-lg" aria-label="Fermer">
               <X className="w-5 h-5" />
             </button>

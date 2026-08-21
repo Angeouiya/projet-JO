@@ -267,7 +267,7 @@ export function ServicesView() {
         {/* Contact info */}
         <div className="mt-12 flex flex-col md:flex-row justify-between gap-6 text-sm text-muted-foreground">
           <div className="flex items-center gap-2"><Phone className="size-4" /> +225 07 00 00 00 00</div>
-          <div className="flex items-center gap-2"><Mail className="size-4" /> contact@bati.ci</div>
+          <div className="flex items-center gap-2"><Mail className="size-4" /> contact@buildify.ci</div>
           <div className="flex items-center gap-2"><MapPinIcon className="size-4" /> Abidjan, Côte d\'Ivoire</div>
         </div>
       </div>

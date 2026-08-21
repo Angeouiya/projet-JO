@@ -192,7 +192,7 @@ export function ProfileView() {
 
       {/* Version info */}
       <div className="mt-8 text-center">
-        <p className="text-[11px] text-muted-foreground/50">BÂTI·CI v1.0.0</p>
+        <p className="text-[11px] text-muted-foreground/50">Buildify v1.0.0</p>
       </div>
 
       {/* Edit Profile Dialog */}

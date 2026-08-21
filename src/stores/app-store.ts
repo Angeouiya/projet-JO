@@ -289,7 +289,7 @@ export const useAppStore = create<AppState>()(
           description: input.description,
           status: input.status || 'submitted',
           userId: input.userId || user?.id,
-          clientName: input.clientName || user?.name || 'Client BÂTI·CI',
+          clientName: input.clientName || user?.name || 'Client Buildify',
           clientEmail: input.clientEmail || user?.email,
           clientPhone: input.clientPhone || user?.phone,
           country: input.country || "Côte d'Ivoire",

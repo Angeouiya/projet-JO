@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/stores/app-store';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 import { FORMAT_SHORT_XOF } from '@/types';
 import type { CatalogModelData } from '@/types';
 
@@ -420,19 +421,19 @@ export function HomeView() {
       <footer className="border-t py-12 px-6 md:px-12 lg:px-20">
         <div className="flex flex-col md:flex-row justify-between gap-8">
           <div>
-            <p className="font-bold text-lg tracking-tight">BÂTI·CI</p>
+            <BrandLogo size="md" />
             <p className="mt-2 text-xs text-muted-foreground max-w-xs leading-relaxed">
               Construction et architecture en Côte d'Ivoire. Villas, duplex, immeubles, VRD et promotion immobilière.
             </p>
           </div>
           <div className="flex flex-col gap-3 text-xs text-muted-foreground">
             <div className="flex items-center gap-2"><Phone className="size-3" /> +225 07 00 00 00 00</div>
-            <div className="flex items-center gap-2"><Mail className="size-3" /> contact@bati.ci</div>
+            <div className="flex items-center gap-2"><Mail className="size-3" /> contact@buildify.ci</div>
             <div className="flex items-center gap-2"><MapPinIcon className="size-3" /> Abidjan, Côte d'Ivoire</div>
           </div>
         </div>
         <div className="mt-8 pt-6 border-t text-[11px] text-muted-foreground flex flex-col sm:flex-row justify-between gap-2">
-          <span>© {new Date().getFullYear()} BÂTI·CI. Tous droits réservés.</span>
+          <span>© {new Date().getFullYear()} Buildify. Tous droits réservés.</span>
           <span>Construction · Architecture · Promotion immobilière</span>
         </div>
       </footer>

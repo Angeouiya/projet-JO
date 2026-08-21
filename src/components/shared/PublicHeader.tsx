@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
+import { BrandLogo } from './BrandLogo';
 
 export function PublicHeader() {
   const { isAuthenticated, isAdmin, user, navigate, notifications, requireAuth, goBack } = useAppStore();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.isRead).length;
   const showBack = !['home', 'explore', 'admin'].includes(useAppStore().currentView);
 
@@ -27,17 +27,11 @@ export function PublicHeader() {
           )}
           {isAdmin ? (
             <button onClick={() => navigate('admin')} className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-foreground rounded-md flex items-center justify-center">
-                <span className="text-background text-[10px] font-bold">B</span>
-              </div>
-              <span className="text-sm font-semibold hidden sm:inline">BÂTI·CI</span>
+              <BrandLogo size="xs" nameClassName="hidden sm:block" />
             </button>
           ) : (
             <button onClick={() => navigate('home')} className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-foreground rounded-md flex items-center justify-center">
-                <span className="text-background text-[10px] font-bold">B</span>
-              </div>
-              <span className="text-sm font-semibold hidden sm:inline">BÂTI·CI</span>
+              <BrandLogo size="xs" nameClassName="hidden sm:block" />
             </button>
           )}
         </div>
