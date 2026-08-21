@@ -1,28 +1,20 @@
 'use client';
 
 import {
-  BarChart3,
   Bell,
-  Building2,
   ChevronRight,
   ClipboardList,
-  FileText,
   FolderKanban,
   Home,
-  LayoutDashboard,
   LockKeyhole,
   MapPin,
-  MessageSquare,
   Search,
   Settings,
-  ShieldCheck,
-  Sparkles,
   User,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
 import { useAppStore } from '@/stores/app-store';
 import type { ViewName } from '@/types';
 
@@ -34,45 +26,25 @@ type NavItem = {
   admin?: boolean;
 };
 
-const PRIMARY_NAV: NavItem[] = [
-  { id: 'home', label: 'Tableau de bord', icon: LayoutDashboard },
-  { id: 'explore', label: 'Catalogue', icon: Building2 },
-  { id: 'create', label: 'Nouveau dossier', icon: ClipboardList },
-  { id: 'realizations', label: 'Réalisations', icon: BarChart3 },
-  { id: 'services', label: 'Services & lots', icon: FileText },
+const DASHBOARD_NAV: NavItem[] = [
+  { id: 'dashboard', label: 'Accueil', icon: Home, private: true },
+  { id: 'explore', label: 'Explorer', icon: Search },
+  { id: 'projects', label: 'Projets', icon: FolderKanban, private: true },
+  { id: 'profile', label: 'Profil', icon: User, private: true },
 ];
 
-const PRIVATE_NAV: NavItem[] = [
-  { id: 'projects', label: 'Mes projets', icon: FolderKanban, private: true },
-  { id: 'messages', label: 'Messages', icon: MessageSquare, private: true },
-  { id: 'notifications', label: 'Notifications', icon: Bell, private: true },
-  { id: 'profile', label: 'Profil client', icon: User, private: true },
-  { id: 'admin', label: 'Administration', icon: Settings, private: true, admin: true },
-];
-
-const DESKTOP_STATS = [
-  { label: 'Catégories cadrées', value: '10', hint: 'Maison, R+, VRD, lots' },
-  { label: 'Villes disponibles', value: '100+', hint: 'Côte d’Ivoire' },
-  { label: 'Lots techniques', value: '30+', hint: 'Gros œuvre, finition, réseaux' },
-  { label: 'Délai de retour', value: '48h', hint: 'Première analyse' },
-];
-
-const PIPELINE = [
-  { label: 'Besoin cadré', value: 100 },
-  { label: 'Étude technique', value: 74 },
-  { label: 'Métré & devis', value: 46 },
-  { label: 'Planification', value: 28 },
-];
+const ADMIN_NAV: NavItem = { id: 'admin', label: 'Administration', icon: Settings, private: true, admin: true };
 
 function getActiveId(view: ViewName): ViewName {
   if (['model-detail', 'search'].includes(view)) return 'explore';
   if (['configurator'].includes(view)) return 'create';
   if (['project-detail', 'project-messages', 'favorites'].includes(view)) return 'projects';
+  if (['notifications', 'messages'].includes(view)) return 'profile';
   return view;
 }
 
-function DashboardHome() {
-  const { navigate, isAuthenticated, requireAuth } = useAppStore();
+export function ClientDashboardHome() {
+  const { navigate, isAuthenticated, requireAuth, user } = useAppStore();
 
   const goPrivate = (view: ViewName) => {
     if (!isAuthenticated) {
@@ -82,115 +54,101 @@ function DashboardHome() {
     navigate(view);
   };
 
-  return (
-    <div className="space-y-6">
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-        <div className="overflow-hidden rounded-xl border bg-card">
-          <div className="grid min-h-[330px] lg:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="flex flex-col justify-between p-6">
-              <div>
-                <Badge variant="outline" className="mb-4 gap-2">
-                  <Sparkles className="size-3.5" />
-                  Bureau de pilotage BTP
-                </Badge>
-                <h2 className="max-w-xl text-3xl font-bold tracking-tight">
-                  Cadrage, chiffrage et suivi des projets dans une vue desktop professionnelle.
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Le tableau de bord sert de poste de travail : lancement de dossier, typologie de l’ouvrage,
-                  ville, accès chantier, lots techniques, documents et suivi client.
-                </p>
-              </div>
+  const quickTabs: Array<NavItem & { description: string }> = [
+    { id: 'home', label: 'Accueil public', icon: Home, description: 'Revenir à la page d’accueil du site.' },
+    { id: 'explore', label: 'Explorer', icon: Search, description: 'Voir les modèles, réalisations et idées de projet.' },
+    { id: 'projects', label: 'Projets', icon: FolderKanban, private: true, description: 'Suivre vos demandes et dossiers transmis.' },
+    { id: 'profile', label: 'Profil', icon: User, private: true, description: 'Gérer vos informations de contact.' },
+  ];
 
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                <Button className="h-12 justify-between rounded-lg" onClick={() => navigate('create')}>
-                  Ouvrir le formulaire avancé
-                  <ChevronRight className="size-4" />
-                </Button>
-                <Button variant="outline" className="h-12 justify-between rounded-lg" onClick={() => goPrivate('projects')}>
-                  Voir mes projets
-                  <LockKeyhole className="size-4" />
-                </Button>
-              </div>
-            </div>
-            <div
-              className="relative min-h-[260px] border-l bg-muted bg-cover bg-center"
-              style={{ backgroundImage: "url('/images/chantier-1.png')" }}
-              role="img"
-              aria-label="Suivi de chantier BTP"
-            >
-              <div className="absolute inset-0 bg-black/10" />
-            </div>
+  const projectShortcuts = [
+    'Maison basse',
+    'Immeuble R+',
+    'VRD',
+    'Lot de travaux',
+  ];
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6">
+      <section className="rounded-xl border bg-card p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-sm font-medium text-muted-foreground">
+              {isAuthenticated ? `Bonjour ${user?.name || 'client'}` : 'Espace client'}
+            </p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+              Un espace simple pour lancer, retrouver et suivre vos projets.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Choisissez un ouvrage, ajoutez les surfaces, les lots et les documents disponibles, puis retrouvez le dossier dans vos projets.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button className="h-11 justify-between rounded-lg" onClick={() => navigate('create')}>
+              Nouveau dossier
+              <ChevronRight className="size-4" />
+            </Button>
+            <Button variant="outline" className="h-11 justify-between rounded-lg" onClick={() => goPrivate('projects')}>
+              Mes projets
+              <LockKeyhole className="size-4" />
+            </Button>
           </div>
         </div>
-
-        <aside className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold">Pipeline technique</p>
-              <p className="text-xs text-muted-foreground">Lecture rapide du dossier type</p>
-            </div>
-            <ShieldCheck className="size-5 text-muted-foreground" />
-          </div>
-          <div className="mt-5 space-y-5">
-            {PIPELINE.map(item => (
-              <div key={item.label} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{item.label}</span>
-                  <span className="text-xs text-muted-foreground">{item.value}%</span>
-                </div>
-                <Progress value={item.value} className="h-2" />
-              </div>
-            ))}
-          </div>
-        </aside>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {DESKTOP_STATS.map(stat => (
-          <div key={stat.label} className="rounded-xl border bg-card p-5">
-            <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
-            <p className="mt-3 text-3xl font-bold tracking-tight">{stat.value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{stat.hint}</p>
-          </div>
-        ))}
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {quickTabs.map(item => {
+          const Icon = item.icon;
+          const locked = item.private && !isAuthenticated;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => (item.private ? goPrivate(item.id) : navigate(item.id))}
+              className="rounded-xl border bg-card p-4 text-left transition-colors hover:border-foreground/30 hover:bg-muted/30"
+            >
+              <span className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                <Icon className="size-5" />
+              </span>
+              <span className="mt-4 flex items-center gap-2 text-sm font-semibold">
+                {item.label}
+                {locked && <LockKeyhole className="size-3.5 text-muted-foreground" />}
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-muted-foreground">{item.description}</span>
+            </button>
+          );
+        })}
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <div className="rounded-xl border bg-card p-5">
-          <p className="text-sm font-semibold">Accès rapides</p>
-          <div className="mt-4 grid gap-3">
-            {[
-              { label: 'Immeuble R+', view: 'create' as ViewName, hint: 'Hauteur R+, programme, équipements' },
-              { label: 'VRD', view: 'create' as ViewName, hint: 'Voirie, drainage, réseaux divers' },
-              { label: 'Lot de travaux', view: 'create' as ViewName, hint: 'Plomberie, finition, gros œuvre' },
-            ].map(item => (
+          <p className="text-sm font-semibold">Démarrer rapidement</p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {projectShortcuts.map(label => (
               <button
-                key={item.label}
+                key={label}
                 type="button"
-                onClick={() => navigate(item.view)}
-                className="flex items-center justify-between rounded-lg border p-4 text-left transition-colors hover:border-foreground/30 hover:bg-muted/40"
+                onClick={() => navigate('create')}
+                className="min-h-[72px] rounded-lg border bg-background px-3 py-2 text-left text-sm font-medium leading-tight transition-colors hover:border-foreground/30 hover:bg-muted/30"
               >
-                <span>
-                  <span className="block text-sm font-semibold">{item.label}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">{item.hint}</span>
-                </span>
-                <ChevronRight className="size-4 text-muted-foreground" />
+                {label}
               </button>
             ))}
           </div>
         </div>
 
         <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold">Couverture opérationnelle</p>
-              <p className="text-xs text-muted-foreground">Sélection de ville intégrée au formulaire</p>
+              <p className="text-sm font-semibold">Villes et pays</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Côte d’Ivoire par défaut, avec saisie possible pour les autres pays et villes.
+              </p>
             </div>
-            <MapPin className="size-5 text-muted-foreground" />
+            <MapPin className="size-5 shrink-0 text-muted-foreground" />
           </div>
-          <div className="mt-5 grid gap-2 sm:grid-cols-3">
-            {['Abidjan', 'Bouaké', 'Yamoussoukro', 'San-Pédro', 'Korhogo', 'Daloa', 'Bingerville', 'Soubré', 'Man'].map(city => (
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {['Abidjan', 'Bouaké', 'Yamoussoukro', 'San-Pédro', 'Korhogo', 'Daloa'].map(city => (
               <div key={city} className="rounded-lg border bg-background px-3 py-2 text-sm font-medium">
                 {city}
               </div>
@@ -262,22 +220,25 @@ export function DesktopDashboardShell({
             </button>
           </div>
 
-          <nav className="flex-1 space-y-6 overflow-y-auto p-4">
-            <div>
-              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Pilotage</p>
-              <div className="space-y-1">{PRIMARY_NAV.map(renderNavItem)}</div>
-            </div>
-            <div>
-              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Espace privé</p>
-              <div className="space-y-1">{PRIVATE_NAV.map(renderNavItem)}</div>
-            </div>
+          <nav className="flex-1 overflow-y-auto p-4">
+            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Navigation</p>
+            <div className="space-y-1">{DASHBOARD_NAV.map(renderNavItem)}</div>
+            <Button className="mt-5 h-11 w-full justify-between rounded-lg" onClick={() => navigate('create')}>
+              Nouveau dossier
+              <ClipboardList className="size-4" />
+            </Button>
+            {isAdmin && (
+              <div className="mt-4 border-t pt-4">
+                {renderNavItem(ADMIN_NAV)}
+              </div>
+            )}
           </nav>
 
           <div className="border-t p-4">
             <div className="rounded-lg border bg-background p-3">
-              <p className="text-xs font-semibold">Sécurité</p>
+              <p className="text-xs font-semibold">Compte</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Les projets, messages, notifications et profils sont verrouillés sans connexion.
+                Email recommandé. Téléphone accepté avec indicatif pays, sans connexion OTP.
               </p>
             </div>
           </div>
@@ -298,7 +259,7 @@ export function DesktopDashboardShell({
               <div className="ml-auto flex items-center gap-3">
                 <Badge variant="outline" className="h-9 gap-2 px-3">
                   <MapPin className="size-3.5" />
-                  Côte d’Ivoire
+                  Multi-pays
                 </Badge>
                 {isAuthenticated ? (
                   <>
@@ -332,7 +293,7 @@ export function DesktopDashboardShell({
           </header>
 
           <main className="min-w-0 flex-1 overflow-y-auto p-6">
-            {currentView === 'home' ? <DashboardHome /> : children}
+            {currentView === 'dashboard' ? <ClientDashboardHome /> : children}
           </main>
         </div>
       </div>

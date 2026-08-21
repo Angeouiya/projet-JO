@@ -1,5 +1,6 @@
 export type ViewName =
   | 'home'
+  | 'dashboard'
   | 'explore'
   | 'create'
   | 'projects'

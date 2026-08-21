@@ -301,6 +301,14 @@ function formatSurface(value: number): string {
   return new Intl.NumberFormat('fr-FR').format(value) + ' m²';
 }
 
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function getBudgetLabel(value: string): string {
   return getLabel(BUDGET_OPTIONS, value);
 }
@@ -901,6 +909,7 @@ export function ConfiguratorView() {
   const [localStepId, setLocalStepId] = useState<string>('project-type');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState('');
+  const [choiceSearch, setChoiceSearch] = useState<Record<string, string>>({});
   const isInitialized = useRef(false);
 
   const steps = useMemo(() => buildSteps(responses), [responses]);
@@ -916,6 +925,21 @@ export function ConfiguratorView() {
   const progressPercent = progressSteps.length > 1
     ? ((Math.max(0, progressIdx) + 1) / progressSteps.length) * 100
     : 0;
+
+  const setSearchValue = useCallback((key: string, value: string) => {
+    setChoiceSearch(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const getSearchValue = useCallback((key: string) => choiceSearch[key] || '', [choiceSearch]);
+
+  const getFilteredOptions = useCallback((key: string, options: ChoiceOption[] = []) => {
+    const query = normalizeSearchText(choiceSearch[key] || '');
+    if (!query) return options;
+    return options.filter(option => {
+      const haystack = normalizeSearchText(`${option.label} ${option.description || ''} ${option.value}`);
+      return haystack.includes(query);
+    });
+  }, [choiceSearch]);
 
   useEffect(() => {
     setConfiguratorStep(currentIdx);
@@ -1113,53 +1137,78 @@ export function ConfiguratorView() {
 
   const renderChoiceSingle = (step: StepDef) => {
     const selected = responses[step.responseKey] as string | undefined;
-    const isProjectType = step.id === 'project-type';
+    const options = step.options || [];
+    const filteredOptions = getFilteredOptions(step.id, options);
+    const searchValue = getSearchValue(step.id);
+    const showSearch = options.length >= 5;
 
     return (
-      <div className={isProjectType ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
-        {step.options?.map(option => {
-          const isSelected = selected === option.value;
-          const Icon = option.icon;
-          return (
-            <motion.button
-              key={option.value}
-              type="button"
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setConfiguratorResponse(step.responseKey, option.value)}
-              className={`relative flex min-h-[94px] items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
-                isSelected
-                  ? 'border-foreground bg-foreground text-background shadow-md'
-                  : 'border-border bg-background text-foreground hover:border-foreground/40 hover:bg-muted/40'
-              }`}
-              aria-pressed={isSelected}
-            >
-              {Icon && (
-                <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${isSelected ? 'bg-background/15' : 'bg-muted'}`}>
-                  <Icon className={`size-5 ${isSelected ? 'text-background' : 'text-foreground'}`} />
-                </span>
-              )}
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold leading-tight">{option.label}</span>
-                {option.description && (
-                  <span className={`mt-1 block text-xs leading-snug ${isSelected ? 'text-background/75' : 'text-muted-foreground'}`}>
-                    {option.description}
+      <div className="space-y-3">
+        {showSearch && (
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchValue}
+              onChange={event => setSearchValue(step.id, event.target.value)}
+              placeholder="Saisir pour trouver un choix"
+              className="h-11 rounded-xl pl-9 text-sm"
+            />
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          {filteredOptions.map(option => {
+            const isSelected = selected === option.value;
+            const Icon = option.icon;
+            return (
+              <motion.button
+                key={option.value}
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setConfiguratorResponse(step.responseKey, option.value)}
+                className={`relative flex min-h-[112px] flex-col items-start gap-2 rounded-xl border p-3 text-left transition-colors sm:min-h-[94px] sm:flex-row sm:gap-3 sm:p-4 ${
+                  isSelected
+                    ? 'border-foreground bg-foreground text-background shadow-md'
+                    : 'border-border bg-background text-foreground hover:border-foreground/40 hover:bg-muted/40'
+                }`}
+                aria-pressed={isSelected}
+              >
+                {Icon && (
+                  <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10 ${isSelected ? 'bg-background/15' : 'bg-muted'}`}>
+                    <Icon className={`size-4 sm:size-5 ${isSelected ? 'text-background' : 'text-foreground'}`} />
                   </span>
                 )}
-              </span>
-              {isSelected && (
-                <span className="absolute right-3 top-3 flex size-5 items-center justify-center rounded-full bg-background">
-                  <CheckCircle2 className="size-3.5 text-foreground" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold leading-tight sm:text-sm">{option.label}</span>
+                  {option.description && (
+                    <span className={`mt-1 block text-[11px] leading-snug sm:text-xs ${isSelected ? 'text-background/75' : 'text-muted-foreground'}`}>
+                      {option.description}
+                    </span>
+                  )}
                 </span>
-              )}
-            </motion.button>
-          );
-        })}
+                {isSelected && (
+                  <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-background sm:right-3 sm:top-3">
+                    <CheckCircle2 className="size-3.5 text-foreground" />
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
+          {filteredOptions.length === 0 && (
+            <div className="col-span-2 rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+              Aucun choix trouvé.
+            </div>
+          )}
+        </div>
       </div>
     );
   };
 
   const renderChoiceMulti = (step: StepDef) => {
     const selected = (responses[step.responseKey] as string[]) || [];
+    const options = step.options || [];
+    const filteredOptions = getFilteredOptions(step.id, options);
+    const searchValue = getSearchValue(step.id);
+    const showSearch = options.length >= 5;
     const toggle = (value: string) => {
       const next = selected.includes(value)
         ? selected.filter(item => item !== value)
@@ -1168,59 +1217,104 @@ export function ConfiguratorView() {
     };
 
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {step.options?.map(option => {
-          const isChecked = selected.includes(option.value);
-          const Icon = option.icon;
-          return (
-            <motion.button
-              key={option.value}
-              type="button"
-              whileTap={{ scale: 0.98 }}
-              onClick={() => toggle(option.value)}
-              className={`relative flex min-h-[58px] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
-                isChecked
-                  ? 'border-foreground bg-foreground text-background shadow-md'
-                  : 'border-border bg-background text-foreground hover:border-foreground/40'
-              }`}
-              aria-pressed={isChecked}
-            >
-              <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${isChecked ? 'bg-background/15' : 'bg-muted'}`}>
-                {Icon ? (
-                  <Icon className={`size-4 ${isChecked ? 'text-background' : 'text-foreground'}`} />
-                ) : (
-                  <Checkbox checked={isChecked} className="pointer-events-none" aria-hidden />
-                )}
-              </span>
-              <span className="text-sm font-medium leading-tight">{option.label}</span>
-              {isChecked && (
-                <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-background">
-                  <CheckCircle2 className="size-3.5 text-foreground" />
+      <div className="space-y-3">
+        {showSearch && (
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchValue}
+              onChange={event => setSearchValue(step.id, event.target.value)}
+              placeholder="Saisir pour trouver un choix"
+              className="h-11 rounded-xl pl-9 text-sm"
+            />
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          {filteredOptions.map(option => {
+            const isChecked = selected.includes(option.value);
+            const Icon = option.icon;
+            return (
+              <motion.button
+                key={option.value}
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => toggle(option.value)}
+                className={`relative flex min-h-[86px] flex-col items-start gap-2 rounded-xl border p-3 text-left transition-colors sm:min-h-[58px] sm:flex-row sm:items-center sm:gap-3 ${
+                  isChecked
+                    ? 'border-foreground bg-foreground text-background shadow-md'
+                    : 'border-border bg-background text-foreground hover:border-foreground/40 hover:bg-muted/40'
+                }`}
+                aria-pressed={isChecked}
+              >
+                <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${isChecked ? 'bg-background/15' : 'bg-muted'}`}>
+                  {Icon ? (
+                    <Icon className={`size-4 ${isChecked ? 'text-background' : 'text-foreground'}`} />
+                  ) : (
+                    <Checkbox checked={isChecked} className="pointer-events-none" aria-hidden />
+                  )}
                 </span>
-              )}
-            </motion.button>
-          );
-        })}
+                <span className="min-w-0 text-[13px] font-medium leading-tight sm:text-sm">{option.label}</span>
+                {isChecked && (
+                  <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-background">
+                    <CheckCircle2 className="size-3.5 text-foreground" />
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
+          {filteredOptions.length === 0 && (
+            <div className="col-span-2 rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+              Aucun choix trouvé.
+            </div>
+          )}
+        </div>
       </div>
     );
   };
 
   const renderSelect = (step: StepDef) => {
     const value = (responses[step.responseKey] as string) || '';
+    const options = step.options || [];
+    const filteredOptions = getFilteredOptions(step.id, options);
+    const searchValue = getSearchValue(step.id);
     return (
       <div className="space-y-3">
         <div className="relative">
-          <select
-            value={value}
-            onChange={event => setConfiguratorResponse(step.responseKey, event.target.value)}
-            className="h-12 w-full appearance-none rounded-xl border border-border bg-background px-4 pr-10 text-sm outline-none transition-colors focus:border-foreground"
-          >
-            <option value="">Sélectionnez une ville</option>
-            {step.options?.map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-          <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchValue}
+            onChange={event => setSearchValue(step.id, event.target.value)}
+            placeholder="Tapez une ville ou une commune"
+            className="h-12 rounded-xl pl-9 text-sm"
+          />
+        </div>
+        <div className="max-h-[44vh] overflow-y-auto rounded-xl border bg-background p-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {filteredOptions.map(option => {
+              const isSelected = value === option.value;
+              const Icon = option.icon;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setConfiguratorResponse(step.responseKey, option.value)}
+                  className={`flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium leading-tight transition-colors sm:text-sm ${
+                    isSelected
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-border bg-card text-foreground hover:border-foreground/40 hover:bg-muted/40'
+                  }`}
+                >
+                  {Icon && <Icon className="size-3.5 shrink-0" />}
+                  <span className="min-w-0">{option.label}</span>
+                </button>
+              );
+            })}
+            {filteredOptions.length === 0 && (
+              <div className="col-span-2 rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground sm:col-span-3">
+                Aucune ville trouvée.
+              </div>
+            )}
+          </div>
         </div>
         {value === 'Autre ville' && (
           <Input
@@ -1235,28 +1329,49 @@ export function ConfiguratorView() {
   };
 
   const renderFieldGroup = (step: StepDef) => (
-    <div className="grid grid-cols-1 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {step.fields?.map(field => {
         const value = responses[field.key] === undefined || responses[field.key] === null ? '' : String(responses[field.key]);
+        const fieldOptions = field.options || [];
+        const fieldSearchKey = `${step.id}:${field.key}`;
+        const filteredFieldOptions = getFilteredOptions(fieldSearchKey, fieldOptions);
+        const selectedFieldOption = value ? fieldOptions.find(option => option.value === value) : undefined;
+        const visibleFieldOptions = selectedFieldOption && !filteredFieldOptions.some(option => option.value === selectedFieldOption.value)
+          ? [selectedFieldOption, ...filteredFieldOptions]
+          : filteredFieldOptions;
+        const showFieldSearch = fieldOptions.length >= 5;
         return (
-          <div key={field.key} className="space-y-2">
+          <div key={field.key} className={field.type === 'textarea' ? 'space-y-2 sm:col-span-2' : 'space-y-2'}>
             <Label className="text-xs font-semibold">
               {field.label}
               {field.required && <span className="ml-1 text-destructive">*</span>}
             </Label>
             {field.type === 'select' ? (
-              <div className="relative">
-                <select
-                  value={value}
-                  onChange={event => setConfiguratorResponse(field.key, event.target.value)}
-                  className="h-12 w-full appearance-none rounded-xl border border-border bg-background px-4 pr-10 text-sm outline-none transition-colors focus:border-foreground"
-                >
-                  <option value="">Choisissez</option>
-                  {field.options?.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-muted-foreground" />
+              <div className="space-y-2">
+                {showFieldSearch && (
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={getSearchValue(fieldSearchKey)}
+                      onChange={event => setSearchValue(fieldSearchKey, event.target.value)}
+                      placeholder="Saisir pour filtrer"
+                      className="h-10 rounded-xl pl-9 text-sm"
+                    />
+                  </div>
+                )}
+                <div className="relative">
+                  <select
+                    value={value}
+                    onChange={event => setConfiguratorResponse(field.key, event.target.value)}
+                    className="h-12 w-full appearance-none rounded-xl border border-border bg-background px-4 pr-10 text-sm outline-none transition-colors focus:border-foreground"
+                  >
+                    <option value="">Choisissez</option>
+                    {visibleFieldOptions.map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-muted-foreground" />
+                </div>
               </div>
             ) : field.type === 'textarea' ? (
               <Textarea
@@ -1360,9 +1475,14 @@ export function ConfiguratorView() {
     const stepValue = step.step ?? 50;
     const value = Math.min(max, Math.max(min, (responses[step.responseKey] as number) || min));
     const marks = [min, Math.round((min + max) / 3), Math.round((min + max) / 2), max];
+    const setSurfaceValue = (rawValue: string) => {
+      const nextValue = Number(rawValue);
+      if (Number.isNaN(nextValue)) return;
+      setConfiguratorResponse(step.responseKey, Math.min(max, Math.max(min, nextValue)));
+    };
 
     return (
-      <div className="flex flex-col gap-8 py-6">
+      <div className="flex flex-col gap-6 py-6">
         <div className="text-center">
           <motion.span
             key={value}
@@ -1374,14 +1494,32 @@ export function ConfiguratorView() {
             {formatSurface(value)}
           </motion.span>
         </div>
-        <Slider
-          value={[value]}
-          min={min}
-          max={max}
-          step={stepValue}
-          onValueChange={([nextValue]) => setConfiguratorResponse(step.responseKey, nextValue)}
-          className="w-full"
-        />
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center">
+          <Slider
+            value={[value]}
+            min={min}
+            max={max}
+            step={stepValue}
+            onValueChange={([nextValue]) => setConfiguratorResponse(step.responseKey, nextValue)}
+            className="w-full"
+          />
+          <div className="relative">
+            <Input
+              value={value}
+              onChange={event => setSurfaceValue(event.target.value)}
+              type="number"
+              inputMode="numeric"
+              min={min}
+              max={max}
+              step={stepValue}
+              aria-label={`Saisir ${step.title}`}
+              className="h-12 rounded-xl pr-12 text-base font-semibold tabular-nums"
+            />
+            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
+              {step.unit || 'm²'}
+            </span>
+          </div>
+        </div>
         <div className="flex justify-between px-1 text-xs text-muted-foreground tabular-nums">
           {marks.map(mark => (
             <span key={mark}>{formatSurface(mark)}</span>

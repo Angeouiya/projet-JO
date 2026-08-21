@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Bell, Search } from 'lucide-react';
+import { LayoutDashboard, Menu, X, Bell, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -58,6 +58,14 @@ export function PublicHeader() {
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <>
+              <Button
+                size="sm"
+                className="hidden gap-2 text-xs md:inline-flex"
+                onClick={() => navigate('dashboard')}
+              >
+                <LayoutDashboard className="size-3.5" />
+                Dashboard
+              </Button>
               <button onClick={() => navigate('notifications')} className="relative p-2 hover:bg-muted rounded-lg">
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
@@ -98,6 +106,19 @@ export function PublicHeader() {
               <button onClick={() => { navigate('explore'); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm">Explorer</button>
               <button onClick={() => { navigate('realizations'); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm">Réalisations</button>
               <button onClick={() => { navigate('services'); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm">Services</button>
+              <button
+                onClick={() => {
+                  if (isAuthenticated) {
+                    navigate('dashboard');
+                  } else {
+                    requireAuth('dashboard');
+                  }
+                  setMenuOpen(false);
+                }}
+                className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm font-medium"
+              >
+                Dashboard
+              </button>
               {!isAuthenticated && (
                 <button onClick={() => { requireAuth(); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm font-medium">Se connecter</button>
               )}

@@ -16,7 +16,7 @@ import { FavoritesView } from '@/components/client/FavoritesView';
 import { NotificationsView } from '@/components/client/NotificationsView';
 import { AdminView } from '@/components/admin/AdminView';
 import { BottomNav } from '@/components/shared/BottomNav';
-import { DesktopDashboardShell } from '@/components/shared/DesktopDashboardShell';
+import { ClientDashboardHome, DesktopDashboardShell } from '@/components/shared/DesktopDashboardShell';
 import { PublicHeader } from '@/components/shared/PublicHeader';
 import { AuthModal } from '@/components/shared/AuthModal';
 import { ToastContainer } from '@/components/shared/ToastContainer';
@@ -29,6 +29,7 @@ import type { ViewName } from '@/types';
 function ViewRenderer({ view }: { view: ViewName }) {
   const views: Record<string, React.ReactNode> = {
     home: <HomeView />,
+    dashboard: <ClientDashboardHome />,
     explore: <ExploreView />,
     create: <ConfiguratorView />,
     'model-detail': <ModelDetailView />,
@@ -58,7 +59,9 @@ function ViewRenderer({ view }: { view: ViewName }) {
 }
 
 const ADMIN_VIEWS: ViewName[] = ['admin', 'admin-projects', 'admin-project-detail', 'admin-clients', 'admin-catalog', 'admin-requests', 'admin-teams', 'admin-settings', 'admin-notifications'];
-const PRIVATE_VIEWS: ViewName[] = ['projects', 'project-detail', 'project-messages', 'profile', 'favorites', 'notifications', 'messages'];
+const PUBLIC_VIEWS: ViewName[] = ['home', 'explore', 'model-detail', 'realizations', 'services', 'search'];
+const PRIVATE_VIEWS: ViewName[] = ['dashboard', 'projects', 'project-detail', 'project-messages', 'profile', 'favorites', 'notifications', 'messages'];
+const DESKTOP_CLIENT_SHELL_VIEWS: ViewName[] = ['dashboard', 'explore', 'model-detail', 'search', 'projects', 'project-detail', 'project-messages', 'profile', 'favorites', 'notifications', 'messages'];
 const FULLSCREEN_VIEWS: ViewName[] = ['create', 'configurator', ...ADMIN_VIEWS];
 
 function useDesktopViewport() {
@@ -99,7 +102,7 @@ function LockedAccessView({ view, adminOnly = false }: { view: ViewName; adminOn
               </Button>
             )}
             <Button variant="outline" className="h-11 rounded-lg" onClick={() => navigate('home')}>
-              Retour au tableau de bord
+              Retour à l’accueil
             </Button>
           </div>
         </CardContent>
@@ -123,9 +126,12 @@ function GuardedViewRenderer({ view }: { view: ViewName }) {
 }
 
 export default function Page() {
-  const { currentView } = useAppStore();
+  const { currentView, isAuthenticated } = useAppStore();
   const isDesktop = useDesktopViewport();
   const isFullscreen = FULLSCREEN_VIEWS.includes(currentView);
+  const showDesktopClientShell = isDesktop
+    && DESKTOP_CLIENT_SHELL_VIEWS.includes(currentView)
+    && (isAuthenticated || !PUBLIC_VIEWS.includes(currentView));
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -133,7 +139,7 @@ export default function Page() {
         <main className="flex-1">
           <GuardedViewRenderer view={currentView} />
         </main>
-      ) : isDesktop ? (
+      ) : showDesktopClientShell ? (
         <DesktopDashboardShell currentView={currentView}>
           <GuardedViewRenderer view={currentView} />
         </DesktopDashboardShell>
@@ -141,13 +147,13 @@ export default function Page() {
         <>
           <PublicHeader />
 
-          <main className="flex-1 pb-20">
+          <main className={`flex-1 ${isDesktop ? '' : 'pb-20'}`}>
             <div key={currentView}>
               <GuardedViewRenderer view={currentView} />
             </div>
           </main>
 
-          <BottomNav />
+          {!isDesktop && <BottomNav />}
         </>
       )}
       <AuthModal />

@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useAppStore } from '@/stores/app-store';
 import type { ViewName } from '@/types';
 
-const SHORTCUT_VIEWS = new Set<ViewName>(['create', 'projects', 'home', 'explore', 'services']);
+const SHORTCUT_VIEWS = new Set<ViewName>(['create', 'dashboard', 'projects', 'home', 'explore', 'services']);
 
 export function PwaBootstrap() {
   const navigate = useAppStore(state => state.navigate);
