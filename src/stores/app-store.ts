@@ -2,7 +2,20 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ViewName, AppUser, FilterState, ConfiguratorState, CatalogModelData, CategoryData, ProjectData, NotificationData } from '@/types';
+import type {
+  ViewName,
+  AppUser,
+  FilterState,
+  ConfiguratorState,
+  CatalogModelData,
+  CategoryData,
+  ProjectData,
+  ProjectDocumentData,
+  ProjectActivityData,
+  NotificationData,
+} from '@/types';
+
+type ProjectRequestInput = Partial<ProjectData> & Pick<ProjectData, 'referenceNumber'>;
 
 interface AppState {
   // Navigation
@@ -44,6 +57,7 @@ interface AppState {
 
   // Admin
   adminTab: string;
+  adminSidebarCollapsed: boolean;
 
   // Actions - Navigation
   navigate: (view: ViewName, params?: Record<string, string>) => void;
@@ -70,9 +84,17 @@ interface AppState {
   setFeaturedModels: (models: CatalogModelData[]) => void;
   setSelectedModel: (model: CatalogModelData | null) => void;
   setUserProjects: (projects: ProjectData[]) => void;
+  createProjectRequest: (project: ProjectRequestInput) => ProjectData;
+  addProjectDocuments: (projectId: string, documents: ProjectDocumentData[]) => void;
+  assignProjectLead: (projectId: string, leadName: string) => void;
+  requestProjectInfo: (projectId: string, message: string) => void;
+  sendProjectQuote: (projectId: string, amount: number, label?: string) => void;
+  updateProjectQuoteStatus: (projectId: string, quoteId: string, status: 'accepted' | 'refused') => void;
+  updateProjectStatus: (projectId: string, status: string, label?: string) => void;
   toggleFavorite: (modelId: string) => void;
   setUserFavorites: (ids: string[]) => void;
   setNotifications: (notifications: NotificationData[]) => void;
+  addNotification: (notification: Omit<NotificationData, 'id' | 'createdAt' | 'isRead'> & Partial<Pick<NotificationData, 'id' | 'createdAt' | 'isRead'>>) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
 
@@ -89,6 +111,8 @@ interface AppState {
 
   // Actions - Admin
   setAdminTab: (tab: string) => void;
+  toggleAdminSidebar: () => void;
+  setAdminSidebarCollapsed: (collapsed: boolean) => void;
 }
 
 const defaultConfigurator: ConfiguratorState = {
@@ -97,6 +121,24 @@ const defaultConfigurator: ConfiguratorState = {
 };
 
 const defaultFilters: FilterState = {};
+
+function uniqueId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function activity(label: string, actor: string, type: ProjectActivityData['type']): ProjectActivityData {
+  return {
+    id: uniqueId('act'),
+    label,
+    actor,
+    type,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function unreadCount(notifications: NotificationData[]) {
+  return notifications.filter(n => !n.isRead).length;
+}
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -140,6 +182,7 @@ export const useAppStore = create<AppState>()(
 
       // Admin
       adminTab: 'dashboard',
+      adminSidebarCollapsed: false,
 
       // Actions - Navigation
       navigate: (view, params = {}) => {
@@ -232,6 +275,221 @@ export const useAppStore = create<AppState>()(
       setFeaturedModels: (models) => set({ featuredModels: models }),
       setSelectedModel: (model) => set({ selectedModel: model }),
       setUserProjects: (projects) => set({ userProjects: projects }),
+      createProjectRequest: (input) => {
+        const now = new Date().toISOString();
+        const user = get().user;
+        const project: ProjectData = {
+          id: input.id || uniqueId('prj'),
+          referenceNumber: input.referenceNumber,
+          title: input.title || input.modelName || 'Nouveau projet BTP',
+          description: input.description,
+          status: input.status || 'submitted',
+          userId: input.userId || user?.id,
+          clientName: input.clientName || user?.name || 'Client BÂTI·CI',
+          clientEmail: input.clientEmail || user?.email,
+          clientPhone: input.clientPhone || user?.phone,
+          country: input.country || "Côte d'Ivoire",
+          categoryId: input.categoryId,
+          categoryName: input.categoryName,
+          modelId: input.modelId,
+          modelName: input.modelName,
+          budgetMin: input.budgetMin,
+          budgetMax: input.budgetMax,
+          city: input.city,
+          progress: input.progress ?? 5,
+          assignedTo: input.assignedTo,
+          missingInfo: input.missingInfo,
+          missingInfoRequestedAt: input.missingInfoRequestedAt,
+          formData: input.formData,
+          documents: input.documents ?? [],
+          quotes: input.quotes ?? [],
+          activityLog: [
+            activity('Demande client soumise', user?.name || 'Client', 'client'),
+            ...(input.activityLog ?? []),
+          ],
+          createdAt: input.createdAt || now,
+          updatedAt: now,
+        };
+
+        set(s => {
+          const withoutDuplicate = s.userProjects.filter(p => p.id !== project.id && p.referenceNumber !== project.referenceNumber);
+          const notifications = [
+            {
+              id: uniqueId('notif'),
+              title: 'Demande transmise',
+              message: `${project.referenceNumber} est maintenant visible dans l'administration.`,
+              type: 'status',
+              link: 'project-detail',
+              projectId: project.id,
+              actionLabel: 'Ouvrir',
+              isRead: false,
+              createdAt: now,
+            },
+            ...s.notifications,
+          ];
+
+          return {
+            userProjects: [project, ...withoutDuplicate],
+            notifications,
+            unreadNotificationCount: unreadCount(notifications),
+          };
+        });
+
+        return project;
+      },
+      addProjectDocuments: (projectId, documents) => set(s => {
+        const now = new Date().toISOString();
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          return {
+            ...project,
+            documents: [...documents, ...(project.documents ?? [])],
+            activityLog: [
+              activity(`${documents.length} document${documents.length > 1 ? 's' : ''} ajouté${documents.length > 1 ? 's' : ''}`, s.user?.name || 'Client', 'document'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        return { userProjects: projects };
+      }),
+      assignProjectLead: (projectId, leadName) => set(s => {
+        const now = new Date().toISOString();
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          return {
+            ...project,
+            assignedTo: leadName,
+            status: project.status === 'submitted' ? 'verifying' : project.status,
+            activityLog: [
+              activity(`Responsable affecté : ${leadName}`, s.user?.name || 'Administration', 'admin'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        return { userProjects: projects };
+      }),
+      requestProjectInfo: (projectId, message) => set(s => {
+        const now = new Date().toISOString();
+        let projectRef = '';
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          projectRef = project.referenceNumber;
+          return {
+            ...project,
+            status: 'info_required',
+            missingInfo: message,
+            missingInfoRequestedAt: now,
+            activityLog: [
+              activity('Information complémentaire demandée', s.user?.name || 'Administration', 'admin'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+        const notifications = [
+          {
+            id: uniqueId('notif'),
+            title: 'Information requise',
+            message: message || `L'équipe demande une précision sur ${projectRef}.`,
+            type: 'status',
+            link: 'project-detail',
+            projectId,
+            actionLabel: 'Compléter',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications) };
+      }),
+      sendProjectQuote: (projectId, amount, label = 'Devis estimatif') => set(s => {
+        const now = new Date().toISOString();
+        let projectRef = '';
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          projectRef = project.referenceNumber;
+          return {
+            ...project,
+            status: 'quote_sent',
+            progress: Math.max(project.progress ?? 0, 15),
+            quotes: [
+              {
+                id: uniqueId('quote'),
+                label,
+                amount,
+                status: 'sent' as const,
+                date: now.slice(0, 10),
+              },
+              ...(project.quotes ?? []),
+            ],
+            activityLog: [
+              activity(`${label} transmis`, s.user?.name || 'Administration', 'quote'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+        const notifications = [
+          {
+            id: uniqueId('notif'),
+            title: 'Devis disponible',
+            message: `${label} de ${new Intl.NumberFormat('fr-FR').format(amount)} XOF transmis pour ${projectRef}.`,
+            type: 'quote',
+            link: 'project-detail',
+            projectId,
+            actionLabel: 'Consulter',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications) };
+      }),
+      updateProjectQuoteStatus: (projectId, quoteId, status) => set(s => {
+        const now = new Date().toISOString();
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          const quotes = (project.quotes ?? []).map(quote => (
+            quote.id === quoteId ? { ...quote, status } : quote
+          ));
+
+          return {
+            ...project,
+            status: status === 'accepted' ? 'accepted' : 'modification_requested',
+            quotes,
+            activityLog: [
+              activity(status === 'accepted' ? 'Devis accepté par le client' : 'Devis refusé par le client', s.user?.name || 'Client', 'quote'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        return { userProjects: projects };
+      }),
+      updateProjectStatus: (projectId, status, label) => set(s => {
+        const now = new Date().toISOString();
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          return {
+            ...project,
+            status,
+            activityLog: [
+              activity(label || `Statut mis à jour : ${status}`, s.user?.name || 'Administration', 'status'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        return { userProjects: projects };
+      }),
       toggleFavorite: (modelId) => {
         set(s => ({
           userFavorites: s.userFavorites.includes(modelId)
@@ -243,6 +501,24 @@ export const useAppStore = create<AppState>()(
       setNotifications: (notifications) => set({
         notifications,
         unreadNotificationCount: notifications.filter(n => !n.isRead).length,
+      }),
+      addNotification: (notification) => set(s => {
+        const notifications = [
+          {
+            id: notification.id || uniqueId('notif'),
+            title: notification.title,
+            message: notification.message,
+            type: notification.type,
+            link: notification.link,
+            projectId: notification.projectId,
+            actionLabel: notification.actionLabel,
+            isRead: notification.isRead ?? false,
+            createdAt: notification.createdAt || new Date().toISOString(),
+          },
+          ...s.notifications,
+        ];
+
+        return { notifications, unreadNotificationCount: unreadCount(notifications) };
       }),
       markNotificationRead: (id) => set(s => ({
         notifications: s.notifications.map(n => n.id === id ? { ...n, isRead: true } : n),
@@ -275,6 +551,8 @@ export const useAppStore = create<AppState>()(
 
       // Actions - Admin
       setAdminTab: (tab) => set({ adminTab: tab }),
+      toggleAdminSidebar: () => set(s => ({ adminSidebarCollapsed: !s.adminSidebarCollapsed })),
+      setAdminSidebarCollapsed: (collapsed) => set({ adminSidebarCollapsed: collapsed }),
     }),
     {
       name: 'btp-app-storage',
@@ -282,7 +560,11 @@ export const useAppStore = create<AppState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
         isAdmin: state.isAdmin,
+        userProjects: state.userProjects,
         userFavorites: state.userFavorites,
+        notifications: state.notifications,
+        unreadNotificationCount: state.unreadNotificationCount,
+        adminSidebarCollapsed: state.adminSidebarCollapsed,
         configurator: state.configurator,
         draftId: state.draftId,
         filters: state.filters,

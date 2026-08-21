@@ -44,6 +44,14 @@ function ViewRenderer({ view }: { view: ViewName }) {
     messages: <NotificationsView />,
     search: <ExploreView />,
     admin: <AdminView />,
+    'admin-projects': <AdminView />,
+    'admin-project-detail': <AdminView />,
+    'admin-clients': <AdminView />,
+    'admin-catalog': <AdminView />,
+    'admin-requests': <AdminView />,
+    'admin-teams': <AdminView />,
+    'admin-settings': <AdminView />,
+    'admin-notifications': <AdminView />,
   };
 
   return views[view] || <HomeView />;
@@ -51,7 +59,7 @@ function ViewRenderer({ view }: { view: ViewName }) {
 
 const ADMIN_VIEWS: ViewName[] = ['admin', 'admin-projects', 'admin-project-detail', 'admin-clients', 'admin-catalog', 'admin-requests', 'admin-teams', 'admin-settings', 'admin-notifications'];
 const PRIVATE_VIEWS: ViewName[] = ['projects', 'project-detail', 'project-messages', 'profile', 'favorites', 'notifications', 'messages'];
-const FULLSCREEN_VIEWS: ViewName[] = ['create', 'configurator'];
+const FULLSCREEN_VIEWS: ViewName[] = ['create', 'configurator', ...ADMIN_VIEWS];
 
 function useDesktopViewport() {
   const [isDesktop, setIsDesktop] = useState(false);

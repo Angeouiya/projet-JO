@@ -78,7 +78,13 @@ export interface ProjectData {
   id: string;
   referenceNumber: string;
   title?: string;
+  description?: string;
   status: string;
+  userId?: string;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  country?: string;
   categoryId?: string;
   categoryName?: string;
   modelId?: string;
@@ -87,8 +93,41 @@ export interface ProjectData {
   budgetMax?: number;
   city?: string;
   progress: number;
+  assignedTo?: string;
+  missingInfo?: string;
+  missingInfoRequestedAt?: string;
+  formData?: Record<string, unknown>;
+  documents?: ProjectDocumentData[];
+  quotes?: ProjectQuoteData[];
+  activityLog?: ProjectActivityData[];
   createdAt: string;
  updatedAt: string;
+}
+
+export interface ProjectDocumentData {
+  id: string;
+  name: string;
+  type: string;
+  date: string;
+  url?: string;
+  size?: number;
+}
+
+export interface ProjectQuoteData {
+  id: string;
+  label: string;
+  amount: number;
+  status: 'draft' | 'sent' | 'accepted' | 'refused';
+  date: string;
+  documentUrl?: string;
+}
+
+export interface ProjectActivityData {
+  id: string;
+  label: string;
+  actor: string;
+  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status';
+  createdAt: string;
 }
 
 export interface NotificationData {
@@ -97,6 +136,8 @@ export interface NotificationData {
   message: string;
   type: string;
   link?: string;
+  projectId?: string;
+  actionLabel?: string;
   isRead: boolean;
   createdAt: string;
 }

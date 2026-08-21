@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Search, ChevronRight, MapPin, Clock, User as UserIcon, MoreHorizontal, Filter
+  Search, ChevronRight, MapPin, Clock, User as UserIcon
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,21 +11,47 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useAppStore } from '@/stores/app-store';
+import type { ProjectData } from '@/types';
 
 const TABS = ['Tous', 'En cours', 'Terminés', 'Suspendus', 'Brouillons'];
 
-const mockProjects = [
-  { id: '1', ref: 'PRJ-2024-0042', title: 'Villa Kokora', client: 'Kouamé A.', type: 'Villa basse', city: 'Cocody', status: 'in_progress', progress: 45, budget: 85000000, startDate: '2024-01-10' },
-  { id: '2', ref: 'PRJ-2024-0041', title: 'Résidence Palmiers', client: 'Société Akwaba', type: 'Immeuble R+4', city: 'Plateau', status: 'in_progress', progress: 30, budget: 350000000, startDate: '2024-01-05' },
-  { id: '3', ref: 'PRJ-2024-0040', title: 'Duplex Familial', client: 'Diallo M.', type: 'Duplex', city: 'Riviera', status: 'planning', progress: 10, budget: 55000000, startDate: '2024-01-15' },
-  { id: '4', ref: 'PRJ-2024-0039', title: 'Cité Riviera 3', client: 'Promo Côte', type: 'Cité résidentielle', city: 'Bingerville', status: 'in_progress', progress: 65, budget: 1200000000, startDate: '2023-09-01' },
-  { id: '5', ref: 'PRJ-2024-0038', title: 'Rénovation Marcory', client: 'Traoré K.', type: 'Rénovation', city: 'Marcory', status: 'delivered', progress: 100, budget: 25000000, startDate: '2023-11-01' },
-  { id: '6', ref: 'PRJ-2024-0037', title: 'Bureaux Zone 4', client: 'Entreprise SIFCA', type: 'Bureaux', city: 'Zone 4', status: 'study', progress: 15, budget: 180000000, startDate: '2024-01-12' },
-  { id: '7', ref: 'PRJ-2024-0036', title: 'Villa Yopougon', client: 'Koné F.', type: 'Villa basse', city: 'Yopougon', status: 'suspended', progress: 20, budget: 65000000, startDate: '2023-10-15' },
-  { id: '8', ref: 'PRJ-2024-0035', title: 'Hôtel Cocody', client: 'Hoteliers CI', type: 'Hôtel', city: 'Cocody', status: 'draft', progress: 0, budget: 500000000, startDate: null },
-  { id: '9', ref: 'PRJ-2024-0034', title: 'VRD Songon', client: 'Muni. Songon', type: 'VRD', city: 'Songon', status: 'delivered', progress: 100, budget: 95000000, startDate: '2023-06-01' },
-  { id: '10', ref: 'PRJ-2024-0033', title: 'Forage Abobo', client: 'Muni. Abobo', type: 'Hydraulique', city: 'Abobo', status: 'in_progress', progress: 55, budget: 250000000, startDate: '2023-11-20' },
+type AdminProjectRow = {
+  id: string;
+  ref: string;
+  title: string;
+  client: string;
+  type: string;
+  city: string;
+  status: string;
+  progress: number;
+  budget: number;
+  startDate: string | null;
+  source: 'workflow' | 'demo';
+};
+
+const mockProjects: AdminProjectRow[] = [
+  { id: 'demo-prj-1', ref: 'PRJ-2024-0042', title: 'Villa Kokora', client: 'Kouamé A.', type: 'Villa basse', city: 'Cocody', status: 'in_progress', progress: 45, budget: 85000000, startDate: '2024-01-10', source: 'demo' },
+  { id: 'demo-prj-2', ref: 'PRJ-2024-0041', title: 'Résidence Palmiers', client: 'Société Akwaba', type: 'Immeuble R+', city: 'Plateau', status: 'in_progress', progress: 30, budget: 350000000, startDate: '2024-01-05', source: 'demo' },
+  { id: 'demo-prj-3', ref: 'PRJ-2024-0040', title: 'Duplex Familial', client: 'Diallo M.', type: 'Duplex', city: 'Riviera', status: 'planning', progress: 10, budget: 55000000, startDate: '2024-01-15', source: 'demo' },
+  { id: 'demo-prj-4', ref: 'PRJ-2024-0039', title: 'Cité Riviera 3', client: 'Promo Côte', type: 'Cité résidentielle', city: 'Bingerville', status: 'in_progress', progress: 65, budget: 1200000000, startDate: '2023-09-01', source: 'demo' },
+  { id: 'demo-prj-5', ref: 'PRJ-2024-0038', title: 'Rénovation Marcory', client: 'Traoré K.', type: 'Rénovation', city: 'Marcory', status: 'delivered', progress: 100, budget: 25000000, startDate: '2023-11-01', source: 'demo' },
 ];
+
+function rowFromProject(project: ProjectData): AdminProjectRow {
+  return {
+    id: project.id,
+    ref: project.referenceNumber,
+    title: project.title || project.modelName || 'Projet BTP',
+    client: project.clientName || 'Client BÂTI·CI',
+    type: project.categoryName || project.modelName || 'Projet',
+    city: project.city || 'Non défini',
+    status: project.status,
+    progress: project.progress ?? 0,
+    budget: project.budgetMax || project.budgetMin || 0,
+    startDate: project.createdAt.slice(0, 10),
+    source: 'workflow',
+  };
+}
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' }> = {
   draft: { label: 'Brouillon', variant: 'secondary' },
@@ -39,11 +65,17 @@ const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondar
 };
 
 export function AdminProjects() {
-  const { navigate } = useAppStore();
+  const { navigate, userProjects } = useAppStore();
   const [tab, setTab] = useState('Tous');
   const [search, setSearch] = useState('');
 
-  const filtered = mockProjects.filter(p => {
+  const projects = useMemo(() => {
+    const workflow = userProjects.map(rowFromProject);
+    const refs = new Set(workflow.map(project => project.ref));
+    return [...workflow, ...mockProjects.filter(project => !refs.has(project.ref))];
+  }, [userProjects]);
+
+  const filtered = projects.filter(p => {
     if (tab === 'En cours' && p.status !== 'in_progress' && p.status !== 'planning' && p.status !== 'study') return false;
     if (tab === 'Terminés' && p.status !== 'delivered') return false;
     if (tab === 'Suspendus' && p.status !== 'suspended') return false;
@@ -56,7 +88,7 @@ export function AdminProjects() {
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-bold">Projets</h1>
-        <p className="text-sm text-muted-foreground">{mockProjects.length} projets au total</p>
+        <p className="text-sm text-muted-foreground">{projects.length} projets au total</p>
       </div>
 
       <div className="relative">

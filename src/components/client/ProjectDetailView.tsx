@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
+import type { ProjectData, ProjectDocumentData } from '@/types';
 
 // ── Mock data ──────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ type ProjectDetailData = {
   budgetMin: number;
   budgetMax: number;
   progress: number;
+  projectId?: string;
   terrain: string;
   terrainStatus: string;
   startDate: string;
@@ -280,6 +282,63 @@ function getQuoteStatusBadge(status: string) {
   return { label: 'En attente', variant: 'secondary' as const };
 }
 
+function detailFromStoredProject(project: ProjectData): ProjectDetailData {
+  const startDate = project.createdAt?.slice(0, 10) || 'Non défini';
+  const missingInfoDate = project.missingInfoRequestedAt
+    ? new Date(project.missingInfoRequestedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    : 'Maintenant';
+
+  return {
+    projectId: project.id,
+    referenceNumber: project.referenceNumber,
+    title: project.title || project.modelName || 'Projet BTP',
+    status: project.status,
+    categoryName: project.categoryName || 'Projet BTP',
+    modelName: project.modelName || project.categoryName || 'À définir',
+    city: project.city || 'Non défini',
+    budgetMin: project.budgetMin || project.budgetMax || 0,
+    budgetMax: project.budgetMax || project.budgetMin || 0,
+    progress: project.progress ?? 0,
+    terrain: String(project.formData?.landSurface || project.formData?.surface || 'À préciser'),
+    terrainStatus: String(project.formData?.landStatus || 'À confirmer'),
+    startDate,
+    estimatedEnd: String(project.formData?.timeline || 'À planifier'),
+    team: project.assignedTo ? [{ name: project.assignedTo, role: 'Responsable dossier' }] : [],
+    documents: (project.documents ?? []).map(document => ({
+      type: document.type,
+      name: document.name,
+      date: document.date,
+      icon: document.type.includes('photo') || document.type.includes('image') ? ImageIcon : FileText,
+    })),
+    messages: project.missingInfo ? [
+      {
+        id: `info-${project.id}`,
+        sender: 'Administration',
+        senderRole: 'Chargé de dossier',
+        text: project.missingInfo,
+        time: missingInfoDate,
+        isOwn: false,
+      },
+    ] : [],
+    quotes: (project.quotes ?? []).map(quote => ({
+      id: quote.id,
+      label: quote.label,
+      amount: quote.amount,
+      status: quote.status === 'accepted' || quote.status === 'refused' ? quote.status : 'pending',
+      date: quote.date,
+    })),
+    phases: [
+      { name: 'Demande reçue', status: 'done', progress: 100 },
+      { name: 'Vérification', status: project.status === 'submitted' ? 'in_progress' : 'done', progress: project.status === 'submitted' ? 40 : 100 },
+      { name: 'Étude & devis', status: ['quote_sent', 'accepted', 'planning', 'in_progress', 'delivered'].includes(project.status) ? 'done' : 'pending', progress: ['quote_sent', 'accepted', 'planning', 'in_progress', 'delivered'].includes(project.status) ? 100 : 0 },
+      { name: 'Planification', status: project.status === 'planning' ? 'in_progress' : ['in_progress', 'delivered'].includes(project.status) ? 'done' : 'pending', progress: project.status === 'planning' ? 50 : ['in_progress', 'delivered'].includes(project.status) ? 100 : 0 },
+      { name: 'Chantier', status: project.status === 'in_progress' ? 'in_progress' : project.status === 'delivered' ? 'done' : 'pending', progress: project.status === 'in_progress' ? Math.max(project.progress, 25) : project.status === 'delivered' ? 100 : 0 },
+      { name: 'Livraison', status: project.status === 'delivered' ? 'done' : 'pending', progress: project.status === 'delivered' ? 100 : 0 },
+    ],
+    photos: [],
+  };
+}
+
 const PROPOSAL_STORAGE_PREFIX = 'bati-ci-validated-proposal';
 
 function getProposalStorageKey(referenceNumber: string) {
@@ -524,7 +583,7 @@ function ResumeTab({ data }: { data: ProjectDetailData }) {
   );
 }
 
-function DocumentsTab({ data }: { data: ProjectDetailData }) {
+function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: (documents: ProjectDocumentData[]) => void }) {
   const [uploadedByProject, setUploadedByProject] = useState<Record<string, ProjectDetailData['documents']>>({});
   const inputId = `document-upload-${data.referenceNumber.replace(/[^a-z0-9]/gi, '-')}`;
   const uploadedDocuments = uploadedByProject[data.referenceNumber] ?? [];
@@ -543,17 +602,28 @@ function DocumentsTab({ data }: { data: ProjectDetailData }) {
     if (files.length === 0) return;
 
     const uploadDate = new Date().toISOString().slice(0, 10);
-    const uploadedDocs: ProjectDetailData['documents'] = files.map((file) => ({
+    const uploadedRecords: ProjectDocumentData[] = files.map((file) => ({
+      id: `upload-${data.referenceNumber}-${file.name}-${Date.now()}`,
       type: file.type.startsWith('image/') ? 'photo' : 'document',
       name: file.name,
       date: uploadDate,
-      icon: file.type.startsWith('image/') ? ImageIcon : FileText,
+      size: file.size,
+    }));
+    const uploadedDocs: ProjectDetailData['documents'] = uploadedRecords.map((document) => ({
+      type: document.type,
+      name: document.name,
+      date: document.date,
+      icon: document.type === 'photo' ? ImageIcon : FileText,
     }));
 
-    setUploadedByProject(prev => ({
-      ...prev,
-      [data.referenceNumber]: [...uploadedDocs, ...(prev[data.referenceNumber] ?? [])],
-    }));
+    if (onUpload) {
+      onUpload(uploadedRecords);
+    } else {
+      setUploadedByProject(prev => ({
+        ...prev,
+        [data.referenceNumber]: [...uploadedDocs, ...(prev[data.referenceNumber] ?? [])],
+      }));
+    }
     event.currentTarget.value = '';
   };
 
@@ -868,14 +938,25 @@ function ProposalsTab({ data }: { data: ProjectDetailData }) {
   );
 }
 
-function DevisTab({ data }: { data: ProjectDetailData }) {
+function DevisTab({
+  data,
+  onQuoteAction,
+}: {
+  data: ProjectDetailData;
+  onQuoteAction?: (quoteId: string, action: 'accepted' | 'refused') => void;
+}) {
   const [quotes, setQuotes] = useState(data.quotes);
+  const activeQuotes = onQuoteAction ? data.quotes : quotes;
 
   const handleAction = (quoteId: string, action: 'accepted' | 'refused') => {
+    if (onQuoteAction) {
+      onQuoteAction(quoteId, action);
+      return;
+    }
     setQuotes(prev => prev.map(q => q.id === quoteId ? { ...q, status: action as 'accepted' | 'refused' | 'pending' } : q));
   };
 
-  if (quotes.length === 0) {
+  if (activeQuotes.length === 0) {
     return (
       <div className="flex flex-col items-center py-12 text-center">
         <Receipt className="size-8 text-muted-foreground/30" />
@@ -886,7 +967,7 @@ function DevisTab({ data }: { data: ProjectDetailData }) {
 
   return (
     <div className="space-y-3">
-      {quotes.map((quote) => {
+      {activeQuotes.map((quote) => {
         const badge = getQuoteStatusBadge(quote.status);
         return (
           <motion.div
@@ -1043,11 +1124,12 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
 type TabValue = 'resume' | 'propositions' | 'documents' | 'messages' | 'devis' | 'chantier';
 
 export function ProjectDetailView() {
-  const { goBack, viewParams } = useAppStore();
+  const { goBack, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabValue>('resume');
 
   const projectId = viewParams?.id || 'prj-001';
-  const data = PROJECT_MAP[projectId] || PROJECT_MAP['prj-001'];
+  const storedProject = userProjects.find(project => project.id === projectId || project.referenceNumber === projectId);
+  const data = storedProject ? detailFromStoredProject(storedProject) : PROJECT_MAP[projectId] || PROJECT_MAP['prj-001'];
 
   const tabs = [
     { value: 'resume' as const, label: 'Résumé' },
@@ -1114,9 +1196,19 @@ export function ProjectDetailView() {
           >
             {activeTab === 'resume' && <ResumeTab data={data} />}
             {activeTab === 'propositions' && <ProposalsTab data={data} />}
-            {activeTab === 'documents' && <DocumentsTab data={data} />}
+            {activeTab === 'documents' && (
+              <DocumentsTab
+                data={data}
+                onUpload={storedProject ? (documents) => addProjectDocuments(storedProject.id, documents) : undefined}
+              />
+            )}
             {activeTab === 'messages' && <MessagesTab data={data} />}
-            {activeTab === 'devis' && <DevisTab data={data} />}
+            {activeTab === 'devis' && (
+              <DevisTab
+                data={data}
+                onQuoteAction={storedProject ? (quoteId, action) => updateProjectQuoteStatus(storedProject.id, quoteId, action) : undefined}
+              />
+            )}
             {activeTab === 'chantier' && <ChantierTab data={data} />}
           </motion.div>
         </AnimatePresence>

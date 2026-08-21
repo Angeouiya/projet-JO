@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, CheckCheck, Bell, FileText, MessageSquare,
@@ -123,20 +124,38 @@ function timeAgo(dateStr: string): string {
 // ── Component ─────────────────────────────────────────────
 
 export function NotificationsView() {
-  const { goBack, navigate, markNotificationRead, markAllNotificationsRead } = useAppStore();
+  const { goBack, navigate, notifications: workflowNotifications, markNotificationRead, markAllNotificationsRead } = useAppStore();
+  const [readDemoIds, setReadDemoIds] = useState<Set<string>>(new Set());
 
-  // Use mock data (in a real app, these would come from the store)
-  const notifications = MOCK_NOTIFICATIONS;
+  const workflowIds = new Set(workflowNotifications.map(notification => notification.id));
+  const demoNotifications = MOCK_NOTIFICATIONS.map(notification => (
+    readDemoIds.has(notification.id) ? { ...notification, isRead: true } : notification
+  ));
+  const notifications = [
+    ...workflowNotifications,
+    ...demoNotifications.filter(notification => !workflowIds.has(notification.id)),
+  ];
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const handleNotificationClick = (notification: NotificationData) => {
     markNotificationRead(notification.id);
+    if (MOCK_NOTIFICATIONS.some(item => item.id === notification.id)) {
+      setReadDemoIds(prev => new Set(prev).add(notification.id));
+    }
     if (notification.link) {
-      const viewParams = notification.type === 'quote' || notification.type === 'message' || notification.type === 'report' || notification.type === 'photo' || notification.type === 'invoice' || notification.type === 'status' || notification.type === 'visit'
-        ? { id: 'prj-001' }
-        : {};
+      let viewParams: Record<string, string> | undefined;
+      if (notification.projectId) {
+        viewParams = { id: notification.projectId };
+      } else if (notification.type === 'quote' || notification.type === 'message' || notification.type === 'report' || notification.type === 'photo' || notification.type === 'invoice' || notification.type === 'status' || notification.type === 'visit') {
+        viewParams = { id: 'prj-001' };
+      }
       navigate(notification.link as any, viewParams);
     }
+  };
+
+  const handleMarkAllRead = () => {
+    markAllNotificationsRead();
+    setReadDemoIds(new Set(MOCK_NOTIFICATIONS.map(notification => notification.id)));
   };
 
   return (
@@ -153,7 +172,7 @@ export function NotificationsView() {
               variant="ghost"
               size="sm"
               className="text-xs gap-1.5 text-muted-foreground hover:text-foreground"
-              onClick={markAllNotificationsRead}
+              onClick={handleMarkAllRead}
             >
               <CheckCheck className="size-3.5" />
               Tout marquer lu

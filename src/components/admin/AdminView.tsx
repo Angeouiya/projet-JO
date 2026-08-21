@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FileText, FolderKanban, Users, Package, Settings,
-  Menu, X, Search, Bell, LogOut, ChevronRight, User
+  Menu, X, Search, Bell, LogOut, ChevronRight, User, ChevronLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { AdminProjects } from './AdminProjects';
 import { AdminClients } from './AdminClients';
 import { AdminCatalog } from './AdminCatalog';
 import { AdminSettings } from './AdminSettings';
+import { AdminProjectDetail } from './AdminProjectDetail';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
@@ -27,11 +28,35 @@ const NAV_ITEMS = [
 ];
 
 export function AdminView() {
-  const { adminTab, setAdminTab, user, navigate, notifications } = useAppStore();
+  const {
+    adminTab,
+    setAdminTab,
+    user,
+    navigate,
+    notifications,
+    userProjects,
+    currentView,
+    adminSidebarCollapsed,
+    toggleAdminSidebar,
+  } = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.isRead).length;
+  const sidebarWidth = adminSidebarCollapsed ? 'lg:w-20' : 'lg:w-64';
+  const contentPadding = adminSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64';
+  const navItems = NAV_ITEMS.map(item => (
+    item.id === 'requests'
+      ? { ...item, badge: Math.max(userProjects.filter(project => ['submitted', 'info_required'].includes(project.status)).length, item.badge || 0) }
+      : item
+  ));
+
+  const openAdminTab = (tab: string) => {
+    setAdminTab(tab);
+    if (currentView !== 'admin') navigate('admin');
+  };
 
   const renderContent = () => {
+    if (currentView === 'admin-project-detail') return <AdminProjectDetail />;
+
     switch (adminTab) {
       case 'requests': return <AdminRequests />;
       case 'projects': return <AdminProjects />;
@@ -45,33 +70,51 @@ export function AdminView() {
   return (
     <div className="flex h-screen bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 border-r border-border bg-card">
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-border">
+      <aside className={`hidden ${sidebarWidth} lg:flex lg:flex-col lg:fixed lg:inset-y-0 border-r border-border bg-card transition-[width] duration-300`}>
+        <div className={`flex items-center gap-3 border-b border-border py-5 ${adminSidebarCollapsed ? 'justify-center px-3' : 'px-6'}`}>
           <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
             <span className="text-background text-xs font-bold">B</span>
           </div>
-          <div>
-            <p className="text-sm font-semibold">BÂTI·CI</p>
-            <p className="text-xs text-muted-foreground">Administration</p>
-          </div>
+          {!adminSidebarCollapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">BÂTI·CI</p>
+              <p className="text-xs text-muted-foreground">Administration</p>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={toggleAdminSidebar}
+            className="hidden rounded-lg p-2 hover:bg-muted lg:inline-flex"
+            aria-label={adminSidebarCollapsed ? 'Ouvrir la sidebar' : 'Réduire la sidebar'}
+            title={adminSidebarCollapsed ? 'Ouvrir' : 'Réduire'}
+          >
+            {adminSidebarCollapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+          </button>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
-          {NAV_ITEMS.map(item => (
+          {navItems.map(item => (
             <button
               key={item.id}
-              onClick={() => setAdminTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+              onClick={() => openAdminTab(item.id)}
+              title={item.label}
+              className={`relative w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
+                adminSidebarCollapsed ? 'justify-center' : ''
+              } ${
                 adminTab === item.id
                   ? 'bg-foreground text-background font-medium'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               <item.icon className="w-5 h-5" />
-              <span className="flex-1 text-left">{item.label}</span>
+              {!adminSidebarCollapsed && <span className="flex-1 text-left">{item.label}</span>}
               {item.badge && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                  adminTab === item.id ? 'bg-background/20' : 'bg-muted'
-                }`}>{item.badge}</span>
+                adminSidebarCollapsed ? (
+                  <span className="absolute right-2 top-2 size-2 rounded-full bg-foreground" />
+                ) : (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    adminTab === item.id ? 'bg-background/20' : 'bg-muted'
+                  }`}>{item.badge}</span>
+                )
               )}
             </button>
           ))}
@@ -79,16 +122,23 @@ export function AdminView() {
         <div className="p-4 border-t border-border">
           <button
             onClick={() => navigate('profile')}
-            className="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-muted transition-colors"
+            title={user?.name || 'Admin'}
+            className={`flex items-center gap-3 w-full rounded-lg px-3 py-2 hover:bg-muted transition-colors ${
+              adminSidebarCollapsed ? 'justify-center' : ''
+            }`}
           >
             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
               <User className="w-4 h-4" />
             </div>
-            <div className="flex-1 text-left">
-              <p className="text-sm font-medium">{user?.name || 'Admin'}</p>
-              <p className="text-xs text-muted-foreground">{user?.role}</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            {!adminSidebarCollapsed && (
+              <>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-medium">{user?.name || 'Admin'}</p>
+                  <p className="text-xs text-muted-foreground">{user?.role}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </>
+            )}
           </button>
         </div>
       </aside>
@@ -123,10 +173,10 @@ export function AdminView() {
                 </button>
               </div>
               <nav className="p-3 space-y-1">
-                {NAV_ITEMS.map(item => (
+                {navItems.map(item => (
                   <button
                     key={item.id}
-                    onClick={() => { setAdminTab(item.id); setSidebarOpen(false); }}
+                    onClick={() => { openAdminTab(item.id); setSidebarOpen(false); }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
                       adminTab === item.id
                         ? 'bg-foreground text-background font-medium'
@@ -154,7 +204,7 @@ export function AdminView() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <div className="flex-1 lg:pl-64 flex flex-col min-h-0">
+      <div className={`flex-1 ${contentPadding} flex flex-col min-h-0 transition-[padding] duration-300`}>
         {/* Top Bar */}
         <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 lg:px-8 py-3">
           <div className="flex items-center gap-4">

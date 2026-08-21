@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, FolderKanban, FileEdit, CheckCircle2, Clock,
@@ -96,17 +96,21 @@ const MOCK_PROJECTS: ProjectData[] = [
   },
 ];
 
-type FilterTab = 'all' | 'in_progress' | 'draft' | 'delivered';
+type FilterTab = 'all' | 'submitted' | 'info_required' | 'quote_sent' | 'in_progress' | 'draft' | 'delivered';
 
 const FILTER_TABS: { value: FilterTab; label: string }[] = [
   { value: 'all', label: 'Tous' },
+  { value: 'submitted', label: 'Demandes' },
+  { value: 'info_required', label: 'À compléter' },
+  { value: 'quote_sent', label: 'Devis' },
   { value: 'in_progress', label: 'En cours' },
   { value: 'draft', label: 'Brouillons' },
-  { value: 'delivered', label: 'Termines' },
+  { value: 'delivered', label: 'Terminés' },
 ];
 
 function getStatusVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
   if (status === 'in_progress') return 'default';
+  if (status === 'info_required') return 'destructive';
   if (status === 'draft') return 'secondary';
   if (status === 'delivered') return 'outline';
   return 'secondary';
@@ -206,7 +210,7 @@ function ProjectCard({ project, onClick }: { project: ProjectData; onClick: () =
 }
 
 export function ProjectsView() {
-  const { navigate, user } = useAppStore();
+  const { navigate, user, userProjects } = useAppStore();
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshY, setRefreshY] = useState(0);
@@ -214,16 +218,26 @@ export function ProjectsView() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const firstName = user?.name?.split(' ')[0] || 'Client';
+  const projects = useMemo(() => {
+    const userRefs = new Set(userProjects.map(project => project.referenceNumber));
+    return [
+      ...userProjects,
+      ...MOCK_PROJECTS.filter(project => !userRefs.has(project.referenceNumber)),
+    ];
+  }, [userProjects]);
 
   const filteredProjects = activeTab === 'all'
-    ? MOCK_PROJECTS
-    : MOCK_PROJECTS.filter(p => p.status === activeTab);
+    ? projects
+    : projects.filter(p => {
+      if (activeTab === 'in_progress') return ['in_progress', 'planning', 'studying', 'verifying'].includes(p.status);
+      return p.status === activeTab;
+    });
 
   const stats = {
-    in_progress: MOCK_PROJECTS.filter(p => p.status === 'in_progress').length,
-    draft: MOCK_PROJECTS.filter(p => p.status === 'draft').length,
-    delivered: MOCK_PROJECTS.filter(p => p.status === 'delivered').length,
-    quote_sent: MOCK_PROJECTS.filter(p => p.status === 'quote_sent').length,
+    submitted: projects.filter(p => p.status === 'submitted').length,
+    info_required: projects.filter(p => p.status === 'info_required').length,
+    delivered: projects.filter(p => p.status === 'delivered').length,
+    quote_sent: projects.filter(p => p.status === 'quote_sent').length,
   };
 
   const handleRefresh = useCallback(() => {
@@ -253,9 +267,9 @@ export function ProjectsView() {
   };
 
   const statCards = [
-    { label: 'Projets en cours', value: stats.in_progress, icon: FolderKanban },
-    { label: 'Brouillons', value: stats.draft, icon: FileEdit },
-    { label: 'Termines', value: stats.delivered, icon: CheckCircle2 },
+    { label: 'Demandes', value: stats.submitted, icon: FolderKanban },
+    { label: 'À compléter', value: stats.info_required, icon: FileEdit },
+    { label: 'Terminés', value: stats.delivered, icon: CheckCircle2 },
     { label: 'Devis en attente', value: stats.quote_sent, icon: Clock },
   ];
 

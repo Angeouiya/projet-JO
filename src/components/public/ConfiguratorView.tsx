@@ -894,6 +894,7 @@ export function ConfiguratorView() {
     requireAuth,
     navigate,
     addToast,
+    createProjectRequest,
   } = useAppStore();
 
   const responses = configurator.responses;
@@ -969,10 +970,14 @@ export function ConfiguratorView() {
       const ref = generateReference();
       const projectTypeValue = String(responses.projectType || 'autre');
       const [budgetMin, budgetMax] = getBudgetRange(responses.budget as string | undefined);
+      const localBudgetMin = budgetMin ?? undefined;
+      const localBudgetMax = budgetMax ?? undefined;
       const city = responses.city as string | undefined;
+      const declaredDocuments = Array.isArray(responses.documents) ? responses.documents as string[] : [];
       setReferenceNumber(ref);
 
       const payload = {
+        referenceNumber: ref,
         userId: user?.id,
         clientName: user?.name,
         clientEmail: user?.email,
@@ -982,14 +987,40 @@ export function ConfiguratorView() {
         title: `${getLabel(PROJECT_TYPES, projectTypeValue)}${city ? ` - ${city}` : ''}`,
         description: (responses.description as string | undefined) || buildAutoDescription(responses),
         city: city || null,
-        budgetMin,
-        budgetMax,
+        budgetMin: localBudgetMin,
+        budgetMax: localBudgetMax,
         formData: {
           ...responses,
           referenceNumber: ref,
           formVersion: 'advanced-construction-v2',
           submittedAt: new Date().toISOString(),
         },
+      };
+
+      const localProjectInput = {
+        referenceNumber: ref,
+        userId: user?.id,
+        clientName: user?.name,
+        clientEmail: user?.email,
+        clientPhone: user?.phone,
+        country: "Côte d'Ivoire",
+        categoryId: CATEGORY_SLUG_BY_TYPE[projectTypeValue] || projectTypeValue,
+        categoryName: getLabel(PROJECT_TYPES, projectTypeValue),
+        modelId: configurator.modelId,
+        title: payload.title,
+        description: payload.description,
+        city: city || undefined,
+        budgetMin: localBudgetMin,
+        budgetMax: localBudgetMax,
+        progress: 5,
+        status: 'submitted',
+        formData: payload.formData,
+        documents: declaredDocuments.map((documentId) => ({
+          id: `doc-${ref}-${documentId}`,
+          name: getLabel(DOCUMENT_OPTIONS, documentId),
+          type: documentId,
+          date: new Date().toISOString().slice(0, 10),
+        })),
       };
 
       const res = await fetch('/api/projects', {
@@ -999,18 +1030,55 @@ export function ConfiguratorView() {
       });
 
       if (!res.ok) throw new Error('Erreur serveur');
+      const created = await res.json().catch(() => null);
+
+      createProjectRequest({
+        ...localProjectInput,
+        id: created?.project?.id || `local-${ref}`,
+      });
 
       goNext();
-      addToast('Projet créé avec succès !', 'success');
+      addToast('Demande soumise et visible dans l’administration.', 'success');
     } catch {
       const ref = generateReference();
+      const projectTypeValue = String(responses.projectType || 'autre');
+      const [budgetMin, budgetMax] = getBudgetRange(responses.budget as string | undefined);
+      const localBudgetMin = budgetMin ?? undefined;
+      const localBudgetMax = budgetMax ?? undefined;
+      const city = responses.city as string | undefined;
+      createProjectRequest({
+        id: `local-${ref}`,
+        referenceNumber: ref,
+        userId: user?.id,
+        clientName: user?.name,
+        clientEmail: user?.email,
+        clientPhone: user?.phone,
+        country: "Côte d'Ivoire",
+        categoryId: CATEGORY_SLUG_BY_TYPE[projectTypeValue] || projectTypeValue,
+        categoryName: getLabel(PROJECT_TYPES, projectTypeValue),
+        modelId: configurator.modelId,
+        title: `${getLabel(PROJECT_TYPES, projectTypeValue)}${city ? ` - ${city}` : ''}`,
+        description: (responses.description as string | undefined) || buildAutoDescription(responses),
+        city: city || undefined,
+        budgetMin: localBudgetMin,
+        budgetMax: localBudgetMax,
+        progress: 5,
+        status: 'submitted',
+        formData: {
+          ...responses,
+          referenceNumber: ref,
+          formVersion: 'advanced-construction-v2',
+          submittedAt: new Date().toISOString(),
+          serverStatus: 'service-non-configure-ou-indisponible',
+        },
+      });
       setReferenceNumber(ref);
       goNext();
-      addToast('Projet enregistré localement. Notre équipe pourra le reprendre.', 'success');
+      addToast('Service serveur non configuré ou indisponible : copie locale créée.', 'info');
     } finally {
       setIsSubmitting(false);
     }
-  }, [addToast, configurator.modelId, goNext, responses, user]);
+  }, [addToast, configurator.modelId, createProjectRequest, goNext, responses, user]);
 
   const handleSummarySubmit = useCallback(() => {
     if (!isAuthenticated) {

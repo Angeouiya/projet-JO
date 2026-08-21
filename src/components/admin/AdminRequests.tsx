@@ -1,66 +1,110 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Filter, List, LayoutGrid, Calendar, MoreHorizontal,
+  Search, List, LayoutGrid,
   ChevronRight, Eye, ArrowRight, Clock, MapPin, User as UserIcon
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
+import { PROJECT_STATUS_LABELS } from '@/types';
+import type { ProjectData } from '@/types';
 
-const STATUS_LIST = ['Nouvelles', 'En étude', 'En attente', 'Acceptées', 'Refusées'];
+const STATUS_LIST = ['Nouvelles', 'Vérification', 'À compléter', 'Devis', 'Acceptées', 'Refusées'];
 const STATUS_COLORS: Record<string, string> = {
   'Demande soumise': 'bg-foreground text-background',
   'Vérification': 'bg-secondary text-foreground',
+  'Infos requises': 'bg-foreground text-background',
   'Étude en cours': 'bg-muted text-foreground',
   'En attente': 'bg-muted text-foreground',
+  'Devis transmis': 'bg-muted text-foreground',
   'Accepté': 'bg-foreground text-background',
   'Refusé': 'bg-secondary text-muted-foreground',
 };
 
+type AdminRequestRow = {
+  id: string;
+  ref: string;
+  client: string;
+  type: string;
+  city: string;
+  date: string;
+  status: string;
+  statusKey: string;
+  group: string;
+  budget: number;
+  urgent: boolean;
+  source: 'workflow' | 'demo';
+};
+
 const mockRequests = [
-  { id: '1', ref: 'DMD-2024-0089', client: 'Kouamé A.', type: 'Villa basse', city: 'Cocody', date: '2024-01-15', status: 'Demande soumise', budget: 80000000, urgent: true },
-  { id: '2', ref: 'DMD-2024-0088', client: 'Société Akwaba', type: 'Immeuble R+4', city: 'Plateau', date: '2024-01-14', status: 'Étude en cours', budget: 350000000, urgent: false },
-  { id: '3', ref: 'DMD-2024-0087', client: 'Diallo M.', type: 'Duplex', city: 'Riviera', date: '2024-01-14', status: 'En attente', budget: 55000000, urgent: false },
-  { id: '4', ref: 'DMD-2024-0086', client: 'Promo Côte', type: 'Cité résidentielle', city: 'Bingerville', date: '2024-01-13', status: 'Demande soumise', budget: 1200000000, urgent: true },
-  { id: '5', ref: 'DMD-2024-0085', client: 'Traoré K.', type: 'Rénovation', city: 'Marcory', date: '2024-01-13', status: 'Accepté', budget: 25000000, urgent: false },
-  { id: '6', ref: 'DMD-2024-0084', client: 'Entreprise SIFCA', type: 'Bureaux', city: 'Zone 4', date: '2024-01-12', status: 'Étude en cours', budget: 180000000, urgent: false },
-  { id: '7', ref: 'DMD-2024-0083', client: 'Koné F.', type: 'Villa basse', city: 'Yopougon', date: '2024-01-12', status: 'Demande soumise', budget: 65000000, urgent: false },
-  { id: '8', ref: 'DMD-2024-0082', client: 'Hoteliers CI', type: 'Hôtel', city: 'Cocody', date: '2024-01-11', status: 'En attente', budget: 500000000, urgent: true },
-  { id: '9', ref: 'DMD-2024-0081', client: 'Bamba S.', type: 'VRD', city: 'Songon', date: '2024-01-11', status: 'Accepté', budget: 95000000, urgent: false },
-  { id: '10', ref: 'DMD-2024-0080', client: 'Muni. Abobo', type: 'Hydraulique', city: 'Abobo', date: '2024-01-10', status: 'Étude en cours', budget: 250000000, urgent: false },
-  { id: '11', ref: 'DMD-2024-0079', client: 'Aka J.', type: 'Duplex', city: 'Adjame', date: '2024-01-10', status: 'Demande soumise', budget: 48000000, urgent: false },
-  { id: '12', ref: 'DMD-2024-0078', client: 'Groupe ECO', type: 'Promotion immobilière', city: 'Koumassi', date: '2024-01-09', status: 'Accepté', budget: 800000000, urgent: false },
-];
+  { id: 'demo-1', ref: 'DMD-2024-0089', client: 'Kouamé A.', type: 'Villa basse', city: 'Cocody', date: '2024-01-15', status: 'Demande soumise', statusKey: 'submitted', group: 'Nouvelles', budget: 80000000, urgent: true, source: 'demo' as const },
+  { id: 'demo-2', ref: 'DMD-2024-0088', client: 'Société Akwaba', type: 'Immeuble R+', city: 'Plateau', date: '2024-01-14', status: 'Étude en cours', statusKey: 'studying', group: 'Vérification', budget: 350000000, urgent: false, source: 'demo' as const },
+  { id: 'demo-3', ref: 'DMD-2024-0087', client: 'Diallo M.', type: 'Duplex', city: 'Riviera', date: '2024-01-14', status: 'En attente', statusKey: 'awaiting_validation', group: 'À compléter', budget: 55000000, urgent: false, source: 'demo' as const },
+  { id: 'demo-4', ref: 'DMD-2024-0086', client: 'Promo Côte', type: 'Cité résidentielle', city: 'Bingerville', date: '2024-01-13', status: 'Demande soumise', statusKey: 'submitted', group: 'Nouvelles', budget: 1200000000, urgent: true, source: 'demo' as const },
+  { id: 'demo-5', ref: 'DMD-2024-0085', client: 'Traoré K.', type: 'Rénovation', city: 'Marcory', date: '2024-01-13', status: 'Accepté', statusKey: 'accepted', group: 'Acceptées', budget: 25000000, urgent: false, source: 'demo' as const },
+] satisfies AdminRequestRow[];
+
+function groupFromStatus(status: string) {
+  if (status === 'submitted') return 'Nouvelles';
+  if (status === 'verifying' || status === 'studying' || status === 'estimating') return 'Vérification';
+  if (status === 'info_required' || status === 'awaiting_validation') return 'À compléter';
+  if (status === 'quote_sent' || status === 'proposal_ready') return 'Devis';
+  if (status === 'accepted') return 'Acceptées';
+  if (status === 'refused') return 'Refusées';
+  return 'Vérification';
+}
+
+function requestFromProject(project: ProjectData): AdminRequestRow {
+  const status = PROJECT_STATUS_LABELS[project.status] || project.status;
+  return {
+    id: project.id,
+    ref: project.referenceNumber,
+    client: project.clientName || 'Client BÂTI·CI',
+    type: project.categoryName || project.modelName || 'Projet BTP',
+    city: project.city || 'Non défini',
+    date: project.createdAt.slice(0, 10),
+    status,
+    statusKey: project.status,
+    group: groupFromStatus(project.status),
+    budget: project.budgetMax || project.budgetMin || 0,
+    urgent: project.status === 'info_required' || project.status === 'submitted',
+    source: 'workflow',
+  };
+}
 
 export function AdminRequests() {
-  const { navigate } = useAppStore();
+  const { navigate, userProjects } = useAppStore();
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const filtered = mockRequests.filter(r => {
-    if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+  const requests = useMemo(() => {
+    const workflow = userProjects.map(requestFromProject);
+    const refs = new Set(workflow.map(request => request.ref));
+    return [...workflow, ...mockRequests.filter(request => !refs.has(request.ref))];
+  }, [userProjects]);
+
+  const filtered = requests.filter(r => {
+    if (statusFilter !== 'all' && r.group !== statusFilter) return false;
     if (search && !r.ref.toLowerCase().includes(search.toLowerCase()) && !r.client.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const statusGroups = STATUS_LIST.reduce<Record<string, typeof mockRequests>>((acc, s) => {
-    const map: Record<string, string> = { 'Nouvelles': 'Demande soumise', 'En étude': 'Étude en cours', 'En attente': 'En attente', 'Acceptées': 'Accepté', 'Refusées': 'Refusé' };
-    acc[s] = filtered.filter(r => r.status === map[s]);
+  const statusGroups = STATUS_LIST.reduce<Record<string, AdminRequestRow[]>>((acc, s) => {
+    acc[s] = filtered.filter(r => r.group === s);
     return acc;
-  }, {} as any);
+  }, {});
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">Demandes</h1>
-          <p className="text-sm text-muted-foreground">{mockRequests.length} demandes au total</p>
+          <p className="text-sm text-muted-foreground">{requests.length} demandes au total</p>
         </div>
       </div>
 
@@ -78,7 +122,7 @@ export function AdminRequests() {
 
       {/* Status filter pills */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar">
-        <button onClick={() => setStatusFilter('all')} className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${statusFilter === 'all' ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>Tous ({mockRequests.length})</button>
+        <button onClick={() => setStatusFilter('all')} className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${statusFilter === 'all' ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>Tous ({requests.length})</button>
         {STATUS_LIST.map(s => (
           <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${statusFilter === s ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>{s} ({statusGroups[s]?.length || 0})</button>
         ))}
