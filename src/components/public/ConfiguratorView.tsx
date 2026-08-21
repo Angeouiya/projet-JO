@@ -1,29 +1,75 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  ArrowLeft, ArrowRight, X, Home, Building2, Building, Landmark,
-  LayoutGrid, Hammer, Route, Droplets, FileText, HelpCircle, MapPin,
-  CheckSquare, CircleDot, Minus, Plus, Star, Crown, Gem,
-  Wallet, Calendar, ClipboardList, CheckCircle2,
-  Pencil, ChevronRight, Flag, Send, PartyPopper,
-  Ruler, Search, KeyRound, RotateCcw,
+  ArrowLeft,
+  ArrowRight,
+  BadgeCheck,
+  Banknote,
+  Building,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  CheckSquare,
+  ChevronRight,
+  CircleDot,
+  ClipboardList,
+  Crown,
+  Droplets,
+  Eye,
+  FileText,
+  Flag,
+  Gem,
+  Hammer,
+  HelpCircle,
+  Home,
+  KeyRound,
+  Landmark,
+  Layers,
+  ListChecks,
+  MapPin,
+  Minus,
+  Paintbrush,
+  PartyPopper,
+  Pencil,
+  Plus,
+  Route,
+  RotateCcw,
+  Ruler,
+  Search,
+  Send,
+  ShieldCheck,
+  Star,
+  Truck,
+  Wrench,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAppStore } from '@/stores/app-store';
-import { FORMAT_SHORT_XOF, COMMUNES_ABIDJAN } from '@/types';
+import { CITIES_CI, COMMUNES_ABIDJAN } from '@/types';
 import type { LucideIcon } from 'lucide-react';
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
+type ProjectFamily = 'maison' | 'rplus' | 'vrd' | 'lot' | 'hydraulique' | 'etude' | 'promotion';
+type FieldType = 'text' | 'number' | 'select' | 'textarea';
+type StepType =
+  | 'choice-single'
+  | 'choice-multi'
+  | 'counter'
+  | 'field-group'
+  | 'select'
+  | 'slider'
+  | 'textarea'
+  | 'summary'
+  | 'confirmation';
 
 interface ChoiceOption {
   value: string;
@@ -32,13 +78,28 @@ interface ChoiceOption {
   description?: string;
 }
 
+interface FieldDef {
+  key: string;
+  label: string;
+  type: FieldType;
+  placeholder?: string;
+  options?: ChoiceOption[];
+  unit?: string;
+  helper?: string;
+  required?: boolean;
+  min?: number;
+  max?: number;
+}
+
 interface StepDef {
   id: string;
   title: string;
   subtitle?: string;
   responseKey: string;
-  type: 'choice-single' | 'choice-multi' | 'counter' | 'slider' | 'textarea' | 'summary' | 'confirmation';
+  type: StepType;
   options?: ChoiceOption[];
+  fields?: FieldDef[];
+  insight?: string;
   min?: number;
   max?: number;
   step?: number;
@@ -49,346 +110,782 @@ interface StepDef {
   required?: boolean;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Animation variants                                                 */
-/* ------------------------------------------------------------------ */
-
-const slideVariants = {
-  enter: (dir: number) => ({
-    x: dir > 0 ? '100%' : '-100%',
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (dir: number) => ({
-    x: dir > 0 ? '-100%' : '100%',
-    opacity: 0,
-  }),
-};
-
-/* ------------------------------------------------------------------ */
-/*  Static data                                                        */
-/* ------------------------------------------------------------------ */
-
 const PROJECT_TYPES: ChoiceOption[] = [
-  { value: 'villa', label: 'Villa basse', icon: Home, description: 'Plain-pied' },
-  { value: 'duplex', label: 'Duplex', icon: Building2, description: '2 niveaux' },
-  { value: 'triplex', label: 'Triplex', icon: Building, description: '3 niveaux' },
-  { value: 'immeuble', label: 'Immeuble', icon: Landmark, description: 'R+3 à R+5' },
-  { value: 'promotion', label: 'Promotion', icon: LayoutGrid, description: 'Programme immobilier' },
-  { value: 'renovation', label: 'Rénovation', icon: Hammer, description: 'Réhabilitation' },
-  { value: 'vrd', label: 'VRD / Route', icon: Route, description: 'Voirie & réseaux' },
-  { value: 'hydraulique', label: 'Hydraulique', icon: Droplets, description: 'Forage & adduction' },
-  { value: 'etude', label: 'Étude', icon: FileText, description: 'Études techniques' },
-  { value: 'autre', label: 'Autre', icon: HelpCircle, description: 'Autre projet' },
+  { value: 'maison-basse', label: 'Maison basse', icon: Home, description: 'Plain-pied, villa ou maison familiale' },
+  { value: 'duplex-triplex', label: 'Duplex / Triplex', icon: Building2, description: 'Maison à niveaux privatifs' },
+  { value: 'immeuble-rplus', label: 'Immeuble R+', icon: Landmark, description: 'Bâtiment collectif à niveaux' },
+  { value: 'promotion', label: 'Promotion', icon: Building, description: 'Programme immobilier complet' },
+  { value: 'vrd', label: 'VRD', icon: Route, description: 'Voirie, drainage, réseaux divers' },
+  { value: 'hydraulique', label: 'Hydraulique', icon: Droplets, description: 'Forage, eau, assainissement' },
+  { value: 'lot-travaux', label: 'Lot de travaux', icon: Hammer, description: 'Gros œuvre, second œuvre, finition' },
+  { value: 'renovation', label: 'Rénovation', icon: Paintbrush, description: 'Réhabilitation, extension, reprise' },
+  { value: 'etude-suivi', label: 'Étude / suivi', icon: FileText, description: 'Plans, contrôle, chiffrage' },
+  { value: 'autre', label: 'Autre besoin', icon: HelpCircle, description: 'Demande à préciser' },
 ];
 
-const CITIES: ChoiceOption[] = [
-  { value: 'Abidjan', label: 'Abidjan', icon: MapPin },
-  { value: 'Bouaké', label: 'Bouaké', icon: MapPin },
-  { value: 'Yamoussoukro', label: 'Yamoussoukro', icon: MapPin },
-  { value: 'San-Pédro', label: 'San-Pédro', icon: MapPin },
-  { value: 'Daloa', label: 'Daloa', icon: MapPin },
-  { value: 'Autre', label: 'Autre ville', icon: MapPin },
+const CATEGORY_SLUG_BY_TYPE: Record<string, string> = {
+  'maison-basse': 'villa-basse',
+  'duplex-triplex': 'duplex',
+  'immeuble-rplus': 'immeuble',
+  promotion: 'promotion-immobiliere',
+  vrd: 'vrd',
+  hydraulique: 'hydraulique',
+  'lot-travaux': 'construction',
+  renovation: 'renovation',
+  'etude-suivi': 'etude',
+  autre: 'autre',
+};
+
+const CITY_OPTIONS: ChoiceOption[] = [
+  ...Array.from(new Set(CITIES_CI))
+    .sort((a, b) => a.localeCompare(b, 'fr'))
+    .map(city => ({ value: city, label: city, icon: MapPin })),
+  { value: 'Autre ville', label: 'Autre ville', icon: MapPin },
 ];
 
 const TERRAIN_OPTIONS: ChoiceOption[] = [
-  { value: 'owned', label: 'Je possède le terrain', icon: CheckSquare, description: 'Titre foncier en main' },
-  { value: 'acquiring', label: 'En cours d\'acquisition', icon: CircleDot, description: 'Procédure en cours' },
-  { value: 'searching', label: 'Je recherche un terrain', icon: Search, description: 'Besoin d\'aide' },
-  { value: 'unknown', label: 'Je ne sais pas', icon: HelpCircle, description: 'Pas encore défini' },
+  { value: 'owned', label: 'Terrain disponible', icon: CheckSquare, description: 'Titre, ACD ou attribution disponible' },
+  { value: 'acquiring', label: 'Acquisition en cours', icon: CircleDot, description: 'Documents en préparation' },
+  { value: 'searching', label: 'Terrain à rechercher', icon: Search, description: 'Besoin d’appui pour trouver' },
+  { value: 'existing-site', label: 'Site existant', icon: Building, description: 'Bâtiment ou emprise déjà occupé' },
+  { value: 'unknown', label: 'À clarifier', icon: HelpCircle, description: 'Informations à compléter' },
+];
+
+const SITE_ACCESS_OPTIONS: ChoiceOption[] = [
+  { value: 'facile', label: 'Accès facile' },
+  { value: 'moyen', label: 'Accès moyen' },
+  { value: 'difficile', label: 'Accès difficile' },
+  { value: 'a-ouvrir', label: 'Voie à ouvrir' },
+  { value: 'inconnu', label: 'À vérifier' },
+];
+
+const TOPOGRAPHY_OPTIONS: ChoiceOption[] = [
+  { value: 'plat', label: 'Terrain plat' },
+  { value: 'pente-legere', label: 'Pente légère' },
+  { value: 'pente-forte', label: 'Pente forte' },
+  { value: 'zone-humide', label: 'Zone humide' },
+  { value: 'remblai', label: 'Remblai / terrain instable' },
+  { value: 'inconnue', label: 'À diagnostiquer' },
+];
+
+const BUILDING_USE_OPTIONS: ChoiceOption[] = [
+  { value: 'habitation', label: 'Habitation' },
+  { value: 'commerce', label: 'Commerce' },
+  { value: 'bureaux', label: 'Bureaux' },
+  { value: 'mixte', label: 'Mixte' },
+  { value: 'hotel', label: 'Hôtel / résidence' },
 ];
 
 const FINITION_OPTIONS: ChoiceOption[] = [
-  { value: 'economique', label: 'Économique', icon: Star, description: 'Finitions de base' },
+  { value: 'economique', label: 'Économique', icon: Star, description: 'Essentiel et maîtrisé' },
   { value: 'standard', label: 'Standard', icon: Star, description: 'Bon rapport qualité-prix' },
-  { value: 'premium', label: 'Premium', icon: Crown, description: 'Finitions soignées' },
+  { value: 'premium', label: 'Premium', icon: Crown, description: 'Matériaux et détails soignés' },
   { value: 'luxe', label: 'Luxe', icon: Gem, description: 'Haut standing' },
+  { value: 'a-definir', label: 'À définir', icon: HelpCircle, description: 'À cadrer avec l’équipe' },
 ];
 
 const BUDGET_OPTIONS: ChoiceOption[] = [
-  { value: 'less-20m', label: 'Moins de 20 M', icon: Wallet, description: '< 20 000 000 F' },
-  { value: '20-50m', label: '20 – 50 M', icon: Wallet, description: '20 – 50 M F' },
-  { value: '50-100m', label: '50 – 100 M', icon: Wallet, description: '50 – 100 M F' },
-  { value: '100-200m', label: '100 – 200 M', icon: Wallet, description: '100 – 200 M F' },
-  { value: 'more-200m', label: 'Plus de 200 M', icon: Wallet, description: '> 200 M F' },
-  { value: 'unknown', label: 'Je ne sais pas', icon: HelpCircle, description: 'À évaluer' },
+  { value: 'less-10m', label: 'Moins de 10 M', icon: Banknote, description: '< 10 000 000 F' },
+  { value: '10-30m', label: '10 - 30 M', icon: Banknote, description: '10 à 30 M F' },
+  { value: '30-75m', label: '30 - 75 M', icon: Banknote, description: '30 à 75 M F' },
+  { value: '75-150m', label: '75 - 150 M', icon: Banknote, description: '75 à 150 M F' },
+  { value: '150-300m', label: '150 - 300 M', icon: Banknote, description: '150 à 300 M F' },
+  { value: 'more-300m', label: 'Plus de 300 M', icon: Banknote, description: '> 300 000 000 F' },
+  { value: 'unknown', label: 'À estimer', icon: HelpCircle, description: 'Budget à chiffrer' },
 ];
 
 const TIMELINE_OPTIONS: ChoiceOption[] = [
-  { value: 'immediate', label: 'Immédiatement', icon: Flag, description: 'Dès maintenant' },
-  { value: '3-months', label: 'Sous 3 mois', icon: Calendar, description: 'Préparation rapide' },
-  { value: '6-months', label: 'Sous 6 mois', icon: Calendar, description: 'Planification en cours' },
+  { value: 'immediate', label: 'Immédiatement', icon: Flag, description: 'Démarrage urgent' },
+  { value: '1-month', label: 'Sous 1 mois', icon: Calendar, description: 'Préparation rapide' },
+  { value: '3-months', label: 'Sous 3 mois', icon: Calendar, description: 'Études à finaliser' },
+  { value: '6-months', label: 'Sous 6 mois', icon: Calendar, description: 'Projet en préparation' },
   { value: '1-year', label: 'Sous 1 an', icon: Calendar, description: 'Projet à moyen terme' },
+  { value: 'unknown', label: 'À définir', icon: HelpCircle, description: 'Calendrier ouvert' },
 ];
 
-const PRESTATIONS_OPTIONS: ChoiceOption[] = [
-  { value: 'etude-architecturale', label: 'Étude', icon: FileText },
-  { value: 'plans-execution', label: 'Plans', icon: Ruler },
-  { value: 'construction-complete', label: 'Construction complète', icon: Building2 },
-  { value: 'cle-en-main', label: 'Clé en main', icon: KeyRound },
+const MAISON_SPACES: ChoiceOption[] = [
+  { value: 'suite-parentale', label: 'Suite parentale', icon: Home },
+  { value: 'terrasse', label: 'Terrasse', icon: Home },
+  { value: 'garage', label: 'Garage', icon: Truck },
+  { value: 'cuisine-exterieure', label: 'Cuisine extérieure', icon: Home },
+  { value: 'dependance', label: 'Dépendance', icon: Building2 },
+  { value: 'cloture', label: 'Clôture', icon: ShieldCheck },
+  { value: 'piscine', label: 'Piscine', icon: Droplets },
+  { value: 'jardin', label: 'Jardin', icon: Home },
+];
+
+const RPLUS_OPTIONS: ChoiceOption[] = [
+  { value: 'ascenseur', label: 'Ascenseur', icon: Layers },
+  { value: 'parking', label: 'Parking', icon: Truck },
+  { value: 'sous-sol', label: 'Sous-sol', icon: Building },
+  { value: 'groupe-electrogene', label: 'Groupe électrogène', icon: Wrench },
+  { value: 'surpresseur', label: 'Surpresseur', icon: Droplets },
+  { value: 'securite-incendie', label: 'Sécurité incendie', icon: ShieldCheck },
+  { value: 'loge-gardien', label: 'Loge gardien', icon: Home },
+  { value: 'local-technique', label: 'Local technique', icon: Wrench },
+];
+
+const VRD_LOTS: ChoiceOption[] = [
+  { value: 'terrassement', label: 'Terrassement', icon: Hammer },
+  { value: 'voirie', label: 'Voirie', icon: Route },
+  { value: 'caniveaux', label: 'Caniveaux', icon: Droplets },
+  { value: 'assainissement', label: 'Assainissement', icon: Droplets },
+  { value: 'eau-potable', label: 'Eau potable', icon: Droplets },
+  { value: 'electricite', label: 'Électricité', icon: Wrench },
+  { value: 'telecom', label: 'Télécom', icon: Wrench },
+  { value: 'eclairage-public', label: 'Éclairage public', icon: Eye },
+  { value: 'signalisation', label: 'Signalisation', icon: Flag },
+];
+
+const LOT_TRAVAUX_OPTIONS: ChoiceOption[] = [
   { value: 'gros-oeuvre', label: 'Gros œuvre', icon: Hammer },
-  { value: 'suivi-chantier', label: 'Suivi', icon: ClipboardList },
+  { value: 'second-oeuvre', label: 'Second œuvre', icon: Layers },
+  { value: 'plomberie', label: 'Plomberie', icon: Wrench },
+  { value: 'electricite', label: 'Électricité', icon: Wrench },
+  { value: 'carrelage', label: 'Carrelage', icon: Layers },
+  { value: 'peinture', label: 'Peinture', icon: Paintbrush },
+  { value: 'menuiserie', label: 'Menuiserie', icon: Wrench },
+  { value: 'etancheite', label: 'Étanchéité', icon: Droplets },
+  { value: 'toiture', label: 'Charpente / toiture', icon: Home },
+  { value: 'climatisation', label: 'Climatisation', icon: Wrench },
+  { value: 'finition-complete', label: 'Finition complète', icon: Gem },
 ];
 
-/* ------------------------------------------------------------------ */
-/*  Build visible steps based on responses                             */
-/* ------------------------------------------------------------------ */
+const HYDRAULIC_WORKS: ChoiceOption[] = [
+  { value: 'forage', label: 'Forage', icon: Droplets },
+  { value: 'chateau-eau', label: 'Château d’eau', icon: Landmark },
+  { value: 'adduction', label: 'Adduction d’eau', icon: Route },
+  { value: 'pompage', label: 'Pompage', icon: Wrench },
+  { value: 'drainage', label: 'Drainage', icon: Droplets },
+  { value: 'station-traitement', label: 'Traitement', icon: ShieldCheck },
+];
 
-function buildSteps(responses: Record<string, unknown>): StepDef[] {
-  const projectType = responses.projectType as string | undefined;
-  const terrainStatus = responses.terrainStatus as string | undefined;
-  const isResidential = ['villa', 'duplex', 'triplex'].includes(projectType || '');
+const STUDY_SCOPES: ChoiceOption[] = [
+  { value: 'architecture', label: 'Architecture', icon: Home },
+  { value: 'structure', label: 'Structure béton', icon: Building2 },
+  { value: 'metre-devis', label: 'Métré / devis', icon: Ruler },
+  { value: 'permis', label: 'Permis de construire', icon: FileText },
+  { value: 'planning', label: 'Planning travaux', icon: Calendar },
+  { value: 'controle-chantier', label: 'Contrôle chantier', icon: ClipboardList },
+  { value: 'expertise', label: 'Expertise technique', icon: ShieldCheck },
+];
 
-  const steps: StepDef[] = [];
+const DOCUMENT_OPTIONS: ChoiceOption[] = [
+  { value: 'titre-foncier', label: 'Titre foncier / ACD', icon: FileText },
+  { value: 'attestation', label: 'Attestation villageoise', icon: FileText },
+  { value: 'plan-topo', label: 'Plan topographique', icon: Ruler },
+  { value: 'plan-archi', label: 'Plan architectural', icon: Home },
+  { value: 'etude-sol', label: 'Étude de sol', icon: Layers },
+  { value: 'photos-site', label: 'Photos du site', icon: Eye },
+  { value: 'devis-existant', label: 'Devis existant', icon: Banknote },
+  { value: 'cctp', label: 'CCTP / descriptif', icon: ClipboardList },
+  { value: 'aucun', label: 'Aucun document', icon: HelpCircle },
+];
 
-  // Step 1: Project type
-  steps.push({
-    id: 'project-type',
-    title: 'Type de projet',
-    subtitle: 'Sélectionnez le type de votre projet',
-    responseKey: 'projectType',
-    type: 'choice-single',
-    options: PROJECT_TYPES,
-    required: true,
-  });
-
-  // Step 2: City
-  steps.push({
-    id: 'city',
-    title: 'Où sera-t-il réalisé ?',
-    subtitle: 'Choisissez la ville du projet',
-    responseKey: 'city',
-    type: 'choice-single',
-    options: CITIES,
-    required: true,
-  });
-
-  // Step 3: Terrain
-  steps.push({
-    id: 'terrain',
-    title: 'Avez-vous un terrain ?',
-    subtitle: 'Quel est le statut de votre terrain ?',
-    responseKey: 'terrainStatus',
-    type: 'choice-single',
-    options: TERRAIN_OPTIONS,
-    skippable: true,
-    skipLabel: 'Je ne sais pas encore',
-    required: false,
-  });
-
-  // Step 4: Surface (conditional - only if owned or acquiring)
-  if (terrainStatus === 'owned' || terrainStatus === 'acquiring') {
-    steps.push({
-      id: 'surface',
-      title: 'Superficie du terrain',
-      subtitle: 'Quelle est la surface de votre terrain ?',
-      responseKey: 'surfaceArea',
-      type: 'slider',
-      min: 100,
-      max: 5000,
-      step: 50,
-      unit: 'm²',
-      skippable: true,
-      skipLabel: 'Je ne sais pas encore',
-      required: false,
-    });
-  }
-
-  // Step 5: Zones (conditional - only if searching in Abidjan)
-  if (terrainStatus === 'searching' && (responses.city as string) === 'Abidjan') {
-    steps.push({
-      id: 'zones',
-      title: 'Zones souhaitées',
-      subtitle: 'Sélectionnez les communes souhaitées à Abidjan',
-      responseKey: 'zones',
-      type: 'choice-multi',
-      options: COMMUNES_ABIDJAN.map(c => ({ value: c, label: c })),
-      skippable: true,
-      skipLabel: 'Je ne sais pas encore',
-      required: false,
-    });
-  }
-
-  // Step 6: Levels
-  steps.push({
-    id: 'levels',
-    title: 'Combien de niveaux ?',
-    subtitle: 'Nombre de niveaux souhaité',
-    responseKey: 'levels',
-    type: 'counter',
-    min: 1,
-    max: 10,
-    unit: 'niveau(s)',
-    skippable: true,
-    skipLabel: 'Je ne sais pas encore',
-    required: false,
-  });
-
-  // Step 7: Bedrooms (conditional - only for residential)
-  if (isResidential) {
-    steps.push({
-      id: 'bedrooms',
-      title: 'Combien de chambres ?',
-      subtitle: 'Nombre de chambres souhaité',
-      responseKey: 'bedrooms',
-      type: 'counter',
-      min: 1,
-      max: 10,
-      unit: 'chambre(s)',
-      skippable: true,
-      skipLabel: 'Je ne sais pas encore',
-      required: false,
-    });
-  }
-
-  // Step 8: Finition
-  steps.push({
-    id: 'finition',
-    title: 'Niveau de finition',
-    subtitle: 'Quel niveau de finition souhaitez-vous ?',
-    responseKey: 'finition',
-    type: 'choice-single',
-    options: FINITION_OPTIONS,
-    skippable: true,
-    skipLabel: 'Je ne sais pas encore',
-    required: false,
-  });
-
-  // Step 9: Budget
-  steps.push({
-    id: 'budget',
-    title: 'Budget indicatif',
-    subtitle: 'Quelle est votre enveloppe budgétaire ?',
-    responseKey: 'budget',
-    type: 'choice-single',
-    options: BUDGET_OPTIONS,
-    skippable: true,
-    skipLabel: 'Je ne sais pas',
-    required: false,
-  });
-
-  // Step 10: Timeline
-  steps.push({
-    id: 'timeline',
-    title: 'Quand commencer ?',
-    subtitle: 'Votre échéance de démarrage',
-    responseKey: 'timeline',
-    type: 'choice-single',
-    options: TIMELINE_OPTIONS,
-    skippable: true,
-    skipLabel: 'Je ne sais pas encore',
-    required: false,
-  });
-
-  // Step 11: Prestations
-  steps.push({
-    id: 'prestations',
-    title: 'Prestations souhaitées',
-    subtitle: 'Sélectionnez les prestations souhaitées (plusieurs choix possibles)',
-    responseKey: 'prestations',
-    type: 'choice-multi',
-    options: PRESTATIONS_OPTIONS,
-    skippable: true,
-    skipLabel: 'À définir plus tard',
-    required: false,
-  });
-
-  // Step 12: Description
-  steps.push({
-    id: 'description',
-    title: 'Description libre',
-    subtitle: 'Ajoutez des détails sur votre projet (facultatif)',
-    responseKey: 'description',
-    type: 'textarea',
-    placeholder: 'Décrivez votre projet, vos contraintes, vos envies...',
-    skippable: true,
-    skipLabel: 'Passer',
-    required: false,
-  });
-
-  // Step 13: Summary
-  steps.push({
-    id: 'summary',
-    title: 'Récapitulatif',
-    subtitle: 'Vérifiez vos informations avant de soumettre',
-    responseKey: '__summary__',
-    type: 'summary',
-    required: false,
-  });
-
-  // Step 14: Confirmation
-  steps.push({
-    id: 'confirmation',
-    title: 'Projet soumis !',
-    responseKey: '__confirmation__',
-    type: 'confirmation',
-    required: false,
-  });
-
-  return steps;
+function getProjectFamily(projectType?: string): ProjectFamily {
+  if (projectType === 'immeuble-rplus') return 'rplus';
+  if (projectType === 'vrd') return 'vrd';
+  if (projectType === 'hydraulique') return 'hydraulique';
+  if (projectType === 'lot-travaux' || projectType === 'renovation') return 'lot';
+  if (projectType === 'etude-suivi') return 'etude';
+  if (projectType === 'promotion') return 'promotion';
+  return 'maison';
 }
-
-/* ------------------------------------------------------------------ */
-/*  Label helpers                                                      */
-/* ------------------------------------------------------------------ */
 
 function getLabel(options: ChoiceOption[] | undefined, value: string): string {
   if (!options) return value;
-  const found = options.find(o => o.value === value);
-  return found ? found.label : value;
+  return options.find(option => option.value === value)?.label || value;
 }
 
-function formatSurface(val: number): string {
-  return new Intl.NumberFormat('fr-FR').format(val) + ' m²';
+function formatSurface(value: number): string {
+  return new Intl.NumberFormat('fr-FR').format(value) + ' m²';
 }
 
 function getBudgetLabel(value: string): string {
-  const map: Record<string, string> = {
-    'less-20m': 'Moins de 20 000 000 F',
-    '20-50m': '20 – 50 000 000 F',
-    '50-100m': '50 – 100 000 000 F',
-    '100-200m': '100 – 200 000 000 F',
-    'more-200m': 'Plus de 200 000 000 F',
-    'unknown': 'Non défini',
+  return getLabel(BUDGET_OPTIONS, value);
+}
+
+function getBudgetRange(value?: string): [number | null, number | null] {
+  const ranges: Record<string, [number | null, number | null]> = {
+    'less-10m': [0, 10_000_000],
+    '10-30m': [10_000_000, 30_000_000],
+    '30-75m': [30_000_000, 75_000_000],
+    '75-150m': [75_000_000, 150_000_000],
+    '150-300m': [150_000_000, 300_000_000],
+    'more-300m': [300_000_000, null],
+    unknown: [null, null],
   };
-  return map[value] || value;
+  return value ? ranges[value] || [null, null] : [null, null];
 }
 
 function getTimelineLabel(value: string): string {
-  const map: Record<string, string> = {
-    'immediate': 'Immédiatement',
-    '3-months': 'Sous 3 mois',
-    '6-months': 'Sous 6 mois',
-    '1-year': 'Sous 1 an',
-  };
-  return map[value] || value;
+  return getLabel(TIMELINE_OPTIONS, value);
 }
 
 function getTerrainLabel(value: string): string {
-  const map: Record<string, string> = {
-    'owned': 'Je possède le terrain',
-    'acquiring': 'En cours d\'acquisition',
-    'searching': 'Je recherche un terrain',
-    'unknown': 'Non défini',
-  };
-  return map[value] || value;
+  return getLabel(TERRAIN_OPTIONS, value);
 }
 
 function generateReference(): string {
   return 'BTP-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase();
 }
 
-/* ------------------------------------------------------------------ */
-/*  Main Component                                                     */
-/* ------------------------------------------------------------------ */
+function getPrestationsOptions(family: ProjectFamily): ChoiceOption[] {
+  if (family === 'vrd') {
+    return [
+      { value: 'topographie', label: 'Topographie', icon: Ruler },
+      { value: 'etude-vrd', label: 'Étude VRD', icon: FileText },
+      { value: 'terrassement', label: 'Terrassement', icon: Hammer },
+      { value: 'execution-vrd', label: 'Exécution VRD', icon: Route },
+      { value: 'controle-qualite', label: 'Contrôle qualité', icon: ShieldCheck },
+      { value: 'recolement', label: 'Plan de récolement', icon: ClipboardList },
+    ];
+  }
+  if (family === 'hydraulique') {
+    return [
+      { value: 'diagnostic', label: 'Diagnostic', icon: Search },
+      { value: 'dimensionnement', label: 'Dimensionnement', icon: Ruler },
+      { value: 'execution', label: 'Exécution', icon: Wrench },
+      { value: 'essais', label: 'Essais et réception', icon: BadgeCheck },
+      { value: 'maintenance', label: 'Maintenance', icon: ClipboardList },
+    ];
+  }
+  if (family === 'etude') {
+    return STUDY_SCOPES;
+  }
+  return [
+    { value: 'etude-architecturale', label: 'Étude architecturale', icon: FileText },
+    { value: 'plans-execution', label: 'Plans d’exécution', icon: Ruler },
+    { value: 'permis', label: 'Permis de construire', icon: FileText },
+    { value: 'gros-oeuvre', label: 'Gros œuvre', icon: Hammer },
+    { value: 'second-oeuvre', label: 'Second œuvre', icon: Layers },
+    { value: 'finition', label: 'Finition', icon: Paintbrush },
+    { value: 'cle-en-main', label: 'Clé en main', icon: KeyRound },
+    { value: 'suivi-chantier', label: 'Suivi de chantier', icon: ClipboardList },
+  ];
+}
+
+function buildSteps(responses: Record<string, unknown>): StepDef[] {
+  const projectType = responses.projectType as string | undefined;
+  const family = getProjectFamily(projectType);
+  const terrainStatus = responses.terrainStatus as string | undefined;
+  const steps: StepDef[] = [
+    {
+      id: 'project-type',
+      title: 'Catégorie de l’ouvrage',
+      subtitle: 'Choisissez le type de projet à cadrer',
+      responseKey: 'projectType',
+      type: 'choice-single',
+      options: PROJECT_TYPES,
+      required: true,
+      insight: 'Le formulaire s’adapte ensuite à la catégorie sélectionnée.',
+    },
+  ];
+
+  if (!projectType) return steps;
+
+  steps.push(
+    {
+      id: 'city',
+      title: 'Ville du projet',
+      subtitle: 'Sélectionnez la ville ou la commune concernée',
+      responseKey: 'city',
+      type: 'select',
+      options: CITY_OPTIONS,
+      required: true,
+    },
+    {
+      id: 'site-location',
+      title: 'Localisation précise',
+      subtitle: 'Ajoutez les repères utiles pour situer le chantier',
+      responseKey: '__site_location__',
+      type: 'field-group',
+      fields: [
+        { key: 'district', label: 'Commune / quartier / village', type: 'text', placeholder: 'Ex : Cocody Riviera 3, Angré, quartier résidentiel', required: true },
+        { key: 'landmark', label: 'Repère proche', type: 'text', placeholder: 'Ex : près du carrefour, école, voie principale' },
+        { key: 'siteAccess', label: 'Accès au site', type: 'select', options: SITE_ACCESS_OPTIONS, required: true },
+      ],
+      required: true,
+    }
+  );
+
+  if (family === 'maison' || family === 'rplus' || family === 'promotion') {
+    steps.push({
+      id: 'terrain',
+      title: 'Situation du terrain',
+      subtitle: 'Précisez le statut foncier et opérationnel',
+      responseKey: 'terrainStatus',
+      type: 'choice-single',
+      options: TERRAIN_OPTIONS,
+      skippable: true,
+      skipLabel: 'À clarifier plus tard',
+    });
+
+    if (terrainStatus === 'owned' || terrainStatus === 'acquiring') {
+      steps.push({
+        id: 'surface',
+        title: 'Superficie du terrain',
+        subtitle: 'Indiquez la surface approximative',
+        responseKey: 'surfaceArea',
+        type: 'slider',
+        min: 100,
+        max: family === 'promotion' ? 20000 : 5000,
+        step: 50,
+        unit: 'm²',
+        skippable: true,
+        skipLabel: 'Je ne sais pas',
+      });
+    }
+
+    if (terrainStatus === 'searching' && responses.city === 'Abidjan') {
+      steps.push({
+        id: 'zones',
+        title: 'Zones recherchées',
+        subtitle: 'Sélectionnez les communes souhaitées',
+        responseKey: 'zones',
+        type: 'choice-multi',
+        options: COMMUNES_ABIDJAN.map(commune => ({ value: commune, label: commune, icon: MapPin })),
+        skippable: true,
+        skipLabel: 'À définir plus tard',
+      });
+    }
+
+    steps.push({
+      id: 'terrain-details',
+      title: 'Contraintes du terrain',
+      subtitle: 'Ces éléments orientent les études et le chiffrage',
+      responseKey: '__terrain_details__',
+      type: 'field-group',
+      fields: [
+        { key: 'topography', label: 'Topographie', type: 'select', options: TOPOGRAPHY_OPTIONS },
+        { key: 'existingUtilities', label: 'Réseaux disponibles', type: 'select', options: [
+          { value: 'eau-electricite', label: 'Eau et électricité' },
+          { value: 'electricite-seule', label: 'Électricité seule' },
+          { value: 'eau-seule', label: 'Eau seule' },
+          { value: 'aucun', label: 'Aucun réseau' },
+          { value: 'inconnu', label: 'À vérifier' },
+        ] },
+        { key: 'soilKnown', label: 'Étude de sol', type: 'select', options: [
+          { value: 'faite', label: 'Déjà faite' },
+          { value: 'a-faire', label: 'À faire' },
+          { value: 'inconnue', label: 'Je ne sais pas' },
+        ] },
+      ],
+      skippable: true,
+      skipLabel: 'Passer',
+    });
+  }
+
+  if (family === 'maison') {
+    steps.push(
+      {
+        id: 'built-surface',
+        title: projectType === 'duplex-triplex' ? 'Surface bâtie estimée' : 'Surface de la maison',
+        subtitle: 'Surface construite souhaitée',
+        responseKey: 'builtSurface',
+        type: 'slider',
+        min: 40,
+        max: projectType === 'duplex-triplex' ? 900 : 600,
+        step: 10,
+        unit: 'm²',
+        skippable: true,
+        skipLabel: 'À estimer',
+      },
+      {
+        id: 'bedrooms',
+        title: 'Nombre de chambres',
+        subtitle: 'Indiquez le programme principal',
+        responseKey: 'bedrooms',
+        type: 'counter',
+        min: 1,
+        max: 12,
+        unit: 'chambre(s)',
+        skippable: true,
+        skipLabel: 'À définir',
+      },
+      {
+        id: 'maison-spaces',
+        title: 'Espaces souhaités',
+        subtitle: 'Ajoutez les éléments importants du projet',
+        responseKey: 'maisonSpaces',
+        type: 'choice-multi',
+        options: MAISON_SPACES,
+        skippable: true,
+        skipLabel: 'Aucun pour l’instant',
+      }
+    );
+  }
+
+  if (family === 'rplus') {
+    steps.push(
+      {
+        id: 'rplus-level',
+        title: 'Hauteur de l’immeuble',
+        subtitle: 'Choisissez simplement le niveau R+ souhaité',
+        responseKey: 'rPlusLevel',
+        type: 'counter',
+        min: 1,
+        max: 20,
+        unit: 'R+',
+        required: true,
+      },
+      {
+        id: 'rplus-use',
+        title: 'Usage de l’immeuble',
+        subtitle: 'Précisez la vocation principale',
+        responseKey: 'buildingUse',
+        type: 'choice-single',
+        options: BUILDING_USE_OPTIONS,
+        skippable: true,
+        skipLabel: 'À définir',
+      },
+      {
+        id: 'rplus-program',
+        title: 'Programme R+',
+        subtitle: 'Renseignez les volumes clés',
+        responseKey: '__rplus_program__',
+        type: 'field-group',
+        fields: [
+          { key: 'unitsPerFloor', label: 'Logements / locaux par étage', type: 'number', placeholder: 'Ex : 2', min: 1, unit: 'unité(s)' },
+          { key: 'groundFloorUse', label: 'Rez-de-chaussée', type: 'select', options: [
+            { value: 'parking', label: 'Parking' },
+            { value: 'commerce', label: 'Commerces' },
+            { value: 'logements', label: 'Logements' },
+            { value: 'mixte', label: 'Mixte' },
+            { value: 'a-definir', label: 'À définir' },
+          ] },
+          { key: 'estimatedFootprint', label: 'Emprise au sol estimée', type: 'number', placeholder: 'Ex : 450', unit: 'm²' },
+        ],
+        skippable: true,
+        skipLabel: 'À préciser plus tard',
+      },
+      {
+        id: 'rplus-options',
+        title: 'Équipements techniques',
+        subtitle: 'Sélectionnez les éléments prévus',
+        responseKey: 'rplusOptions',
+        type: 'choice-multi',
+        options: RPLUS_OPTIONS,
+        skippable: true,
+        skipLabel: 'À définir',
+      }
+    );
+  }
+
+  if (family === 'vrd') {
+    steps.push(
+      {
+        id: 'vrd-lots',
+        title: 'Lots VRD concernés',
+        subtitle: 'Sélectionnez les travaux à chiffrer',
+        responseKey: 'vrdLots',
+        type: 'choice-multi',
+        options: VRD_LOTS,
+        required: true,
+      },
+      {
+        id: 'vrd-dimensions',
+        title: 'Dimensions principales',
+        subtitle: 'Donnez les ordres de grandeur du site',
+        responseKey: '__vrd_dimensions__',
+        type: 'field-group',
+        fields: [
+          { key: 'roadLength', label: 'Linéaire estimé', type: 'number', placeholder: 'Ex : 750', unit: 'm' },
+          { key: 'roadWidth', label: 'Largeur moyenne', type: 'number', placeholder: 'Ex : 7', unit: 'm' },
+          { key: 'plotCount', label: 'Nombre de lots desservis', type: 'number', placeholder: 'Ex : 45', unit: 'lot(s)' },
+          { key: 'outfallPoint', label: 'Exutoire / raccordement', type: 'text', placeholder: 'Ex : caniveau existant, bassin, réseau public' },
+        ],
+        skippable: true,
+        skipLabel: 'À relever sur site',
+      },
+      {
+        id: 'vrd-context',
+        title: 'État de l’emprise',
+        subtitle: 'Précisez le contexte de réalisation',
+        responseKey: 'vrdContext',
+        type: 'choice-single',
+        options: [
+          { value: 'terrain-nu', label: 'Terrain nu', icon: MapPin, description: 'Aucune voie réalisée' },
+          { value: 'voie-existante', label: 'Voie existante', icon: Route, description: 'Reprise ou renforcement' },
+          { value: 'lotissement', label: 'Lotissement', icon: ListChecks, description: 'Voiries et réseaux à créer' },
+          { value: 'site-occupe', label: 'Site occupé', icon: Building, description: 'Travaux sous contraintes' },
+        ],
+        skippable: true,
+        skipLabel: 'À confirmer',
+      }
+    );
+  }
+
+  if (family === 'hydraulique') {
+    steps.push(
+      {
+        id: 'hydraulic-works',
+        title: 'Travaux hydrauliques',
+        subtitle: 'Sélectionnez les ouvrages concernés',
+        responseKey: 'hydraulicWorks',
+        type: 'choice-multi',
+        options: HYDRAULIC_WORKS,
+        required: true,
+      },
+      {
+        id: 'hydraulic-data',
+        title: 'Données de besoin',
+        subtitle: 'Indiquez les informations disponibles',
+        responseKey: '__hydraulic_data__',
+        type: 'field-group',
+        fields: [
+          { key: 'beneficiaries', label: 'Bénéficiaires estimés', type: 'number', placeholder: 'Ex : 250', unit: 'pers.' },
+          { key: 'dailyNeed', label: 'Besoin journalier', type: 'number', placeholder: 'Ex : 15', unit: 'm³/j' },
+          { key: 'waterSource', label: 'Source actuelle', type: 'text', placeholder: 'Ex : puits, SODECI, forage existant' },
+          { key: 'energySource', label: 'Énergie disponible', type: 'select', options: [
+            { value: 'reseau', label: 'Réseau électrique' },
+            { value: 'solaire', label: 'Solaire' },
+            { value: 'groupe', label: 'Groupe électrogène' },
+            { value: 'aucune', label: 'Aucune' },
+            { value: 'inconnue', label: 'À vérifier' },
+          ] },
+        ],
+        skippable: true,
+        skipLabel: 'À diagnostiquer',
+      }
+    );
+  }
+
+  if (family === 'lot') {
+    steps.push(
+      {
+        id: 'work-lots',
+        title: 'Lots concernés',
+        subtitle: 'Choisissez les travaux à proposer',
+        responseKey: 'workLots',
+        type: 'choice-multi',
+        options: LOT_TRAVAUX_OPTIONS,
+        required: true,
+      },
+      {
+        id: 'lot-context',
+        title: 'Contexte des travaux',
+        subtitle: 'Précisez l’état du bâtiment et la zone touchée',
+        responseKey: '__lot_context__',
+        type: 'field-group',
+        fields: [
+          { key: 'interventionStage', label: 'Étape actuelle', type: 'select', options: [
+            { value: 'neuf', label: 'Construction neuve' },
+            { value: 'gros-oeuvre-termine', label: 'Gros œuvre terminé' },
+            { value: 'second-oeuvre', label: 'Second œuvre en cours' },
+            { value: 'renovation', label: 'Rénovation' },
+            { value: 'reprise', label: 'Reprise après malfaçon' },
+          ], required: true },
+          { key: 'affectedArea', label: 'Surface concernée', type: 'number', placeholder: 'Ex : 120', unit: 'm²' },
+          { key: 'occupiedSite', label: 'Site occupé ?', type: 'select', options: [
+            { value: 'oui', label: 'Oui' },
+            { value: 'non', label: 'Non' },
+            { value: 'partiellement', label: 'Partiellement' },
+          ] },
+          { key: 'qualityTarget', label: 'Objectif qualité', type: 'text', placeholder: 'Ex : finition premium, reprise complète plomberie' },
+        ],
+        required: true,
+      }
+    );
+  }
+
+  if (family === 'etude') {
+    steps.push(
+      {
+        id: 'study-scope',
+        title: 'Mission souhaitée',
+        subtitle: 'Sélectionnez les prestations d’étude ou de suivi',
+        responseKey: 'studyScope',
+        type: 'choice-multi',
+        options: STUDY_SCOPES,
+        required: true,
+      },
+      {
+        id: 'study-data',
+        title: 'Base de travail',
+        subtitle: 'Dites ce que vous avez déjà',
+        responseKey: '__study_data__',
+        type: 'field-group',
+        fields: [
+          { key: 'availableBrief', label: 'Programme déjà rédigé ?', type: 'select', options: [
+            { value: 'oui', label: 'Oui' },
+            { value: 'partiel', label: 'Partiel' },
+            { value: 'non', label: 'Non' },
+          ] },
+          { key: 'expectedDeliverable', label: 'Livrable attendu', type: 'text', placeholder: 'Ex : plans APS/APD, DQE, planning, rapport' },
+          { key: 'reviewDeadline', label: 'Délai souhaité', type: 'text', placeholder: 'Ex : 10 jours, 3 semaines' },
+        ],
+        skippable: true,
+        skipLabel: 'À définir',
+      }
+    );
+  }
+
+  if (family === 'promotion') {
+    steps.push(
+      {
+        id: 'promotion-data',
+        title: 'Programme immobilier',
+        subtitle: 'Renseignez les volumes attendus',
+        responseKey: '__promotion_data__',
+        type: 'field-group',
+        fields: [
+          { key: 'unitCount', label: 'Nombre d’unités', type: 'number', placeholder: 'Ex : 24', unit: 'unité(s)' },
+          { key: 'targetTypology', label: 'Typologies visées', type: 'text', placeholder: 'Ex : studios, 3 pièces, villas basses' },
+          { key: 'salesTarget', label: 'Objectif', type: 'select', options: [
+            { value: 'vente', label: 'Vente' },
+            { value: 'location', label: 'Location' },
+            { value: 'mixte', label: 'Mixte' },
+          ] },
+        ],
+        skippable: true,
+        skipLabel: 'À cadrer',
+      },
+      {
+        id: 'promotion-amenities',
+        title: 'Aménagements communs',
+        subtitle: 'Sélectionnez les équipements envisagés',
+        responseKey: 'promotionAmenities',
+        type: 'choice-multi',
+        options: [
+          { value: 'voirie-interne', label: 'Voirie interne', icon: Route },
+          { value: 'espaces-verts', label: 'Espaces verts', icon: Home },
+          { value: 'parking', label: 'Parking', icon: Truck },
+          { value: 'aire-jeux', label: 'Aire de jeux', icon: Home },
+          { value: 'gardiennage', label: 'Gardiennage', icon: ShieldCheck },
+          { value: 'local-technique', label: 'Local technique', icon: Wrench },
+        ],
+        skippable: true,
+        skipLabel: 'Aucun pour l’instant',
+      }
+    );
+  }
+
+  if (family !== 'vrd' && family !== 'hydraulique' && family !== 'etude') {
+    steps.push({
+      id: 'finition',
+      title: 'Niveau de finition',
+      subtitle: 'Choisissez le niveau attendu',
+      responseKey: 'finition',
+      type: 'choice-single',
+      options: FINITION_OPTIONS,
+      skippable: true,
+      skipLabel: 'À définir',
+    });
+  }
+
+  steps.push(
+    {
+      id: 'prestations',
+      title: 'Prestations attendues',
+      subtitle: 'Choisissez ce que vous voulez confier',
+      responseKey: 'prestations',
+      type: 'choice-multi',
+      options: getPrestationsOptions(family),
+      skippable: true,
+      skipLabel: 'À cadrer avec l’équipe',
+    },
+    {
+      id: 'documents',
+      title: 'Documents disponibles',
+      subtitle: 'Cochez les pièces déjà en votre possession',
+      responseKey: 'documents',
+      type: 'choice-multi',
+      options: DOCUMENT_OPTIONS,
+      skippable: true,
+      skipLabel: 'Aucun document',
+    },
+    {
+      id: 'budget',
+      title: 'Budget indicatif',
+      subtitle: 'Indiquez l’enveloppe prévue',
+      responseKey: 'budget',
+      type: 'choice-single',
+      options: BUDGET_OPTIONS,
+      skippable: true,
+      skipLabel: 'À estimer',
+    },
+    {
+      id: 'timeline',
+      title: 'Démarrage souhaité',
+      subtitle: 'Quand souhaitez-vous lancer les travaux ?',
+      responseKey: 'timeline',
+      type: 'choice-single',
+      options: TIMELINE_OPTIONS,
+      skippable: true,
+      skipLabel: 'À définir',
+    },
+    {
+      id: 'description',
+      title: 'Précision libre',
+      subtitle: 'Ajoutez contraintes, priorités, attentes ou détails techniques',
+      responseKey: 'description',
+      type: 'textarea',
+      placeholder: 'Ex : terrain accessible par voie secondaire, besoin de gros œuvre + plomberie, préférence pour une finition premium, délai serré...',
+      skippable: true,
+      skipLabel: 'Passer',
+    },
+    {
+      id: 'summary',
+      title: 'Récapitulatif',
+      subtitle: 'Vérifiez les informations avant soumission',
+      responseKey: '__summary__',
+      type: 'summary',
+    },
+    {
+      id: 'confirmation',
+      title: 'Projet soumis',
+      responseKey: '__confirmation__',
+      type: 'confirmation',
+    }
+  );
+
+  return steps;
+}
+
+function fieldValueToString(field: FieldDef, value: unknown): string {
+  if (value === undefined || value === null || value === '') return '';
+  const raw = String(value);
+  if (field.type === 'select') return getLabel(field.options, raw);
+  return field.unit ? `${raw} ${field.unit}` : raw;
+}
+
+function stepValueToString(step: StepDef, value: unknown): string {
+  if (value === undefined || value === null || value === '') return '';
+  if (step.type === 'choice-single' || step.type === 'select') return getLabel(step.options, String(value));
+  if (step.type === 'choice-multi') {
+    const selected = Array.isArray(value) ? value : [];
+    return selected.map(item => getLabel(step.options, String(item))).join(', ');
+  }
+  if (step.type === 'counter') {
+    if (step.responseKey === 'rPlusLevel') return `R+${value}`;
+    return step.unit ? `${value} ${step.unit}` : String(value);
+  }
+  if (step.type === 'slider') return formatSurface(Number(value));
+  if (step.type === 'textarea') {
+    const text = String(value).trim();
+    return text.length > 120 ? `${text.slice(0, 120)}...` : text;
+  }
+  return String(value);
+}
+
+function buildAutoDescription(responses: Record<string, unknown>): string {
+  const type = getLabel(PROJECT_TYPES, String(responses.projectType || 'autre'));
+  const city = responses.city ? ` à ${responses.city}` : '';
+  const lots = [
+    ...(Array.isArray(responses.workLots) ? responses.workLots : []),
+    ...(Array.isArray(responses.vrdLots) ? responses.vrdLots : []),
+    ...(Array.isArray(responses.prestations) ? responses.prestations : []),
+  ];
+  const lotText = lots.length ? ` - lots: ${lots.join(', ')}` : '';
+  return `${type}${city}${lotText}`;
+}
 
 export function ConfiguratorView() {
   const {
     configurator,
     viewParams,
+    user,
     isAuthenticated,
     setConfiguratorStep,
     setConfiguratorResponse,
@@ -400,37 +897,29 @@ export function ConfiguratorView() {
   } = useAppStore();
 
   const responses = configurator.responses;
-
-  // Use local step ID for reliable navigation across conditional step changes
   const [localStepId, setLocalStepId] = useState<string>('project-type');
-  const [direction, setDirection] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState('');
   const isInitialized = useRef(false);
 
-  // Build visible steps from responses
   const steps = useMemo(() => buildSteps(responses), [responses]);
-
-  // Find current index from step ID — falls back to 0 if ID not found
   const currentIdx = useMemo(
-    () => Math.max(0, steps.findIndex(s => s.id === localStepId)),
+    () => Math.max(0, steps.findIndex(step => step.id === localStepId)),
     [steps, localStepId]
   );
   const activeStep = steps[currentIdx] || steps[0];
-
-  // Progress (exclude confirmation from progress calc)
-  const progressSteps = steps.filter(s => s.type !== 'confirmation');
-  const progressIdx = progressSteps.findIndex(s => s.id === localStepId);
+  const projectType = responses.projectType as string | undefined;
+  const family = getProjectFamily(projectType);
+  const progressSteps = steps.filter(step => step.type !== 'confirmation');
+  const progressIdx = progressSteps.findIndex(step => step.id === localStepId);
   const progressPercent = progressSteps.length > 1
     ? ((Math.max(0, progressIdx) + 1) / progressSteps.length) * 100
     : 0;
 
-  // Sync step index to store
   useEffect(() => {
     setConfiguratorStep(currentIdx);
   }, [currentIdx, setConfiguratorStep]);
 
-  // Pre-select model from viewParams on first mount
   useEffect(() => {
     if (isInitialized.current) return;
     isInitialized.current = true;
@@ -440,27 +929,27 @@ export function ConfiguratorView() {
       if (model) {
         const cat = model.categoryName?.toLowerCase() || '';
         const typeMap: Record<string, string> = {
-          villa: 'villa', duplex: 'duplex', triplex: 'triplex', immeuble: 'immeuble',
+          villa: 'maison-basse',
+          duplex: 'duplex-triplex',
+          triplex: 'duplex-triplex',
+          immeuble: 'immeuble-rplus',
+          vrd: 'vrd',
         };
-        const mapped = Object.entries(typeMap).find(([k]) => cat.includes(k))?.[1] || 'villa';
+        const mapped = Object.entries(typeMap).find(([key]) => cat.includes(key))?.[1] || 'maison-basse';
         setConfiguratorResponse('projectType', mapped);
         setConfiguratorData({ modelId: model.id, categoryName: model.categoryName });
       }
     }
-  }, []);
+  }, [responses.projectType, setConfiguratorData, setConfiguratorResponse, viewParams.modelId]);
 
-  /* Navigate helpers */
-  const goToStepId = useCallback((stepId: string, dir: number) => {
-    const exists = steps.some(s => s.id === stepId);
-    if (!exists) return;
-    setDirection(dir);
+  const goToStepId = useCallback((stepId: string) => {
+    if (!steps.some(step => step.id === stepId)) return;
     setLocalStepId(stepId);
   }, [steps]);
 
   const goNext = useCallback(() => {
     const nextIdx = currentIdx + 1;
     if (nextIdx < steps.length) {
-      setDirection(1);
       setLocalStepId(steps[nextIdx].id);
     }
   }, [currentIdx, steps]);
@@ -468,25 +957,39 @@ export function ConfiguratorView() {
   const goBack = useCallback(() => {
     const prevIdx = currentIdx - 1;
     if (prevIdx >= 0) {
-      setDirection(-1);
       setLocalStepId(steps[prevIdx].id);
     }
   }, [currentIdx, steps]);
 
   const handleSkip = useCallback(() => goNext(), [goNext]);
 
-  /* Submit project */
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
     try {
       const ref = generateReference();
+      const projectTypeValue = String(responses.projectType || 'autre');
+      const [budgetMin, budgetMax] = getBudgetRange(responses.budget as string | undefined);
+      const city = responses.city as string | undefined;
       setReferenceNumber(ref);
 
       const payload = {
-        ...responses,
-        referenceNumber: ref,
-        status: 'draft',
-        createdAt: new Date().toISOString(),
+        userId: user?.id,
+        clientName: user?.name,
+        clientEmail: user?.email,
+        clientPhone: user?.phone,
+        categorySlug: CATEGORY_SLUG_BY_TYPE[projectTypeValue] || projectTypeValue,
+        modelId: configurator.modelId,
+        title: `${getLabel(PROJECT_TYPES, projectTypeValue)}${city ? ` - ${city}` : ''}`,
+        description: (responses.description as string | undefined) || buildAutoDescription(responses),
+        city: city || null,
+        budgetMin,
+        budgetMax,
+        formData: {
+          ...responses,
+          referenceNumber: ref,
+          formVersion: 'advanced-construction-v2',
+          submittedAt: new Date().toISOString(),
+        },
       };
 
       const res = await fetch('/api/projects', {
@@ -500,112 +1003,85 @@ export function ConfiguratorView() {
       goNext();
       addToast('Projet créé avec succès !', 'success');
     } catch {
-      // Allow progression for demo / offline
       const ref = generateReference();
       setReferenceNumber(ref);
       goNext();
-      addToast('Projet enregistré !', 'success');
+      addToast('Projet enregistré localement. Notre équipe pourra le reprendre.', 'success');
     } finally {
       setIsSubmitting(false);
     }
-  }, [responses, goNext, addToast]);
+  }, [addToast, configurator.modelId, goNext, responses, user]);
 
   const handleSummarySubmit = useCallback(() => {
     if (!isAuthenticated) {
-      requireAuth('projects');
-    } else {
-      handleSubmit();
+      requireAuth('configurator');
+      addToast('Connectez-vous avec e-mail/téléphone et mot de passe pour soumettre.', 'info');
+      return;
     }
-  }, [isAuthenticated, requireAuth, handleSubmit]);
+    handleSubmit();
+  }, [addToast, handleSubmit, isAuthenticated, requireAuth]);
 
   const handleFinalAction = useCallback(() => {
     resetConfigurator();
     navigate('projects');
-  }, [resetConfigurator, navigate]);
+  }, [navigate, resetConfigurator]);
 
-  /* Can we proceed to next? */
   const canProceed = useMemo(() => {
     if (!activeStep) return false;
     if (activeStep.type === 'summary' || activeStep.type === 'confirmation') return true;
-    if (activeStep.type === 'textarea' || activeStep.type === 'slider' || activeStep.type === 'counter') return true;
-    if (activeStep.type === 'choice-multi') return true;
     if (activeStep.skippable) return true;
+    if (activeStep.type === 'choice-multi') {
+      const selected = responses[activeStep.responseKey];
+      return !activeStep.required || (Array.isArray(selected) && selected.length > 0);
+    }
+    if (activeStep.type === 'field-group') {
+      const requiredFields = activeStep.fields?.filter(field => field.required) || [];
+      return requiredFields.every(field => String(responses[field.key] ?? '').trim() !== '');
+    }
+    if (activeStep.type === 'textarea' || activeStep.type === 'slider' || activeStep.type === 'counter') return true;
     const val = responses[activeStep.responseKey];
     return val !== undefined && val !== null && val !== '';
   }, [activeStep, responses]);
 
-  /* ---------------------------------------------------------------- */
-/*  Step renderers                                                   */
-/* ---------------------------------------------------------------- */
-
   const renderChoiceSingle = (step: StepDef) => {
     const selected = responses[step.responseKey] as string | undefined;
-    const isGrid = (step.options?.length ?? 0) > 4;
+    const isProjectType = step.id === 'project-type';
 
     return (
-      <div className={
-        isGrid
-          ? 'grid grid-cols-2 sm:grid-cols-3 gap-3'
-          : 'grid grid-cols-1 gap-2.5'
-      }>
-        {step.options?.map(opt => {
-          const isSelected = selected === opt.value;
-          const Icon = opt.icon;
+      <div className={isProjectType ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
+        {step.options?.map(option => {
+          const isSelected = selected === option.value;
+          const Icon = option.icon;
           return (
             <motion.button
-              key={opt.value}
+              key={option.value}
               type="button"
-              whileTap={{ scale: 0.96 }}
-              onClick={() => {
-                setConfiguratorResponse(step.responseKey, opt.value);
-                // Auto-advance on non-first, non-skippable single choice steps
-                if (step.id !== 'project-type' && !step.skippable) {
-                  setTimeout(() => {
-                    const nextIdx = steps.findIndex(s => s.id === step.id) + 1;
-                    if (nextIdx < steps.length) {
-                      setDirection(1);
-                      setLocalStepId(steps[nextIdx].id);
-                    }
-                  }, 250);
-                }
-              }}
-              className={
-                `relative flex flex-col items-center justify-center gap-2 rounded-2xl border-2 p-4 min-h-[100px] transition-all duration-200 text-center cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                  isSelected
-                    ? 'border-foreground bg-foreground text-background shadow-lg'
-                    : 'border-border bg-background text-foreground hover:border-foreground/40 hover:bg-muted/50'
-                }`
-              }
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setConfiguratorResponse(step.responseKey, option.value)}
+              className={`relative flex min-h-[94px] items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
+                isSelected
+                  ? 'border-foreground bg-foreground text-background shadow-md'
+                  : 'border-border bg-background text-foreground hover:border-foreground/40 hover:bg-muted/40'
+              }`}
               aria-pressed={isSelected}
             >
               {Icon && (
-                <div className={
-                  `size-11 rounded-xl flex items-center justify-center transition-colors ${
-                    isSelected ? 'bg-background/20' : 'bg-muted'
-                  }`
-                }>
-                  <Icon className={
-                    `size-5 transition-colors ${isSelected ? 'text-background' : 'text-foreground'}`
-                  } />
-                </div>
-              )}
-              <span className="text-sm font-semibold leading-tight">{opt.label}</span>
-              {opt.description && (
-                <span className={
-                  `text-[11px] leading-tight ${isSelected ? 'text-background/70' : 'text-muted-foreground'}`
-                }>
-                  {opt.description}
+                <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${isSelected ? 'bg-background/15' : 'bg-muted'}`}>
+                  <Icon className={`size-5 ${isSelected ? 'text-background' : 'text-foreground'}`} />
                 </span>
               )}
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold leading-tight">{option.label}</span>
+                {option.description && (
+                  <span className={`mt-1 block text-xs leading-snug ${isSelected ? 'text-background/75' : 'text-muted-foreground'}`}>
+                    {option.description}
+                  </span>
+                )}
+              </span>
               {isSelected && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                  className="absolute top-2 right-2 size-5 rounded-full bg-background flex items-center justify-center"
-                >
+                <span className="absolute right-3 top-3 flex size-5 items-center justify-center rounded-full bg-background">
                   <CheckCircle2 className="size-3.5 text-foreground" />
-                </motion.div>
+                </span>
               )}
             </motion.button>
           );
@@ -616,60 +1092,43 @@ export function ConfiguratorView() {
 
   const renderChoiceMulti = (step: StepDef) => {
     const selected = (responses[step.responseKey] as string[]) || [];
-    const toggle = (val: string) => {
-      const next = selected.includes(val)
-        ? selected.filter(v => v !== val)
-        : [...selected, val];
+    const toggle = (value: string) => {
+      const next = selected.includes(value)
+        ? selected.filter(item => item !== value)
+        : [...selected, value];
       setConfiguratorResponse(step.responseKey, next);
     };
 
     return (
-      <div className="grid grid-cols-2 gap-3">
-        {step.options?.map(opt => {
-          const isChecked = selected.includes(opt.value);
-          const Icon = opt.icon;
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {step.options?.map(option => {
+          const isChecked = selected.includes(option.value);
+          const Icon = option.icon;
           return (
             <motion.button
-              key={opt.value}
+              key={option.value}
               type="button"
-              whileTap={{ scale: 0.97 }}
-              onClick={() => toggle(opt.value)}
-              className={
-                `relative flex items-center gap-3 rounded-2xl border-2 p-4 min-h-[56px] transition-all duration-200 text-left cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                  isChecked
-                    ? 'border-foreground bg-foreground text-background shadow-lg'
-                    : 'border-border bg-background text-foreground hover:border-foreground/40'
-                }`
-              }
+              whileTap={{ scale: 0.98 }}
+              onClick={() => toggle(option.value)}
+              className={`relative flex min-h-[58px] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+                isChecked
+                  ? 'border-foreground bg-foreground text-background shadow-md'
+                  : 'border-border bg-background text-foreground hover:border-foreground/40'
+              }`}
               aria-pressed={isChecked}
             >
-              <div className={
-                `size-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
-                  isChecked ? 'bg-background/20' : 'bg-muted'
-                }`
-              }>
+              <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${isChecked ? 'bg-background/15' : 'bg-muted'}`}>
                 {Icon ? (
-                  <Icon className={
-                    `size-4 transition-colors ${isChecked ? 'text-background' : 'text-foreground'}`
-                  } />
+                  <Icon className={`size-4 ${isChecked ? 'text-background' : 'text-foreground'}`} />
                 ) : (
-                  <Checkbox
-                    checked={isChecked}
-                    className="pointer-events-none"
-                    aria-hidden
-                  />
+                  <Checkbox checked={isChecked} className="pointer-events-none" aria-hidden />
                 )}
-              </div>
-              <span className="text-sm font-medium leading-tight">{opt.label}</span>
+              </span>
+              <span className="text-sm font-medium leading-tight">{option.label}</span>
               {isChecked && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                  className="absolute top-2 right-2 size-5 rounded-full bg-background flex items-center justify-center"
-                >
+                <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-background">
                   <CheckCircle2 className="size-3.5 text-foreground" />
-                </motion.div>
+                </span>
               )}
             </motion.button>
           );
@@ -678,64 +1137,149 @@ export function ConfiguratorView() {
     );
   };
 
+  const renderSelect = (step: StepDef) => {
+    const value = (responses[step.responseKey] as string) || '';
+    return (
+      <div className="space-y-3">
+        <div className="relative">
+          <select
+            value={value}
+            onChange={event => setConfiguratorResponse(step.responseKey, event.target.value)}
+            className="h-12 w-full appearance-none rounded-xl border border-border bg-background px-4 pr-10 text-sm outline-none transition-colors focus:border-foreground"
+          >
+            <option value="">Sélectionnez une ville</option>
+            {step.options?.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-muted-foreground" />
+        </div>
+        {value === 'Autre ville' && (
+          <Input
+            value={(responses.otherCity as string) || ''}
+            onChange={event => setConfiguratorResponse('otherCity', event.target.value)}
+            placeholder="Précisez la ville"
+            className="h-12 rounded-xl"
+          />
+        )}
+      </div>
+    );
+  };
+
+  const renderFieldGroup = (step: StepDef) => (
+    <div className="grid grid-cols-1 gap-4">
+      {step.fields?.map(field => {
+        const value = responses[field.key] === undefined || responses[field.key] === null ? '' : String(responses[field.key]);
+        return (
+          <div key={field.key} className="space-y-2">
+            <Label className="text-xs font-semibold">
+              {field.label}
+              {field.required && <span className="ml-1 text-destructive">*</span>}
+            </Label>
+            {field.type === 'select' ? (
+              <div className="relative">
+                <select
+                  value={value}
+                  onChange={event => setConfiguratorResponse(field.key, event.target.value)}
+                  className="h-12 w-full appearance-none rounded-xl border border-border bg-background px-4 pr-10 text-sm outline-none transition-colors focus:border-foreground"
+                >
+                  <option value="">Choisissez</option>
+                  {field.options?.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-muted-foreground" />
+              </div>
+            ) : field.type === 'textarea' ? (
+              <Textarea
+                value={value}
+                onChange={event => setConfiguratorResponse(field.key, event.target.value)}
+                placeholder={field.placeholder}
+                className="min-h-[110px] rounded-xl text-sm"
+              />
+            ) : (
+              <div className="relative">
+                <Input
+                  value={value}
+                  onChange={event => setConfiguratorResponse(field.key, event.target.value)}
+                  placeholder={field.placeholder}
+                  type={field.type}
+                  min={field.min}
+                  max={field.max}
+                  className="h-12 rounded-xl pr-16"
+                />
+                {field.unit && (
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
+                    {field.unit}
+                  </span>
+                )}
+              </div>
+            )}
+            {field.helper && <p className="text-xs text-muted-foreground">{field.helper}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   const renderCounter = (step: StepDef) => {
     const min = step.min ?? 1;
     const max = step.max ?? 10;
-    const val = Math.min(max, Math.max(min, (responses[step.responseKey] as number) || min));
-    const pct = ((val - min) / (max - min)) * 100;
+    const value = Math.min(max, Math.max(min, (responses[step.responseKey] as number) || min));
+    const pct = ((value - min) / (max - min)) * 100;
+    const display = step.responseKey === 'rPlusLevel' ? `R+${value}` : String(value);
 
     return (
       <div className="flex flex-col items-center gap-8 py-6">
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-6 sm:gap-8">
           <motion.button
             type="button"
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setConfiguratorResponse(step.responseKey, Math.max(min, val - 1))}
-            disabled={val <= min}
-            className="size-16 rounded-full border-2 border-border flex items-center justify-center hover:border-foreground hover:bg-muted transition-colors disabled:opacity-25 disabled:cursor-not-allowed active:bg-muted"
+            whileTap={{ scale: 0.94 }}
+            onClick={() => setConfiguratorResponse(step.responseKey, Math.max(min, value - 1))}
+            disabled={value <= min}
+            className="flex size-14 sm:size-16 items-center justify-center rounded-full border-2 border-border transition-colors hover:border-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-25"
             aria-label="Diminuer"
           >
-            <Minus className="size-7" />
+            <Minus className="size-6" />
           </motion.button>
-          <div className="w-28 text-center">
+          <div className="w-32 text-center">
             <motion.span
-              key={val}
-              initial={{ y: -10, opacity: 0 }}
+              key={display}
+              initial={{ y: -8, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.15 }}
-              className="text-6xl font-bold tabular-nums block"
+              className="block text-5xl font-bold tabular-nums sm:text-6xl"
             >
-              {val}
+              {display}
             </motion.span>
-            {step.unit && (
-              <span className="block text-xs text-muted-foreground mt-2 uppercase tracking-wider">
+            {step.unit && step.responseKey !== 'rPlusLevel' && (
+              <span className="mt-2 block text-xs text-muted-foreground uppercase">
                 {step.unit}
               </span>
             )}
           </div>
           <motion.button
             type="button"
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setConfiguratorResponse(step.responseKey, Math.min(max, val + 1))}
-            disabled={val >= max}
-            className="size-16 rounded-full border-2 border-border flex items-center justify-center hover:border-foreground hover:bg-muted transition-colors disabled:opacity-25 disabled:cursor-not-allowed active:bg-muted"
+            whileTap={{ scale: 0.94 }}
+            onClick={() => setConfiguratorResponse(step.responseKey, Math.min(max, value + 1))}
+            disabled={value >= max}
+            className="flex size-14 sm:size-16 items-center justify-center rounded-full border-2 border-border transition-colors hover:border-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-25"
             aria-label="Augmenter"
           >
-            <Plus className="size-7" />
+            <Plus className="size-6" />
           </motion.button>
         </div>
-        {/* Progress dots */}
         <div className="w-full max-w-xs">
-          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <motion.div
-              className="h-full bg-foreground rounded-full"
+              className="h-full rounded-full bg-foreground"
               animate={{ width: `${pct}%` }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             />
           </div>
-          <div className="flex justify-between mt-2 text-[10px] text-muted-foreground tabular-nums">
-            <span>{min}</span>
-            <span>{max}</span>
+          <div className="mt-2 flex justify-between text-xs text-muted-foreground tabular-nums">
+            <span>{step.responseKey === 'rPlusLevel' ? `R+${min}` : min}</span>
+            <span>{step.responseKey === 'rPlusLevel' ? `R+${max}` : max}</span>
           </div>
         </div>
       </div>
@@ -745,124 +1289,94 @@ export function ConfiguratorView() {
   const renderSlider = (step: StepDef) => {
     const min = step.min ?? 100;
     const max = step.max ?? 5000;
-    const stepVal = step.step ?? 50;
-    const val = Math.min(max, Math.max(min, (responses[step.responseKey] as number) || min));
-    const marks = [min, 500, 1000, 2000, 3000, max].filter(
-      m => m >= min && m <= max
-    );
+    const stepValue = step.step ?? 50;
+    const value = Math.min(max, Math.max(min, (responses[step.responseKey] as number) || min));
+    const marks = [min, Math.round((min + max) / 3), Math.round((min + max) / 2), max];
 
     return (
       <div className="flex flex-col gap-8 py-6">
         <div className="text-center">
           <motion.span
-            key={val}
+            key={value}
             initial={{ y: -8, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.15 }}
-            className="text-5xl font-bold tabular-nums block"
+            className="block text-4xl font-bold tabular-nums sm:text-5xl"
           >
-            {formatSurface(val)}
+            {formatSurface(value)}
           </motion.span>
         </div>
         <Slider
-          value={[val]}
+          value={[value]}
           min={min}
           max={max}
-          step={stepVal}
-          onValueChange={([v]) => setConfiguratorResponse(step.responseKey, v)}
+          step={stepValue}
+          onValueChange={([nextValue]) => setConfiguratorResponse(step.responseKey, nextValue)}
           className="w-full"
         />
-        <div className="flex justify-between text-[11px] text-muted-foreground px-1 tabular-nums">
-          {marks.map(m => (
-            <span key={m}>{formatSurface(m)}</span>
+        <div className="flex justify-between px-1 text-xs text-muted-foreground tabular-nums">
+          {marks.map(mark => (
+            <span key={mark}>{formatSurface(mark)}</span>
           ))}
         </div>
       </div>
     );
   };
 
-  const renderTextarea = (step: StepDef) => {
-    const val = (responses[step.responseKey] as string) || '';
-    return (
-      <Textarea
-        value={val}
-        onChange={e => setConfiguratorResponse(step.responseKey, e.target.value)}
-        placeholder={step.placeholder}
-        className="min-h-[160px] text-sm resize-none"
-        aria-label={step.title}
-      />
-    );
-  };
+  const renderTextarea = (step: StepDef) => (
+    <Textarea
+      value={(responses[step.responseKey] as string) || ''}
+      onChange={event => setConfiguratorResponse(step.responseKey, event.target.value)}
+      placeholder={step.placeholder}
+      className="min-h-[180px] resize-none rounded-xl text-sm"
+      aria-label={step.title}
+    />
+  );
 
   const renderSummary = () => {
     const rows: { label: string; value: string; stepId: string }[] = [];
 
-    const projectType = responses.projectType as string | undefined;
-    if (projectType) rows.push({ label: 'Type de projet', value: getLabel(PROJECT_TYPES, projectType), stepId: 'project-type' });
-
-    const city = responses.city as string | undefined;
-    if (city) rows.push({ label: 'Ville', value: getLabel(CITIES, city), stepId: 'city' });
-
-    const terrain = responses.terrainStatus as string | undefined;
-    if (terrain) rows.push({ label: 'Terrain', value: getTerrainLabel(terrain), stepId: 'terrain' });
-
-    const surface = responses.surfaceArea as number | undefined;
-    if (surface) rows.push({ label: 'Superficie', value: formatSurface(surface), stepId: 'surface' });
-
-    const zones = responses.zones as string[] | undefined;
-    if (zones && zones.length > 0) rows.push({ label: 'Zones', value: zones.join(', '), stepId: 'zones' });
-
-    const levels = responses.levels as number | undefined;
-    if (levels) rows.push({ label: 'Niveaux', value: `${levels} niveau(x)`, stepId: 'levels' });
-
-    const bedrooms = responses.bedrooms as number | undefined;
-    if (bedrooms) rows.push({ label: 'Chambres', value: `${bedrooms} chambre(s)`, stepId: 'bedrooms' });
-
-    const finition = responses.finition as string | undefined;
-    if (finition) rows.push({ label: 'Finition', value: getLabel(FINITION_OPTIONS, finition), stepId: 'finition' });
-
-    const budget = responses.budget as string | undefined;
-    if (budget) rows.push({ label: 'Budget', value: getBudgetLabel(budget), stepId: 'budget' });
-
-    const timeline = responses.timeline as string | undefined;
-    if (timeline) rows.push({ label: 'Démarrage', value: getTimelineLabel(timeline), stepId: 'timeline' });
-
-    const prestations = responses.prestations as string[] | undefined;
-    if (prestations && prestations.length > 0) {
-      rows.push({
-        label: 'Prestations',
-        value: prestations.map(p => getLabel(PRESTATIONS_OPTIONS, p)).join(', '),
-        stepId: 'prestations',
+    steps
+      .filter(step => !['summary', 'confirmation'].includes(step.type))
+      .forEach(step => {
+        if (step.type === 'field-group') {
+          step.fields?.forEach(field => {
+            const value = fieldValueToString(field, responses[field.key]);
+            if (value) rows.push({ label: field.label, value, stepId: step.id });
+          });
+          return;
+        }
+        const value = stepValueToString(step, responses[step.responseKey]);
+        if (value) rows.push({ label: step.title, value, stepId: step.id });
       });
-    }
-
-    const desc = responses.description as string | undefined;
-    if (desc) rows.push({ label: 'Description', value: desc.length > 100 ? desc.substring(0, 100) + '...' : desc, stepId: 'description' });
 
     return (
-      <div className="space-y-3">
-        <p className="text-sm text-muted-foreground mb-4">
-          Vérifiez vos réponses ci-dessous. Cliquez sur une ligne pour la modifier.
-        </p>
-        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-          {rows.map(row => (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-primary/15 bg-primary/5 p-4">
+          <p className="text-sm font-semibold text-foreground">Dossier prêt à être transmis</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Les réponses ci-dessous donnent à l’équipe technique une première base claire pour l’étude, le métré et le devis.
+          </p>
+        </div>
+        <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
+          {rows.map((row, index) => (
             <motion.button
-              key={row.stepId}
+              key={`${row.stepId}-${index}`}
               type="button"
               whileTap={{ scale: 0.99 }}
-              onClick={() => goToStepId(row.stepId, currentIdx > steps.findIndex(s => s.id === row.stepId) ? -1 : 1)}
-              className="w-full flex items-center justify-between gap-3 p-4 rounded-2xl border border-border hover:border-foreground/30 hover:bg-muted/50 transition-colors text-left cursor-pointer"
+              onClick={() => goToStepId(row.stepId)}
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:border-foreground/30 hover:bg-muted/40"
             >
-              <div className="flex-1 min-w-0">
-                <div className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">{row.label}</div>
-                <div className="text-sm font-semibold mt-0.5 truncate">{row.value}</div>
-              </div>
-              <Pencil className="size-4 text-muted-foreground flex-shrink-0" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-medium text-muted-foreground">{row.label}</span>
+                <span className="mt-0.5 block text-sm font-semibold leading-snug">{row.value}</span>
+              </span>
+              <Pencil className="size-4 shrink-0 text-muted-foreground" />
             </motion.button>
           ))}
         </div>
         {rows.length === 0 && (
-          <div className="text-center py-10 text-muted-foreground text-sm">
+          <div className="py-10 text-center text-sm text-muted-foreground">
             Aucune information renseignée.
           </div>
         )}
@@ -873,17 +1387,17 @@ export function ConfiguratorView() {
   const renderConfirmation = () => (
     <div className="flex flex-col items-center gap-6 py-10 text-center">
       <motion.div
-        initial={{ scale: 0, rotate: -180 }}
+        initial={{ scale: 0, rotate: -120 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-        className="size-24 rounded-full bg-foreground flex items-center justify-center"
+        className="flex size-24 items-center justify-center rounded-full bg-foreground"
       >
         <PartyPopper className="size-12 text-background" />
       </motion.div>
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold tracking-tight">Votre projet a été enregistré !</h2>
-        <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-          Notre équipe va étudier votre demande et vous recontacter sous 48 heures.
+        <h2 className="text-2xl font-bold">Votre projet a été enregistré</h2>
+        <p className="mx-auto max-w-xs text-sm leading-relaxed text-muted-foreground">
+          L’équipe technique peut maintenant analyser le besoin et préparer la suite du dossier.
         </p>
       </div>
       {referenceNumber && (
@@ -891,20 +1405,16 @@ export function ConfiguratorView() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="bg-muted rounded-2xl px-8 py-5"
+          className="rounded-xl bg-muted px-8 py-5"
         >
-          <div className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Référence</div>
-          <div className="text-xl font-bold font-mono mt-1.5 tracking-wider">{referenceNumber}</div>
+          <div className="text-xs font-medium text-muted-foreground">Référence</div>
+          <div className="mt-1.5 font-mono text-xl font-bold">{referenceNumber}</div>
         </motion.div>
       )}
       <div className="w-full max-w-xs space-y-3 pt-4">
-        <Button
-          onClick={handleFinalAction}
-          className="w-full h-14 text-sm font-semibold rounded-2xl"
-          size="lg"
-        >
+        <Button onClick={handleFinalAction} className="h-14 w-full rounded-xl text-sm font-semibold" size="lg">
           Voir mes projets
-          <ChevronRight className="size-4 ml-1" />
+          <ChevronRight className="ml-1 size-4" />
         </Button>
         <Button
           variant="outline"
@@ -912,30 +1422,26 @@ export function ConfiguratorView() {
             resetConfigurator();
             navigate('home');
           }}
-          className="w-full h-12 text-sm rounded-2xl"
+          className="h-12 w-full rounded-xl text-sm"
           size="lg"
         >
-          <RotateCcw className="size-4 mr-1" />
+          <RotateCcw className="mr-1 size-4" />
           Nouveau projet
         </Button>
       </div>
     </div>
   );
 
-  /* ---------------------------------------------------------------- */
-/*  Main render                                                      */
-/* ---------------------------------------------------------------- */
-
   const isFirstStep = currentIdx === 0;
   const isConfirmation = activeStep?.type === 'confirmation';
   const isSummary = activeStep?.type === 'summary';
+  const selectedProjectLabel = projectType ? getLabel(PROJECT_TYPES, projectType) : '';
   const showNav = !isConfirmation;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Sticky top bar */}
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b">
-        <div className="flex items-center gap-3 px-4 h-14">
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur-md">
+        <div className="flex h-14 items-center gap-3 px-4">
           <Button
             variant="ghost"
             size="icon"
@@ -953,11 +1459,11 @@ export function ConfiguratorView() {
             <ArrowLeft className="size-5" />
           </Button>
 
-          <h1 className="font-bold text-sm truncate">Configurer mon projet</h1>
+          <h1 className="truncate text-sm font-bold">Configurer mon projet</h1>
 
           <div className="ml-auto flex items-center gap-2">
             {!isConfirmation && (
-              <Badge variant="outline" className="text-[11px] tabular-nums font-medium">
+              <Badge variant="outline" className="text-xs font-medium tabular-nums">
                 {Math.min(currentIdx + 1, progressSteps.length)} / {progressSteps.length}
               </Badge>
             )}
@@ -976,44 +1482,42 @@ export function ConfiguratorView() {
           </div>
         </div>
 
-        {/* Progress bar */}
-        {!isConfirmation && (
-          <Progress value={progressPercent} className="h-1 rounded-none" />
-        )}
+        {!isConfirmation && <Progress value={progressPercent} className="h-1 rounded-none" />}
       </header>
 
-      {/* Step content */}
-      <main className="flex-1 flex flex-col items-center justify-start px-4 py-6 md:py-10 overflow-y-auto">
-        <div className="w-full max-w-lg">
-          <AnimatePresence mode="wait" custom={direction}>
-            <motion.div
-              key={activeStep.id}
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="w-full"
-            >
-              {/* Title block */}
+      <main className="flex flex-1 flex-col items-center justify-start overflow-y-auto px-4 py-6 md:py-10">
+        <div className="w-full max-w-3xl">
+          <div key={activeStep.id} className="w-full">
               {!isConfirmation && (
                 <div className="mb-6 text-center">
-                  <h2 className="text-xl md:text-2xl font-bold tracking-tight">{activeStep.title}</h2>
+                  <h2 className="text-xl font-bold md:text-2xl">{activeStep.title}</h2>
                   {activeStep.subtitle && (
-                    <p className="text-sm text-muted-foreground mt-1.5">{activeStep.subtitle}</p>
+                    <p className="mt-1.5 text-sm text-muted-foreground">{activeStep.subtitle}</p>
+                  )}
+                  {selectedProjectLabel && activeStep.id !== 'project-type' && (
+                    <div className="mx-auto mt-4 flex max-w-xl flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                      <ListChecks className="size-4 text-foreground" />
+                      <span className="font-semibold text-foreground">{selectedProjectLabel}</span>
+                      <span>Formulaire {family === 'rplus' ? 'immeuble R+' : family}</span>
+                    </div>
+                  )}
+                  {activeStep.insight && (
+                    <p className="mx-auto mt-3 max-w-xl text-xs leading-relaxed text-muted-foreground">
+                      {activeStep.insight}
+                    </p>
                   )}
                 </div>
               )}
 
-              {/* Content */}
               {isConfirmation ? (
                 renderConfirmation()
               ) : (
-                <Card className="border-border/50 shadow-sm">
+                <Card className="border-border/60 shadow-sm">
                   <CardContent className="p-4 md:p-6">
                     {activeStep.type === 'choice-single' && renderChoiceSingle(activeStep)}
                     {activeStep.type === 'choice-multi' && renderChoiceMulti(activeStep)}
+                    {activeStep.type === 'select' && renderSelect(activeStep)}
+                    {activeStep.type === 'field-group' && renderFieldGroup(activeStep)}
                     {activeStep.type === 'counter' && renderCounter(activeStep)}
                     {activeStep.type === 'slider' && renderSlider(activeStep)}
                     {activeStep.type === 'textarea' && renderTextarea(activeStep)}
@@ -1021,68 +1525,46 @@ export function ConfiguratorView() {
                   </CardContent>
                 </Card>
               )}
-            </motion.div>
-          </AnimatePresence>
+          </div>
         </div>
       </main>
 
-      {/* Bottom navigation */}
       {showNav && (
-        <footer className="sticky bottom-0 z-30 bg-background/95 backdrop-blur-md border-t">
-          <div className="flex items-center gap-2 px-4 py-3 max-w-lg mx-auto w-full">
-            {/* Back button */}
+        <footer className="sticky bottom-0 z-30 border-t bg-background/95 backdrop-blur-md">
+          <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-4 py-3">
             {!isFirstStep && (
-              <Button
-                variant="outline"
-                onClick={goBack}
-                className="flex-shrink-0 h-12 px-4 rounded-2xl"
-              >
+              <Button variant="outline" onClick={goBack} className="h-12 shrink-0 rounded-xl px-4">
                 <ArrowLeft className="size-4" />
-                <span className="hidden sm:inline ml-1">Précédent</span>
+                <span className="ml-1 hidden sm:inline">Précédent</span>
               </Button>
             )}
 
             <div className="flex-1" />
 
-            {/* Skip button */}
             {activeStep.skippable && !isSummary && (
-              <Button
-                variant="ghost"
-                onClick={handleSkip}
-                className="flex-shrink-0 text-muted-foreground h-12 px-3 text-xs sm:text-sm rounded-2xl"
-              >
-                {activeStep.skipLabel || 'Je ne sais pas encore'}
+              <Button variant="ghost" onClick={handleSkip} className="h-12 shrink-0 rounded-xl px-3 text-xs text-muted-foreground sm:text-sm">
+                {activeStep.skipLabel || 'Passer'}
               </Button>
             )}
 
-            {/* Primary action */}
             {isSummary ? (
-              <Button
-                onClick={handleSummarySubmit}
-                disabled={isSubmitting}
-                className="flex-shrink-0 h-12 px-6 font-semibold rounded-2xl"
-                size="lg"
-              >
+              <Button onClick={handleSummarySubmit} disabled={isSubmitting} className="h-12 shrink-0 rounded-xl px-5 font-semibold" size="lg">
                 {isSubmitting ? (
                   <span className="flex items-center gap-2">
-                    <span className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Envoi en cours...
+                    <span className="size-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                    Envoi...
                   </span>
                 ) : (
                   <>
                     <Send className="size-4" />
-                    <span className="ml-1">Soumettre mon projet</span>
+                    <span className="ml-1">Soumettre</span>
                   </>
                 )}
               </Button>
             ) : (
-              <Button
-                onClick={goNext}
-                disabled={!canProceed}
-                className="flex-shrink-0 h-12 px-5 font-semibold rounded-2xl"
-              >
+              <Button onClick={goNext} disabled={!canProceed} className="h-12 shrink-0 rounded-xl px-5 font-semibold">
                 Suivant
-                <ArrowRight className="size-4 ml-1" />
+                <ArrowRight className="ml-1 size-4" />
               </Button>
             )}
           </div>

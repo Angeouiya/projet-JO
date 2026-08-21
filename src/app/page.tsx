@@ -1,6 +1,5 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
 import { useAppStore } from '@/stores/app-store';
 import { HomeView } from '@/components/public/HomeView';
 import { ExploreView } from '@/components/public/ExploreView';
@@ -21,16 +20,11 @@ import { ToastContainer } from '@/components/shared/ToastContainer';
 import { InstallPrompt } from '@/components/shared/InstallPrompt';
 import type { ViewName } from '@/types';
 
-const pageVariants = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -6 },
-};
-
 function ViewRenderer({ view }: { view: ViewName }) {
   const views: Record<string, React.ReactNode> = {
     home: <HomeView />,
     explore: <ExploreView />,
+    create: <ConfiguratorView />,
     'model-detail': <ModelDetailView />,
     configurator: <ConfiguratorView />,
     realizations: <RealizationsView />,
@@ -50,7 +44,7 @@ function ViewRenderer({ view }: { view: ViewName }) {
 }
 
 const ADMIN_VIEWS: ViewName[] = ['admin', 'admin-projects', 'admin-project-detail', 'admin-clients', 'admin-catalog', 'admin-requests', 'admin-teams', 'admin-settings', 'admin-notifications'];
-const FULLSCREEN_VIEWS: ViewName[] = ['configurator'];
+const FULLSCREEN_VIEWS: ViewName[] = ['create', 'configurator'];
 
 export default function Page() {
   const { currentView, isAdmin } = useAppStore();
@@ -64,18 +58,9 @@ export default function Page() {
       {showPublicHeader && <PublicHeader />}
 
       <main className={`flex-1 ${showBottomNav ? 'pb-20' : ''} ${showPublicHeader ? '' : ''}`}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentView}
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.2 }}
-          >
-            <ViewRenderer view={currentView} />
-          </motion.div>
-        </AnimatePresence>
+        <div key={currentView}>
+          <ViewRenderer view={currentView} />
+        </div>
       </main>
 
       {showBottomNav && <BottomNav />}

@@ -8,7 +8,6 @@ export type ViewName =
   | 'configurator'
   | 'auth-login'
   | 'auth-register'
-  | 'auth-otp'
   | 'admin'
   | 'admin-projects'
   | 'admin-project-detail'
@@ -151,20 +150,31 @@ export const PROJECT_STATUS_LABELS: Record<string, string> = {
 };
 
 export const CITIES_CI = [
-  'Abidjan', 'Bouaké', 'Daloa', 'Korhogo', 'San-Pédro',
-  'Yamoussoukro', 'Soubré', 'Divo', 'Anyama', 'Abengourou',
-  'Adzopé', 'Agboville', 'Agnibilékrou', 'Akoupé', 'Alépé',
-  'Bingerville', 'Bondoukou', 'Bouaflé', 'Bouna', 'Dabou',
-  'Danané', 'Daoukro', 'Dimbokro', 'Duékoué', 'Ferkessédougou',
-  'Gagnoa', 'Grand-Béréby', 'Guiglo', 'Issia', 'Jacqueville',
-  'Katiola', 'Lakota', 'Man', 'Mankono', 'Odienné', 'Sinfra',
-  'Tanda', 'Toumodi', 'Vavoua', 'Zuenoula'
+  'Abengourou', 'Abidjan', 'Aboisso', 'Abobo', 'Adiaké', 'Adjamé',
+  'Adzopé', 'Agboville', 'Agnibilékrou', 'Akoupé', 'Alépé', 'Anyama',
+  'Arrah', 'Assinie', 'Attécoubé', 'Ayamé', 'Azaguié', 'Bangolo',
+  'Béoumi', 'Bettié', 'Bingerville', 'Biankouma', 'Blolequin', 'Bocanda',
+  'Bondoukou', 'Bongouanou', 'Bonon', 'Bonoua', 'Bouaflé', 'Bouaké',
+  'Bouna', 'Boundiali', 'Brobo', 'Brofodoumé', 'Buyo', 'Cocody',
+  'Dabakala', 'Dabou', 'Daloa', 'Danané', 'Daoukro', 'Dianra',
+  'Didiévi', 'Dimbokro', 'Divo', 'Doropo', 'Duékoué', 'Facobly',
+  'Ferkessédougou', 'Fresco', 'Gagnoa', 'Grand-Bassam', 'Grand-Béréby',
+  'Grand-Lahou', 'Guéyo', 'Guiglo', 'Guitry', 'Issia', 'Jacqueville',
+  'Kani', 'Katiola', 'Kong', 'Korhogo', 'Koro', 'Koumassi',
+  'Koun-Fao', 'Kouto', 'Lakota', 'Logoualé', 'Madinani', 'Man',
+  'Mankono', 'Marcory', 'Méagui', 'Minignan', 'Nassian', 'Niablé',
+  'Odienné', 'Oumé', 'Plateau', 'Port-Bouët', 'Prikro', 'Riviera',
+  'Sakassou', 'San-Pédro', 'Sandégué', 'Sassandra', 'Séguéla',
+  'Sinfra', 'Songon', 'Soubré', 'Tabou', 'Tanda', 'Tengréla',
+  'Tiassalé', 'Tiapoum', 'Tiébissou', 'Tingréla', 'Toulepleu',
+  'Toumodi', 'Treichville', 'Vavoua', 'Yamoussoukro', 'Yopougon',
+  'Zouan-Hounien', 'Zuenoula'
 ];
 
 export const COMMUNES_ABIDJAN = [
-  'Cocody', 'Plateau', 'Riviera', 'Marcory', 'Treichville',
-  'Adjamé', 'Attécoubé', 'Yopougon', 'Abobo', 'Koumassi',
-  'Bingerville', 'Brofot', 'Songon', 'Anyama'
+  'Abobo', 'Adjamé', 'Anyama', 'Attécoubé', 'Bingerville', 'Brofodoumé',
+  'Cocody', 'Koumassi', 'Marcory', 'Plateau', 'Port-Bouët', 'Riviera',
+  'Songon', 'Treichville', 'Yopougon'
 ];
 
 export const STANDING_OPTIONS = [

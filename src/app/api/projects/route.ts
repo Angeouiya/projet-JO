@@ -35,23 +35,62 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { userId, categoryId, modelId, formData, title, description, city, budgetMin, budgetMax } = body;
+    const incomingFormData = body.formData && typeof body.formData === 'object' ? body.formData : body;
+    const {
+      categoryId,
+      categorySlug,
+      modelId,
+      title,
+      description,
+      budgetMin,
+      budgetMax,
+      clientName,
+      clientEmail,
+      clientPhone,
+    } = body;
+    const city = body.city || incomingFormData.city || null;
+    const userId = body.userId || 'demo-client-bati';
 
-    const refNumber = `PRJ-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+    await db.user.upsert({
+      where: { id: userId },
+      update: {
+        name: clientName || 'Client BÂTI·CI',
+        email: clientEmail || undefined,
+        phone: clientPhone || undefined,
+      },
+      create: {
+        id: userId,
+        name: clientName || 'Client BÂTI·CI',
+        email: clientEmail || null,
+        phone: clientPhone || null,
+        type: 'client',
+        role: 'client',
+        emailVerified: Boolean(clientEmail),
+        phoneVerified: Boolean(clientPhone),
+      },
+    });
+
+    let resolvedCategoryId = categoryId || null;
+    if (!resolvedCategoryId && categorySlug) {
+      const category = await db.projectCategory.findUnique({ where: { slug: categorySlug } });
+      resolvedCategoryId = category?.id || null;
+    }
+
+    const refNumber = body.referenceNumber || incomingFormData.referenceNumber || `PRJ-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
 
     const project = await db.project.create({
       data: {
         referenceNumber: refNumber,
         userId,
-        categoryId: categoryId || null,
+        categoryId: resolvedCategoryId,
         modelId: modelId || null,
         title: title || null,
         description: description || null,
-        formData: JSON.stringify(formData || {}),
+        formData: JSON.stringify(incomingFormData || {}),
         status: 'submitted',
-        city: city || null,
-        budgetMin: budgetMin || null,
-        budgetMax: budgetMax || null,
+        city,
+        budgetMin: budgetMin ?? null,
+        budgetMax: budgetMax ?? null,
         country: "Côte d'Ivoire",
       },
     });
