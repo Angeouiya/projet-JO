@@ -1437,6 +1437,18 @@ export function ConfiguratorView() {
   const isSummary = activeStep?.type === 'summary';
   const selectedProjectLabel = projectType ? getLabel(PROJECT_TYPES, projectType) : '';
   const showNav = !isConfirmation;
+  const answeredCount = Object.values(responses).filter(value => {
+    if (Array.isArray(value)) return value.length > 0;
+    return value !== undefined && value !== null && String(value).trim() !== '';
+  }).length;
+  const requiredStepCount = steps.filter(step => step.required).length;
+  const technicalReadiness = Math.min(100, Math.round(((currentIdx + answeredCount) / Math.max(1, steps.length + requiredStepCount)) * 100));
+  const dossierHighlights = [
+    { label: 'Catégorie', value: selectedProjectLabel || 'À choisir' },
+    { label: 'Ville', value: String(responses.city || 'À sélectionner') },
+    { label: 'Accès', value: String(responses.siteAccess || 'À renseigner') },
+    { label: 'Éléments saisis', value: `${answeredCount}` },
+  ];
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -1486,7 +1498,7 @@ export function ConfiguratorView() {
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-start overflow-y-auto px-4 py-6 md:py-10">
-        <div className="w-full max-w-3xl">
+        <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[minmax(0,760px)_minmax(300px,1fr)]">
           <div key={activeStep.id} className="w-full">
               {!isConfirmation && (
                 <div className="mb-6 text-center">
@@ -1526,6 +1538,56 @@ export function ConfiguratorView() {
                 </Card>
               )}
           </div>
+
+          {!isConfirmation && (
+            <aside className="hidden lg:block">
+              <div className="sticky top-24 space-y-4">
+                <Card className="border-border/70 shadow-sm">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold">Dossier technique</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          Vue desktop dédiée au suivi du remplissage, avant transmission à l’équipe BTP.
+                        </p>
+                      </div>
+                      <FileText className="size-5 text-muted-foreground" />
+                    </div>
+
+                    <div className="mt-5 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium">Complétude</span>
+                        <span className="tabular-nums text-muted-foreground">{technicalReadiness}%</span>
+                      </div>
+                      <Progress value={technicalReadiness} className="h-2" />
+                    </div>
+
+                    <div className="mt-5 grid gap-2">
+                      {dossierHighlights.map(item => (
+                        <div key={item.label} className="rounded-lg border bg-background px-3 py-2">
+                          <p className="text-[11px] font-medium text-muted-foreground">{item.label}</p>
+                          <p className="mt-0.5 truncate text-sm font-semibold">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/70 shadow-sm">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="size-4" />
+                      <p className="text-sm font-semibold">Contrôle professionnel</p>
+                    </div>
+                    <div className="mt-4 space-y-3 text-xs leading-5 text-muted-foreground">
+                      <p>Chaque famille d’ouvrage active ses propres champs : maison, immeuble R+, VRD, lots, hydraulique ou étude.</p>
+                      <p>Les données privées ne sont transmises qu’après connexion par e-mail/téléphone et mot de passe.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </aside>
+          )}
         </div>
       </main>
 

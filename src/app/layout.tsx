@@ -19,8 +19,8 @@ export const metadata: Metadata = {
     title: "BÂTI·CI",
   },
   icons: {
-    icon: "/images/hero-villa.png",
-    apple: "/images/hero-villa.png",
+    icon: "/icons/bati-ci-icon.svg",
+    apple: "/icons/bati-ci-icon.svg",
   },
   openGraph: {
     title: "BÂTI·CI — Construction & Architecture",

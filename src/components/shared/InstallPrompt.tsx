@@ -1,24 +1,48 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Download, Smartphone } from 'lucide-react';
+import { CheckCircle2, Download, Share2, Smartphone, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/stores/app-store';
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+
 export function InstallPrompt() {
-  const { showInstallPrompt, setInstallPrompt } = useAppStore();
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const { showInstallPrompt, showAuthModal, setInstallPrompt } = useAppStore();
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
 
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setInstallPrompt(true);
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, [setInstallPrompt]);
+
+  useEffect(() => {
+    const mobileMedia = window.matchMedia('(max-width: 767px)');
+    const standaloneMedia = window.matchMedia('(display-mode: standalone)');
+    const sync = () => {
+      setIsMobile(mobileMedia.matches);
+      setIsStandalone(standaloneMedia.matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
+    };
+    sync();
+    mobileMedia.addEventListener('change', sync);
+    standaloneMedia.addEventListener('change', sync);
+    return () => {
+      mobileMedia.removeEventListener('change', sync);
+      standaloneMedia.removeEventListener('change', sync);
+    };
+  }, []);
 
   const handleInstall = async () => {
     if (deferredPrompt) {
@@ -26,16 +50,26 @@ export function InstallPrompt() {
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') setInstallPrompt(false);
       setDeferredPrompt(null);
+      return;
     }
+
+    setShowFallback(true);
   };
 
-  if (!showInstallPrompt || dismissed) return null;
+  const shouldShow = !showAuthModal && !dismissed && !isStandalone && (showInstallPrompt || isMobile);
+
+  if (!shouldShow) return null;
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-50 bg-card border border-border rounded-2xl shadow-xl p-4">
+    <div className="fixed bottom-20 left-4 right-4 z-50 rounded-xl border border-border bg-card p-4 shadow-xl sm:left-auto sm:right-4 sm:w-80 md:hidden">
       <button
-        onClick={() => { setDismissed(true); setInstallPrompt(false); }}
+        type="button"
+        onClick={() => {
+          setDismissed(true);
+          setInstallPrompt(false);
+        }}
         className="absolute top-3 right-3 p-1 hover:bg-muted rounded-lg"
+        aria-label="Fermer l'installation"
       >
         <X className="w-4 h-4" />
       </button>
@@ -50,10 +84,29 @@ export function InstallPrompt() {
             <Button size="sm" onClick={handleInstall}>
               <Download className="w-3.5 h-3.5 mr-1" /> Installer
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setDismissed(true); setInstallPrompt(false); }}>
+            <Button size="sm" variant="ghost" onClick={() => {
+              setDismissed(true);
+              setInstallPrompt(false);
+            }}>
               Plus tard
             </Button>
           </div>
+          {showFallback && (
+            <div className="mt-3 rounded-lg border bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
+              <p className="flex items-center gap-2 font-medium text-foreground">
+                <Share2 className="size-3.5" />
+                Installation mobile
+              </p>
+              <p className="mt-1">Sur iPhone : Partager, puis Sur l'écran d'accueil.</p>
+              <p>Sur Android : menu du navigateur, puis Installer l'application.</p>
+            </div>
+          )}
+          {isStandalone && (
+            <p className="mt-3 flex items-center gap-2 text-xs font-medium text-foreground">
+              <CheckCircle2 className="size-3.5" />
+              Application installée
+            </p>
+          )}
         </div>
       </div>
     </div>

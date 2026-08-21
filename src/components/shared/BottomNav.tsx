@@ -15,16 +15,14 @@ const NAV_ITEMS: { id: ViewName; label: string; icon: typeof Home; isCenter?: bo
   { id: 'profile', label: 'Profil', icon: User },
 ];
 
+const PRIVATE_NAV_ITEMS: ViewName[] = ['projects', 'profile'];
+
 export function BottomNav() {
   const { currentView, navigate, isAuthenticated, notifications, requireAuth } = useAppStore();
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const handleNav = (id: ViewName) => {
-    if (id === 'projects' && !isAuthenticated) {
-      requireAuth(id);
-      return;
-    }
-    if (id === 'create' && !isAuthenticated) {
+    if (PRIVATE_NAV_ITEMS.includes(id) && !isAuthenticated) {
       requireAuth(id);
       return;
     }

@@ -22,8 +22,39 @@ import { useAppStore } from '@/stores/app-store';
 
 type AuthMode = 'choice' | 'login' | 'register' | 'forgot' | 'reset-sent';
 
+const COUNTRY_CODES = [
+  { code: 'CI', name: "Côte d'Ivoire", dial: '+225', example: '07 00 00 00 00' },
+  { code: 'BF', name: 'Burkina Faso', dial: '+226', example: '70 00 00 00' },
+  { code: 'ML', name: 'Mali', dial: '+223', example: '70 00 00 00' },
+  { code: 'SN', name: 'Sénégal', dial: '+221', example: '77 000 00 00' },
+  { code: 'GN', name: 'Guinée', dial: '+224', example: '620 00 00 00' },
+  { code: 'TG', name: 'Togo', dial: '+228', example: '90 00 00 00' },
+  { code: 'BJ', name: 'Bénin', dial: '+229', example: '01 00 00 00 00' },
+  { code: 'GH', name: 'Ghana', dial: '+233', example: '24 000 0000' },
+  { code: 'CM', name: 'Cameroun', dial: '+237', example: '6 00 00 00 00' },
+  { code: 'NG', name: 'Nigeria', dial: '+234', example: '80 0000 0000' },
+  { code: 'MA', name: 'Maroc', dial: '+212', example: '6 00 00 00 00' },
+  { code: 'FR', name: 'France', dial: '+33', example: '6 00 00 00 00' },
+  { code: 'BE', name: 'Belgique', dial: '+32', example: '470 00 00 00' },
+  { code: 'CA', name: 'Canada', dial: '+1', example: '514 000 0000' },
+  { code: 'US', name: 'États-Unis', dial: '+1', example: '202 000 0000' },
+];
+
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 const isPhone = (value: string) => /^\+?\d[\d\s().-]{7,}$/.test(value.trim());
+const countryValue = (country: (typeof COUNTRY_CODES)[number]) => `${country.code}:${country.dial}`;
+const getCountry = (value: string) => {
+  const [code, dial] = value.split(':');
+  return COUNTRY_CODES.find(country => country.code === code && country.dial === dial) || COUNTRY_CODES[0];
+};
+const getDialCode = (value: string) => getCountry(value).dial;
+
+function normalizePhone(value: string, dialCode: string): string {
+  const phone = value.trim();
+  if (!phone) return '';
+  if (phone.startsWith('+')) return phone;
+  return `${dialCode} ${phone}`;
+}
 
 function passwordError(password: string): string | null {
   if (password.length < 8) return 'Le mot de passe doit contenir au moins 8 caractères.';
@@ -43,6 +74,7 @@ export function AuthModal() {
     name: '',
     email: '',
     phone: '',
+    countryDialCode: countryValue(COUNTRY_CODES[0]),
     password: '',
     confirmPassword: '',
     resetEmail: '',
@@ -62,7 +94,9 @@ export function AuthModal() {
 
   const handleLogin = async () => {
     const identifier = form.identifier.trim();
-    if (!identifier || (!isEmail(identifier) && !isPhone(identifier))) {
+    const identifierIsEmail = isEmail(identifier);
+    const normalizedPhone = identifierIsEmail ? '' : normalizePhone(identifier, getDialCode(form.countryDialCode));
+    if (!identifier || (!identifierIsEmail && !isPhone(normalizedPhone))) {
       setError('Saisissez un e-mail valide ou un numéro de téléphone valide.');
       return;
     }
@@ -76,8 +110,8 @@ export function AuthModal() {
     login({
       id: `client-${identifier.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 32) || 'bati'}`,
       name: form.name || 'Client BÂTI·CI',
-      email: isEmail(identifier) ? identifier : undefined,
-      phone: isPhone(identifier) && !isEmail(identifier) ? identifier : form.phone || undefined,
+      email: identifierIsEmail ? identifier : undefined,
+      phone: identifierIsEmail ? form.phone || undefined : normalizedPhone,
       type: 'client',
       role: 'client',
     });
@@ -86,7 +120,7 @@ export function AuthModal() {
 
   const handleRegister = async () => {
     const email = form.email.trim();
-    const phone = form.phone.trim();
+    const phone = form.phone.trim() ? normalizePhone(form.phone, getDialCode(form.countryDialCode)) : '';
     const passError = passwordError(form.password);
 
     if (!form.name.trim()) {
@@ -101,7 +135,7 @@ export function AuthModal() {
       setError("L'adresse e-mail n'est pas valide.");
       return;
     }
-    if (!email && phone && !isPhone(phone)) {
+    if (phone && !isPhone(phone)) {
       setError("Le numéro de téléphone n'est pas valide.");
       return;
     }
@@ -152,7 +186,7 @@ export function AuthModal() {
   };
 
   return (
-      <div
+    <div
         className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center"
         onClick={dismissAuth}
       >
@@ -175,6 +209,12 @@ export function AuthModal() {
           </div>
 
           <div className="p-6">
+            {mode !== 'forgot' && mode !== 'reset-sent' && (
+              <div className="mb-4 rounded-xl border bg-muted/40 px-4 py-3 text-xs leading-5 text-muted-foreground">
+                Indicatif Côte d'Ivoire : <span className="font-semibold text-foreground">+225</span>. Vous pouvez aussi choisir un autre pays pour vous connecter par téléphone.
+              </div>
+            )}
+
             {error && (
               <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-xs font-medium text-destructive">
                 {error}
@@ -196,8 +236,8 @@ export function AuthModal() {
                   </div>
                   <div className="rounded-xl border p-3">
                     <Phone className="w-4 h-4" />
-                    <p className="mt-2 text-xs font-semibold">Téléphone possible</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Avec mot de passe.</p>
+                    <p className="mt-2 text-xs font-semibold">Téléphone multi-pays</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Avec indicatif et mot de passe.</p>
                   </div>
                 </div>
 
@@ -239,12 +279,27 @@ export function AuthModal() {
                 <div className="space-y-2">
                   <Label className="text-xs">E-mail ou téléphone</Label>
                   <Input
-                    placeholder="votre@email.ci ou +225 07 XX XX XX"
+                    placeholder={`votre@email.ci ou ${getCountry(form.countryDialCode).example}`}
                     value={form.identifier}
                     onChange={event => set('identifier', event.target.value)}
                     className="h-12"
                     autoComplete="username"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Pays du numéro</Label>
+                  <select
+                    value={form.countryDialCode}
+                    onChange={event => set('countryDialCode', event.target.value)}
+                    className="h-12 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                  >
+                    {COUNTRY_CODES.map(country => (
+                      <option key={`${country.code}-${country.dial}`} value={countryValue(country)}>
+                        {country.name} ({country.dial})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">Si vous saisissez déjà un numéro avec +, l’indicatif saisi est conservé.</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">Mot de passe</Label>
@@ -353,7 +408,21 @@ export function AuthModal() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">Téléphone</Label>
-                  <Input placeholder="+225 07 XX XX XX" value={form.phone} onChange={event => set('phone', event.target.value)} type="tel" className="h-12" autoComplete="tel" />
+                  <div className="grid grid-cols-[minmax(118px,0.45fr)_minmax(0,1fr)] gap-2">
+                    <select
+                      value={form.countryDialCode}
+                      onChange={event => set('countryDialCode', event.target.value)}
+                      className="h-12 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                      aria-label="Pays du téléphone"
+                    >
+                      {COUNTRY_CODES.map(country => (
+                        <option key={`${country.code}-${country.dial}`} value={countryValue(country)}>
+                          {country.name} {country.dial}
+                        </option>
+                      ))}
+                    </select>
+                    <Input placeholder={getCountry(form.countryDialCode).example} value={form.phone} onChange={event => set('phone', event.target.value)} type="tel" className="h-12" autoComplete="tel" />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">Mot de passe</Label>

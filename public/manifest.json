@@ -2,8 +2,10 @@
   "name": "BÂTI·CI — Construction & Architecture",
   "short_name": "BÂTI·CI",
   "description": "Votre projet de construction, bien construit. Villas, duplex, immeubles, promotion immobilière.",
+  "id": "/?source=pwa",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay", "browser"],
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "orientation": "portrait-primary",
@@ -12,10 +14,32 @@
   "categories": ["business", "productivity"],
   "icons": [
     {
+      "src": "/icons/bati-ci-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
       "src": "/images/hero-villa.png",
       "sizes": "1344x768",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouveau projet",
+      "short_name": "Projet",
+      "description": "Ouvrir le formulaire de cadrage BTP.",
+      "url": "/?view=create",
+      "icons": [{ "src": "/icons/bati-ci-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Mes projets",
+      "short_name": "Projets",
+      "description": "Accéder à l'espace projets sécurisé.",
+      "url": "/?view=projects",
+      "icons": [{ "src": "/icons/bati-ci-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ]
 }
