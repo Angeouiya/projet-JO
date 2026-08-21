@@ -1,0 +1,1095 @@
+     1→'use client';
+     2→
+     3→import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  ArrowLeft, ArrowRight, X, Home, Building2, Building, Landmark,
+     7→  LayoutGrid, Hammer, Route, Droplets, FileText, HelpCircle, MapPin,
+     8→  CheckSquare, CircleDot, Minus, Plus, Star, Crown, Gem,
+     9→  Wallet, Calendar, ClipboardList, CheckCircle2,
+    10→  Pencil, ChevronRight, Flag, Send, PartyPopper,
+    11→  Ruler, Search, KeyRound, RotateCcw,
+    12→} from 'lucide-react';
+    13→import { Button } from '@/components/ui/button';
+    14→import { Card, CardContent } from '@/components/ui/card';
+    15→import { Slider } from '@/components/ui/slider';
+    16→import { Textarea } from '@/components/ui/textarea';
+    17→import { Badge } from '@/components/ui/badge';
+    18→import { Progress } from '@/components/ui/progress';
+    19→import { Checkbox } from '@/components/ui/checkbox';
+    20→import { useAppStore } from '@/stores/app-store';
+    21→import { FORMAT_SHORT_XOF, COMMUNES_ABIDJAN } from '@/types';
+    22→import type { LucideIcon } from 'lucide-react';
+    23→
+    24→/* ------------------------------------------------------------------ */
+    25→/*  Types                                                              */
+    26→/* ------------------------------------------------------------------ */
+    27→
+    28→interface ChoiceOption {
+    29→  value: string;
+    30→  label: string;
+    31→  icon?: LucideIcon;
+    32→  description?: string;
+    33→}
+    34→
+    35→interface StepDef {
+    36→  id: string;
+    37→  title: string;
+    38→  subtitle?: string;
+    39→  responseKey: string;
+    40→  type: 'choice-single' | 'choice-multi' | 'counter' | 'slider' | 'textarea' | 'summary' | 'confirmation';
+    41→  options?: ChoiceOption[];
+    42→  min?: number;
+    43→  max?: number;
+    44→  step?: number;
+    45→  unit?: string;
+    46→  placeholder?: string;
+    47→  skippable?: boolean;
+    48→  skipLabel?: string;
+    49→  required?: boolean;
+    50→}
+    51→
+    52→/* ------------------------------------------------------------------ */
+    53→/*  Animation variants                                                 */
+    54→/* ------------------------------------------------------------------ */
+    55→
+    56→const slideVariants = {
+    57→  enter: (dir: number) => ({
+    58→    x: dir > 0 ? '100%' : '-100%',
+    59→    opacity: 0,
+    60→  }),
+    61→  center: {
+    62→    x: 0,
+    63→    opacity: 1,
+    64→  },
+    65→  exit: (dir: number) => ({
+    66→    x: dir > 0 ? '-100%' : '100%',
+    67→    opacity: 0,
+    68→  }),
+    69→};
+    70→
+    71→/* ------------------------------------------------------------------ */
+    72→/*  Static data                                                        */
+    73→/* ------------------------------------------------------------------ */
+    74→
+    75→const PROJECT_TYPES: ChoiceOption[] = [
+    76→  { value: 'villa', label: 'Villa basse', icon: Home, description: 'Plain-pied' },
+    77→  { value: 'duplex', label: 'Duplex', icon: Building2, description: '2 niveaux' },
+    78→  { value: 'triplex', label: 'Triplex', icon: Building, description: '3 niveaux' },
+    79→  { value: 'immeuble', label: 'Immeuble', icon: Landmark, description: 'R+3 à R+5' },
+    80→  { value: 'promotion', label: 'Promotion', icon: LayoutGrid, description: 'Programme immobilier' },
+    81→  { value: 'renovation', label: 'Rénovation', icon: Hammer, description: 'Réhabilitation' },
+    82→  { value: 'vrd', label: 'VRD / Route', icon: Route, description: 'Voirie & réseaux' },
+    83→  { value: 'hydraulique', label: 'Hydraulique', icon: Droplets, description: 'Forage & adduction' },
+    84→  { value: 'etude', label: 'Étude', icon: FileText, description: 'Études techniques' },
+    85→  { value: 'autre', label: 'Autre', icon: HelpCircle, description: 'Autre projet' },
+    86→];
+    87→
+    88→const CITIES: ChoiceOption[] = [
+    89→  { value: 'Abidjan', label: 'Abidjan', icon: MapPin },
+    90→  { value: 'Bouaké', label: 'Bouaké', icon: MapPin },
+    91→  { value: 'Yamoussoukro', label: 'Yamoussoukro', icon: MapPin },
+    92→  { value: 'San-Pédro', label: 'San-Pédro', icon: MapPin },
+    93→  { value: 'Daloa', label: 'Daloa', icon: MapPin },
+    94→  { value: 'Autre', label: 'Autre ville', icon: MapPin },
+    95→];
+    96→
+    97→const TERRAIN_OPTIONS: ChoiceOption[] = [
+    98→  { value: 'owned', label: 'Je possède le terrain', icon: CheckSquare, description: 'Titre foncier en main' },
+    99→  { value: 'acquiring', label: 'En cours d\'acquisition', icon: CircleDot, description: 'Procédure en cours' },
+   100→  { value: 'searching', label: 'Je recherche un terrain', icon: Search, description: 'Besoin d\'aide' },
+   101→  { value: 'unknown', label: 'Je ne sais pas', icon: HelpCircle, description: 'Pas encore défini' },
+   102→];
+   103→
+   104→const FINITION_OPTIONS: ChoiceOption[] = [
+   105→  { value: 'economique', label: 'Économique', icon: Star, description: 'Finitions de base' },
+   106→  { value: 'standard', label: 'Standard', icon: Star, description: 'Bon rapport qualité-prix' },
+   107→  { value: 'premium', label: 'Premium', icon: Crown, description: 'Finitions soignées' },
+   108→  { value: 'luxe', label: 'Luxe', icon: Gem, description: 'Haut standing' },
+   109→];
+   110→
+   111→const BUDGET_OPTIONS: ChoiceOption[] = [
+   112→  { value: 'less-20m', label: 'Moins de 20 M', icon: Wallet, description: '< 20 000 000 F' },
+   113→  { value: '20-50m', label: '20 – 50 M', icon: Wallet, description: '20 – 50 M F' },
+   114→  { value: '50-100m', label: '50 – 100 M', icon: Wallet, description: '50 – 100 M F' },
+   115→  { value: '100-200m', label: '100 – 200 M', icon: Wallet, description: '100 – 200 M F' },
+   116→  { value: 'more-200m', label: 'Plus de 200 M', icon: Wallet, description: '> 200 M F' },
+   117→  { value: 'unknown', label: 'Je ne sais pas', icon: HelpCircle, description: 'À évaluer' },
+   118→];
+   119→
+   120→const TIMELINE_OPTIONS: ChoiceOption[] = [
+   121→  { value: 'immediate', label: 'Immédiatement', icon: Flag, description: 'Dès maintenant' },
+   122→  { value: '3-months', label: 'Sous 3 mois', icon: Calendar, description: 'Préparation rapide' },
+   123→  { value: '6-months', label: 'Sous 6 mois', icon: Calendar, description: 'Planification en cours' },
+   124→  { value: '1-year', label: 'Sous 1 an', icon: Calendar, description: 'Projet à moyen terme' },
+   125→];
+   126→
+   127→const PRESTATIONS_OPTIONS: ChoiceOption[] = [
+   128→  { value: 'etude-architecturale', label: 'Étude', icon: FileText },
+   129→  { value: 'plans-execution', label: 'Plans', icon: Ruler },
+   130→  { value: 'construction-complete', label: 'Construction complète', icon: Building2 },
+   131→  { value: 'cle-en-main', label: 'Clé en main', icon: KeyRound },
+   132→  { value: 'gros-oeuvre', label: 'Gros œuvre', icon: Hammer },
+   133→  { value: 'suivi-chantier', label: 'Suivi', icon: ClipboardList },
+   134→];
+   135→
+   136→/* ------------------------------------------------------------------ */
+   137→/*  Build visible steps based on responses                             */
+   138→/* ------------------------------------------------------------------ */
+   139→
+   140→function buildSteps(responses: Record<string, unknown>): StepDef[] {
+   141→  const projectType = responses.projectType as string | undefined;
+   142→  const terrainStatus = responses.terrainStatus as string | undefined;
+   143→  const isResidential = ['villa', 'duplex', 'triplex'].includes(projectType || '');
+   144→
+   145→  const steps: StepDef[] = [];
+   146→
+   147→  // Step 1: Project type
+   148→  steps.push({
+   149→    id: 'project-type',
+   150→    title: 'Type de projet',
+   151→    subtitle: 'Sélectionnez le type de votre projet',
+   152→    responseKey: 'projectType',
+   153→    type: 'choice-single',
+   154→    options: PROJECT_TYPES,
+   155→    required: true,
+   156→  });
+   157→
+   158→  // Step 2: City
+   159→  steps.push({
+   160→    id: 'city',
+   161→    title: 'Où sera-t-il réalisé ?',
+   162→    subtitle: 'Choisissez la ville du projet',
+   163→    responseKey: 'city',
+   164→    type: 'choice-single',
+   165→    options: CITIES,
+   166→    required: true,
+   167→  });
+   168→
+   169→  // Step 3: Terrain
+   170→  steps.push({
+   171→    id: 'terrain',
+   172→    title: 'Avez-vous un terrain ?',
+   173→    subtitle: 'Quel est le statut de votre terrain ?',
+   174→    responseKey: 'terrainStatus',
+   175→    type: 'choice-single',
+   176→    options: TERRAIN_OPTIONS,
+   177→    skippable: true,
+   178→    skipLabel: 'Je ne sais pas encore',
+   179→    required: false,
+   180→  });
+   181→
+   182→  // Step 4: Surface (conditional - only if owned or acquiring)
+   183→  if (terrainStatus === 'owned' || terrainStatus === 'acquiring') {
+   184→    steps.push({
+   185→      id: 'surface',
+   186→      title: 'Superficie du terrain',
+   187→      subtitle: 'Quelle est la surface de votre terrain ?',
+   188→      responseKey: 'surfaceArea',
+   189→      type: 'slider',
+   190→      min: 100,
+   191→      max: 5000,
+   192→      step: 50,
+   193→      unit: 'm²',
+   194→      skippable: true,
+   195→      skipLabel: 'Je ne sais pas encore',
+   196→      required: false,
+   197→    });
+   198→  }
+   199→
+   200→  // Step 5: Zones (conditional - only if searching in Abidjan)
+   201→  if (terrainStatus === 'searching' && (responses.city as string) === 'Abidjan') {
+   202→    steps.push({
+   203→      id: 'zones',
+   204→      title: 'Zones souhaitées',
+   205→      subtitle: 'Sélectionnez les communes souhaitées à Abidjan',
+   206→      responseKey: 'zones',
+   207→      type: 'choice-multi',
+   208→      options: COMMUNES_ABIDJAN.map(c => ({ value: c, label: c })),
+   209→      skippable: true,
+   210→      skipLabel: 'Je ne sais pas encore',
+   211→      required: false,
+   212→    });
+   213→  }
+   214→
+   215→  // Step 6: Levels
+   216→  steps.push({
+   217→    id: 'levels',
+   218→    title: 'Combien de niveaux ?',
+   219→    subtitle: 'Nombre de niveaux souhaité',
+   220→    responseKey: 'levels',
+   221→    type: 'counter',
+   222→    min: 1,
+   223→    max: 10,
+   224→    unit: 'niveau(s)',
+   225→    skippable: true,
+   226→    skipLabel: 'Je ne sais pas encore',
+   227→    required: false,
+   228→  });
+   229→
+   230→  // Step 7: Bedrooms (conditional - only for residential)
+   231→  if (isResidential) {
+   232→    steps.push({
+   233→      id: 'bedrooms',
+   234→      title: 'Combien de chambres ?',
+   235→      subtitle: 'Nombre de chambres souhaité',
+   236→      responseKey: 'bedrooms',
+   237→      type: 'counter',
+   238→      min: 1,
+   239→      max: 10,
+   240→      unit: 'chambre(s)',
+   241→      skippable: true,
+   242→      skipLabel: 'Je ne sais pas encore',
+   243→      required: false,
+   244→    });
+   245→  }
+   246→
+   247→  // Step 8: Finition
+   248→  steps.push({
+   249→    id: 'finition',
+   250→    title: 'Niveau de finition',
+   251→    subtitle: 'Quel niveau de finition souhaitez-vous ?',
+   252→    responseKey: 'finition',
+   253→    type: 'choice-single',
+   254→    options: FINITION_OPTIONS,
+   255→    skippable: true,
+   256→    skipLabel: 'Je ne sais pas encore',
+   257→    required: false,
+   258→  });
+   259→
+   260→  // Step 9: Budget
+   261→  steps.push({
+   262→    id: 'budget',
+   263→    title: 'Budget indicatif',
+   264→    subtitle: 'Quelle est votre enveloppe budgétaire ?',
+   265→    responseKey: 'budget',
+   266→    type: 'choice-single',
+   267→    options: BUDGET_OPTIONS,
+   268→    skippable: true,
+   269→    skipLabel: 'Je ne sais pas',
+   270→    required: false,
+   271→  });
+   272→
+   273→  // Step 10: Timeline
+   274→  steps.push({
+   275→    id: 'timeline',
+   276→    title: 'Quand commencer ?',
+   277→    subtitle: 'Votre échéance de démarrage',
+   278→    responseKey: 'timeline',
+   279→    type: 'choice-single',
+   280→    options: TIMELINE_OPTIONS,
+   281→    skippable: true,
+   282→    skipLabel: 'Je ne sais pas encore',
+   283→    required: false,
+   284→  });
+   285→
+   286→  // Step 11: Prestations
+   287→  steps.push({
+   288→    id: 'prestations',
+   289→    title: 'Prestations souhaitées',
+   290→    subtitle: 'Sélectionnez les prestations souhaitées (plusieurs choix possibles)',
+   291→    responseKey: 'prestations',
+   292→    type: 'choice-multi',
+   293→    options: PRESTATIONS_OPTIONS,
+   294→    skippable: true,
+   295→    skipLabel: 'À définir plus tard',
+   296→    required: false,
+   297→  });
+   298→
+   299→  // Step 12: Description
+   300→  steps.push({
+   301→    id: 'description',
+   302→    title: 'Description libre',
+   303→    subtitle: 'Ajoutez des détails sur votre projet (facultatif)',
+   304→    responseKey: 'description',
+   305→    type: 'textarea',
+   306→    placeholder: 'Décrivez votre projet, vos contraintes, vos envies...',
+   307→    skippable: true,
+   308→    skipLabel: 'Passer',
+   309→    required: false,
+   310→  });
+   311→
+   312→  // Step 13: Summary
+   313→  steps.push({
+   314→    id: 'summary',
+   315→    title: 'Récapitulatif',
+   316→    subtitle: 'Vérifiez vos informations avant de soumettre',
+   317→    responseKey: '__summary__',
+   318→    type: 'summary',
+   319→    required: false,
+   320→  });
+   321→
+   322→  // Step 14: Confirmation
+   323→  steps.push({
+   324→    id: 'confirmation',
+   325→    title: 'Projet soumis !',
+   326→    responseKey: '__confirmation__',
+   327→    type: 'confirmation',
+   328→    required: false,
+   329→  });
+   330→
+   331→  return steps;
+   332→}
+   333→
+   334→/* ------------------------------------------------------------------ */
+   335→/*  Label helpers                                                      */
+   336→/* ------------------------------------------------------------------ */
+   337→
+   338→function getLabel(options: ChoiceOption[] | undefined, value: string): string {
+   339→  if (!options) return value;
+   340→  const found = options.find(o => o.value === value);
+   341→  return found ? found.label : value;
+   342→}
+   343→
+   344→function formatSurface(val: number): string {
+   345→  return new Intl.NumberFormat('fr-FR').format(val) + ' m²';
+   346→}
+   347→
+   348→function getBudgetLabel(value: string): string {
+   349→  const map: Record<string, string> = {
+   350→    'less-20m': 'Moins de 20 000 000 F',
+   351→    '20-50m': '20 – 50 000 000 F',
+   352→    '50-100m': '50 – 100 000 000 F',
+   353→    '100-200m': '100 – 200 000 000 F',
+   354→    'more-200m': 'Plus de 200 000 000 F',
+   355→    'unknown': 'Non défini',
+   356→  };
+   357→  return map[value] || value;
+   358→}
+   359→
+   360→function getTimelineLabel(value: string): string {
+   361→  const map: Record<string, string> = {
+   362→    'immediate': 'Immédiatement',
+   363→    '3-months': 'Sous 3 mois',
+   364→    '6-months': 'Sous 6 mois',
+   365→    '1-year': 'Sous 1 an',
+   366→  };
+   367→  return map[value] || value;
+   368→}
+   369→
+   370→function getTerrainLabel(value: string): string {
+   371→  const map: Record<string, string> = {
+   372→    'owned': 'Je possède le terrain',
+   373→    'acquiring': 'En cours d\'acquisition',
+   374→    'searching': 'Je recherche un terrain',
+   375→    'unknown': 'Non défini',
+   376→  };
+   377→  return map[value] || value;
+   378→}
+   379→
+   380→function generateReference(): string {
+   381→  return 'BTP-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase();
+   382→}
+   383→
+   384→/* ------------------------------------------------------------------ */
+   385→/*  Main Component                                                     */
+   386→/* ------------------------------------------------------------------ */
+   387→
+   388→export default function ConfiguratorView() {
+   389→  const {
+   390→    configurator,
+   391→    viewParams,
+   392→    isAuthenticated,
+   393→    setConfiguratorStep,
+   394→    setConfiguratorResponse,
+   395→    setConfiguratorData,
+   396→    resetConfigurator,
+   397→    requireAuth,
+   398→    navigate,
+   399→    addToast,
+   400→  } = useAppStore();
+   401→
+   402→  const responses = configurator.responses;
+   403→
+   404→  // Use local step ID for reliable navigation across conditional step changes
+   405→  const [localStepId, setLocalStepId] = useState<string>('project-type');
+   406→  const [direction, setDirection] = useState(0);
+   407→  const [isSubmitting, setIsSubmitting] = useState(false);
+   408→  const [referenceNumber, setReferenceNumber] = useState('');
+   409→  const isInitialized = useRef(false);
+   410→
+   411→  // Build visible steps from responses
+   412→  const steps = useMemo(() => buildSteps(responses), [responses]);
+   413→
+   414→  // Find current index from step ID — falls back to 0 if ID not found
+   415→  const currentIdx = useMemo(
+   416→    () => Math.max(0, steps.findIndex(s => s.id === localStepId)),
+   417→    [steps, localStepId]
+   418→  );
+   419→  const activeStep = steps[currentIdx] || steps[0];
+   420→
+   421→  // Progress (exclude confirmation from progress calc)
+   422→  const progressSteps = steps.filter(s => s.type !== 'confirmation');
+   423→  const progressIdx = progressSteps.findIndex(s => s.id === localStepId);
+   424→  const progressPercent = progressSteps.length > 1
+   425→    ? ((Math.max(0, progressIdx) + 1) / progressSteps.length) * 100
+   426→    : 0;
+   427→
+   428→  // Sync step index to store
+   429→  useEffect(() => {
+   430→    setConfiguratorStep(currentIdx);
+   431→  }, [currentIdx, setConfiguratorStep]);
+   432→
+   433→  // Pre-select model from viewParams on first mount
+   434→  useEffect(() => {
+   435→    if (isInitialized.current) return;
+   436→    isInitialized.current = true;
+   437→
+   438→    if (viewParams.modelId && !responses.projectType) {
+   439→      const model = useAppStore.getState().selectedModel;
+   440→      if (model) {
+   441→        const cat = model.categoryName?.toLowerCase() || '';
+   442→        const typeMap: Record<string, string> = {
+   443→          villa: 'villa', duplex: 'duplex', triplex: 'triplex', immeuble: 'immeuble',
+   444→        };
+   445→        const mapped = Object.entries(typeMap).find(([k]) => cat.includes(k))?.[1] || 'villa';
+   446→        setConfiguratorResponse('projectType', mapped);
+   447→        setConfiguratorData({ modelId: model.id, categoryName: model.categoryName });
+   448→      }
+   449→    }
+   450→  // eslint-disable-next-line react-hooks/exhaustive-deps
+   451→  }, []);
+   452→
+   453→  /* Navigate helpers */
+   454→  const goToStepId = useCallback((stepId: string, dir: number) => {
+   455→    const exists = steps.some(s => s.id === stepId);
+   456→    if (!exists) return;
+   457→    setDirection(dir);
+   458→    setLocalStepId(stepId);
+   459→  }, [steps]);
+   460→
+   461→  const goNext = useCallback(() => {
+   462→    const nextIdx = currentIdx + 1;
+   463→    if (nextIdx < steps.length) {
+   464→      setDirection(1);
+   465→      setLocalStepId(steps[nextIdx].id);
+   466→    }
+   467→  }, [currentIdx, steps]);
+   468→
+   469→  const goBack = useCallback(() => {
+   470→    const prevIdx = currentIdx - 1;
+   471→    if (prevIdx >= 0) {
+   472→      setDirection(-1);
+   473→      setLocalStepId(steps[prevIdx].id);
+   474→    }
+   475→  }, [currentIdx, steps]);
+   476→
+   477→  const handleSkip = useCallback(() => goNext(), [goNext]);
+   478→
+   479→  /* Submit project */
+   480→  const handleSubmit = useCallback(async () => {
+   481→    setIsSubmitting(true);
+   482→    try {
+   483→      const ref = generateReference();
+   484→      setReferenceNumber(ref);
+   485→
+   486→      const payload = {
+   487→        ...responses,
+   488→        referenceNumber: ref,
+   489→        status: 'draft',
+   490→        createdAt: new Date().toISOString(),
+   491→      };
+   492→
+   493→      const res = await fetch('/api/projects', {
+   494→        method: 'POST',
+   495→        headers: { 'Content-Type': 'application/json' },
+   496→        body: JSON.stringify(payload),
+   497→      });
+   498→
+   499→      if (!res.ok) throw new Error('Erreur serveur');
+   500→
+   501→      goNext();
+   502→      addToast('Projet créé avec succès !', 'success');
+   503→    } catch {
+   504→      // Allow progression for demo / offline
+   505→      const ref = generateReference();
+   506→      setReferenceNumber(ref);
+   507→      goNext();
+   508→      addToast('Projet enregistré !', 'success');
+   509→    } finally {
+   510→      setIsSubmitting(false);
+   511→    }
+   512→  }, [responses, goNext, addToast]);
+   513→
+   514→  const handleSummarySubmit = useCallback(() => {
+   515→    if (!isAuthenticated) {
+   516→      requireAuth('projects');
+   517→    } else {
+   518→      handleSubmit();
+   519→    }
+   520→  }, [isAuthenticated, requireAuth, handleSubmit]);
+   521→
+   522→  const handleFinalAction = useCallback(() => {
+   523→    resetConfigurator();
+   524→    navigate('projects');
+   525→  }, [resetConfigurator, navigate]);
+   526→
+   527→  /* Can we proceed to next? */
+   528→  const canProceed = useMemo(() => {
+   529→    if (!activeStep) return false;
+   530→    if (activeStep.type === 'summary' || activeStep.type === 'confirmation') return true;
+   531→    if (activeStep.type === 'textarea' || activeStep.type === 'slider' || activeStep.type === 'counter') return true;
+   532→    if (activeStep.type === 'choice-multi') return true;
+   533→    if (activeStep.skippable) return true;
+   534→    const val = responses[activeStep.responseKey];
+   535→    return val !== undefined && val !== null && val !== '';
+   536→  }, [activeStep, responses]);
+   537→
+   538→  /* ---------------------------------------------------------------- */
+   539→/*  Step renderers                                                   */
+   540→/* ---------------------------------------------------------------- */
+   541→
+   542→  const renderChoiceSingle = (step: StepDef) => {
+   543→    const selected = responses[step.responseKey] as string | undefined;
+   544→    const isGrid = (step.options?.length ?? 0) > 4;
+   545→
+   546→    return (
+   547→      <div className={
+   548→        isGrid
+   549→          ? 'grid grid-cols-2 sm:grid-cols-3 gap-3'
+   550→          : 'grid grid-cols-1 gap-2.5'
+   551→      }>
+   552→        {step.options?.map(opt => {
+   553→          const isSelected = selected === opt.value;
+   554→          const Icon = opt.icon;
+   555→          return (
+   556→            <motion.button
+   557→              key={opt.value}
+   558→              type="button"
+   559→              whileTap={{ scale: 0.96 }}
+   560→              onClick={() => {
+   561→                setConfiguratorResponse(step.responseKey, opt.value);
+   562→                // Auto-advance on non-first, non-skippable single choice steps
+   563→                if (step.id !== 'project-type' && !step.skippable) {
+   564→                  setTimeout(() => {
+   565→                    const nextIdx = steps.findIndex(s => s.id === step.id) + 1;
+   566→                    if (nextIdx < steps.length) {
+   567→                      setDirection(1);
+   568→                      setLocalStepId(steps[nextIdx].id);
+   569→                    }
+   570→                  }, 250);
+   571→                }
+   572→              }}
+   573→              className={
+   574→                `relative flex flex-col items-center justify-center gap-2 rounded-2xl border-2 p-4 min-h-[100px] transition-all duration-200 text-center cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+   575→                  isSelected
+   576→                    ? 'border-foreground bg-foreground text-background shadow-lg'
+   577→                    : 'border-border bg-background text-foreground hover:border-foreground/40 hover:bg-muted/50'
+   578→                }`
+   579→              }
+   580→              aria-pressed={isSelected}
+   581→            >
+   582→              {Icon && (
+   583→                <div className={
+   584→                  `size-11 rounded-xl flex items-center justify-center transition-colors ${
+   585→                    isSelected ? 'bg-background/20' : 'bg-muted'
+   586→                  }`
+   587→                }>
+   588→                  <Icon className={
+   589→                    `size-5 transition-colors ${isSelected ? 'text-background' : 'text-foreground'}`
+   590→                  } />
+   591→                </div>
+   592→              )}
+   593→              <span className="text-sm font-semibold leading-tight">{opt.label}</span>
+   594→              {opt.description && (
+   595→                <span className={
+   596→                  `text-[11px] leading-tight ${isSelected ? 'text-background/70' : 'text-muted-foreground'}`
+   597→                }>
+   598→                  {opt.description}
+   599→                </span>
+   600→              )}
+   601→              {isSelected && (
+   602→                <motion.div
+   603→                  initial={{ scale: 0 }}
+   604→                  animate={{ scale: 1 }}
+   605→                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+   606→                  className="absolute top-2 right-2 size-5 rounded-full bg-background flex items-center justify-center"
+   607→                >
+   608→                  <CheckCircle2 className="size-3.5 text-foreground" />
+   609→                </motion.div>
+   610→              )}
+   611→            </motion.button>
+   612→          );
+   613→        })}
+   614→      </div>
+   615→    );
+   616→  };
+   617→
+   618→  const renderChoiceMulti = (step: StepDef) => {
+   619→    const selected = (responses[step.responseKey] as string[]) || [];
+   620→    const toggle = (val: string) => {
+   621→      const next = selected.includes(val)
+   622→        ? selected.filter(v => v !== val)
+   623→        : [...selected, val];
+   624→      setConfiguratorResponse(step.responseKey, next);
+   625→    };
+   626→
+   627→    return (
+   628→      <div className="grid grid-cols-2 gap-3">
+   629→        {step.options?.map(opt => {
+   630→          const isChecked = selected.includes(opt.value);
+   631→          const Icon = opt.icon;
+   632→          return (
+   633→            <motion.button
+   634→              key={opt.value}
+   635→              type="button"
+   636→              whileTap={{ scale: 0.97 }}
+   637→              onClick={() => toggle(opt.value)}
+   638→              className={
+   639→                `relative flex items-center gap-3 rounded-2xl border-2 p-4 min-h-[56px] transition-all duration-200 text-left cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+   640→                  isChecked
+   641→                    ? 'border-foreground bg-foreground text-background shadow-lg'
+   642→                    : 'border-border bg-background text-foreground hover:border-foreground/40'
+   643→                }`
+   644→              }
+   645→              aria-pressed={isChecked}
+   646→            >
+   647→              <div className={
+   648→                `size-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+   649→                  isChecked ? 'bg-background/20' : 'bg-muted'
+   650→                }`
+   651→              }>
+   652→                {Icon ? (
+   653→                  <Icon className={
+   654→                    `size-4 transition-colors ${isChecked ? 'text-background' : 'text-foreground'}`
+   655→                  } />
+   656→                ) : (
+   657→                  <Checkbox
+   658→                    checked={isChecked}
+   659→                    className="pointer-events-none"
+   660→                    aria-hidden
+   661→                  />
+   662→                )}
+   663→              </div>
+   664→              <span className="text-sm font-medium leading-tight">{opt.label}</span>
+   665→              {isChecked && (
+   666→                <motion.div
+   667→                  initial={{ scale: 0 }}
+   668→                  animate={{ scale: 1 }}
+   669→                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+   670→                  className="absolute top-2 right-2 size-5 rounded-full bg-background flex items-center justify-center"
+   671→                >
+   672→                  <CheckCircle2 className="size-3.5 text-foreground" />
+   673→                </motion.div>
+   674→              )}
+   675→            </motion.button>
+   676→          );
+   677→        })}
+   678→      </div>
+   679→    );
+   680→  };
+   681→
+   682→  const renderCounter = (step: StepDef) => {
+   683→    const min = step.min ?? 1;
+   684→    const max = step.max ?? 10;
+   685→    const val = Math.min(max, Math.max(min, (responses[step.responseKey] as number) || min));
+   686→    const pct = ((val - min) / (max - min)) * 100;
+   687→
+   688→    return (
+   689→      <div className="flex flex-col items-center gap-8 py-6">
+   690→        <div className="flex items-center gap-8">
+   691→          <motion.button
+   692→            type="button"
+   693→            whileTap={{ scale: 0.9 }}
+   694→            onClick={() => setConfiguratorResponse(step.responseKey, Math.max(min, val - 1))}
+   695→            disabled={val <= min}
+   696→            className="size-16 rounded-full border-2 border-border flex items-center justify-center hover:border-foreground hover:bg-muted transition-colors disabled:opacity-25 disabled:cursor-not-allowed active:bg-muted"
+   697→            aria-label="Diminuer"
+   698→          >
+   699→            <Minus className="size-7" />
+   700→          </motion.button>
+   701→          <div className="w-28 text-center">
+   702→            <motion.span
+   703→              key={val}
+   704→              initial={{ y: -10, opacity: 0 }}
+   705→              animate={{ y: 0, opacity: 1 }}
+   706→              transition={{ duration: 0.15 }}
+   707→              className="text-6xl font-bold tabular-nums block"
+   708→            >
+   709→              {val}
+   710→            </motion.span>
+   711→            {step.unit && (
+   712→              <span className="block text-xs text-muted-foreground mt-2 uppercase tracking-wider">
+   713→                {step.unit}
+   714→              </span>
+   715→            )}
+   716→          </div>
+   717→          <motion.button
+   718→            type="button"
+   719→            whileTap={{ scale: 0.9 }}
+   720→            onClick={() => setConfiguratorResponse(step.responseKey, Math.min(max, val + 1))}
+   721→            disabled={val >= max}
+   722→            className="size-16 rounded-full border-2 border-border flex items-center justify-center hover:border-foreground hover:bg-muted transition-colors disabled:opacity-25 disabled:cursor-not-allowed active:bg-muted"
+   723→            aria-label="Augmenter"
+   724→          >
+   725→            <Plus className="size-7" />
+   726→          </motion.button>
+   727→        </div>
+   728→        {/* Progress dots */}
+   729→        <div className="w-full max-w-xs">
+   730→          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+   731→            <motion.div
+   732→              className="h-full bg-foreground rounded-full"
+   733→              animate={{ width: `${pct}%` }}
+   734→              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+   735→            />
+   736→          </div>
+   737→          <div className="flex justify-between mt-2 text-[10px] text-muted-foreground tabular-nums">
+   738→            <span>{min}</span>
+   739→            <span>{max}</span>
+   740→          </div>
+   741→        </div>
+   742→      </div>
+   743→    );
+   744→  };
+   745→
+   746→  const renderSlider = (step: StepDef) => {
+   747→    const min = step.min ?? 100;
+   748→    const max = step.max ?? 5000;
+   749→    const stepVal = step.step ?? 50;
+   750→    const val = Math.min(max, Math.max(min, (responses[step.responseKey] as number) || min));
+   751→    const marks = [min, 500, 1000, 2000, 3000, max].filter(
+   752→      m => m >= min && m <= max
+   753→    );
+   754→
+   755→    return (
+   756→      <div className="flex flex-col gap-8 py-6">
+   757→        <div className="text-center">
+   758→          <motion.span
+   759→            key={val}
+   760→            initial={{ y: -8, opacity: 0 }}
+   761→            animate={{ y: 0, opacity: 1 }}
+   762→            transition={{ duration: 0.15 }}
+   763→            className="text-5xl font-bold tabular-nums block"
+   764→          >
+   765→            {formatSurface(val)}
+   766→          </motion.span>
+   767→        </div>
+   768→        <Slider
+   769→          value={[val]}
+   770→          min={min}
+   771→          max={max}
+   772→          step={stepVal}
+   773→          onValueChange={([v]) => setConfiguratorResponse(step.responseKey, v)}
+   774→          className="w-full"
+   775→        />
+   776→        <div className="flex justify-between text-[11px] text-muted-foreground px-1 tabular-nums">
+   777→          {marks.map(m => (
+   778→            <span key={m}>{formatSurface(m)}</span>
+   779→          ))}
+   780→        </div>
+   781→      </div>
+   782→    );
+   783→  };
+   784→
+   785→  const renderTextarea = (step: StepDef) => {
+   786→    const val = (responses[step.responseKey] as string) || '';
+   787→    return (
+   788→      <Textarea
+   789→        value={val}
+   790→        onChange={e => setConfiguratorResponse(step.responseKey, e.target.value)}
+   791→        placeholder={step.placeholder}
+   792→        className="min-h-[160px] text-sm resize-none"
+   793→        aria-label={step.title}
+   794→      />
+   795→    );
+   796→  };
+   797→
+   798→  const renderSummary = () => {
+   799→    const rows: { label: string; value: string; stepId: string }[] = [];
+   800→
+   801→    const projectType = responses.projectType as string | undefined;
+   802→    if (projectType) rows.push({ label: 'Type de projet', value: getLabel(PROJECT_TYPES, projectType), stepId: 'project-type' });
+   803→
+   804→    const city = responses.city as string | undefined;
+   805→    if (city) rows.push({ label: 'Ville', value: getLabel(CITIES, city), stepId: 'city' });
+   806→
+   807→    const terrain = responses.terrainStatus as string | undefined;
+   808→    if (terrain) rows.push({ label: 'Terrain', value: getTerrainLabel(terrain), stepId: 'terrain' });
+   809→
+   810→    const surface = responses.surfaceArea as number | undefined;
+   811→    if (surface) rows.push({ label: 'Superficie', value: formatSurface(surface), stepId: 'surface' });
+   812→
+   813→    const zones = responses.zones as string[] | undefined;
+   814→    if (zones && zones.length > 0) rows.push({ label: 'Zones', value: zones.join(', '), stepId: 'zones' });
+   815→
+   816→    const levels = responses.levels as number | undefined;
+   817→    if (levels) rows.push({ label: 'Niveaux', value: `${levels} niveau(x)`, stepId: 'levels' });
+   818→
+   819→    const bedrooms = responses.bedrooms as number | undefined;
+   820→    if (bedrooms) rows.push({ label: 'Chambres', value: `${bedrooms} chambre(s)`, stepId: 'bedrooms' });
+   821→
+   822→    const finition = responses.finition as string | undefined;
+   823→    if (finition) rows.push({ label: 'Finition', value: getLabel(FINITION_OPTIONS, finition), stepId: 'finition' });
+   824→
+   825→    const budget = responses.budget as string | undefined;
+   826→    if (budget) rows.push({ label: 'Budget', value: getBudgetLabel(budget), stepId: 'budget' });
+   827→
+   828→    const timeline = responses.timeline as string | undefined;
+   829→    if (timeline) rows.push({ label: 'Démarrage', value: getTimelineLabel(timeline), stepId: 'timeline' });
+   830→
+   831→    const prestations = responses.prestations as string[] | undefined;
+   832→    if (prestations && prestations.length > 0) {
+   833→      rows.push({
+   834→        label: 'Prestations',
+   835→        value: prestations.map(p => getLabel(PRESTATIONS_OPTIONS, p)).join(', '),
+   836→        stepId: 'prestations',
+   837→      });
+   838→    }
+   839→
+   840→    const desc = responses.description as string | undefined;
+   841→    if (desc) rows.push({ label: 'Description', value: desc.length > 100 ? desc.substring(0, 100) + '...' : desc, stepId: 'description' });
+   842→
+   843→    return (
+   844→      <div className="space-y-3">
+   845→        <p className="text-sm text-muted-foreground mb-4">
+   846→          Vérifiez vos réponses ci-dessous. Cliquez sur une ligne pour la modifier.
+   847→        </p>
+   848→        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+   849→          {rows.map(row => (
+   850→            <motion.button
+   851→              key={row.stepId}
+   852→              type="button"
+   853→              whileTap={{ scale: 0.99 }}
+   854→              onClick={() => goToStepId(row.stepId, currentIdx > steps.findIndex(s => s.id === row.stepId) ? -1 : 1)}
+   855→              className="w-full flex items-center justify-between gap-3 p-4 rounded-2xl border border-border hover:border-foreground/30 hover:bg-muted/50 transition-colors text-left cursor-pointer"
+   856→            >
+   857→              <div className="flex-1 min-w-0">
+   858→                <div className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">{row.label}</div>
+   859→                <div className="text-sm font-semibold mt-0.5 truncate">{row.value}</div>
+   860→              </div>
+   861→              <Pencil className="size-4 text-muted-foreground flex-shrink-0" />
+   862→            </motion.button>
+   863→          ))}
+   864→        </div>
+   865→        {rows.length === 0 && (
+   866→          <div className="text-center py-10 text-muted-foreground text-sm">
+   867→            Aucune information renseignée.
+   868→          </div>
+   869→        )}
+   870→      </div>
+   871→    );
+   872→  };
+   873→
+   874→  const renderConfirmation = () => (
+   875→    <div className="flex flex-col items-center gap-6 py-10 text-center">
+   876→      <motion.div
+   877→        initial={{ scale: 0, rotate: -180 }}
+   878→        animate={{ scale: 1, rotate: 0 }}
+   879→        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+   880→        className="size-24 rounded-full bg-foreground flex items-center justify-center"
+   881→      >
+   882→        <PartyPopper className="size-12 text-background" />
+   883→      </motion.div>
+   884→      <div className="space-y-2">
+   885→        <h2 className="text-2xl font-bold tracking-tight">Votre projet a été enregistré !</h2>
+   886→        <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
+   887→          Notre équipe va étudier votre demande et vous recontacter sous 48 heures.
+   888→        </p>
+   889→      </div>
+   890→      {referenceNumber && (
+   891→        <motion.div
+   892→          initial={{ y: 20, opacity: 0 }}
+   893→          animate={{ y: 0, opacity: 1 }}
+   894→          transition={{ delay: 0.3 }}
+   895→          className="bg-muted rounded-2xl px-8 py-5"
+   896→        >
+   897→          <div className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Référence</div>
+   898→          <div className="text-xl font-bold font-mono mt-1.5 tracking-wider">{referenceNumber}</div>
+   899→        </motion.div>
+   900→      )}
+   901→      <div className="w-full max-w-xs space-y-3 pt-4">
+   902→        <Button
+   903→          onClick={handleFinalAction}
+   904→          className="w-full h-14 text-sm font-semibold rounded-2xl"
+   905→          size="lg"
+   906→        >
+   907→          Voir mes projets
+   908→          <ChevronRight className="size-4 ml-1" />
+   909→        </Button>
+   910→        <Button
+   911→          variant="outline"
+   912→          onClick={() => {
+   913→            resetConfigurator();
+   914→            navigate('home');
+   915→          }}
+   916→          className="w-full h-12 text-sm rounded-2xl"
+   917→          size="lg"
+   918→        >
+   919→          <RotateCcw className="size-4 mr-1" />
+   920→          Nouveau projet
+   921→        </Button>
+   922→      </div>
+   923→    </div>
+   924→  );
+   925→
+   926→  /* ---------------------------------------------------------------- */
+   927→/*  Main render                                                      */
+   928→/* ---------------------------------------------------------------- */
+   929→
+   930→  const isFirstStep = currentIdx === 0;
+   931→  const isConfirmation = activeStep?.type === 'confirmation';
+   932→  const isSummary = activeStep?.type === 'summary';
+   933→  const showNav = !isConfirmation;
+   934→
+   935→  return (
+   936→    <div className="min-h-screen bg-background flex flex-col">
+   937→      {/* Sticky top bar */}
+   938→      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b">
+   939→        <div className="flex items-center gap-3 px-4 h-14">
+   940→          <Button
+   941→            variant="ghost"
+   942→            size="icon"
+   943→            className="size-10 rounded-xl"
+   944→            onClick={() => {
+   945→              if (isFirstStep) {
+   946→                resetConfigurator();
+   947→                useAppStore.getState().goBack();
+   948→              } else {
+   949→                goBack();
+   950→              }
+   951→            }}
+   952→            aria-label="Retour"
+   953→          >
+   954→            <ArrowLeft className="size-5" />
+   955→          </Button>
+   956→
+   957→          <h1 className="font-bold text-sm truncate">Configurer mon projet</h1>
+   958→
+   959→          <div className="ml-auto flex items-center gap-2">
+   960→            {!isConfirmation && (
+   961→              <Badge variant="outline" className="text-[11px] tabular-nums font-medium">
+   962→                {Math.min(currentIdx + 1, progressSteps.length)} / {progressSteps.length}
+   963→              </Badge>
+   964→            )}
+   965→            <Button
+   966→              variant="ghost"
+   967→              size="icon"
+   968→              className="size-10 rounded-xl"
+   969→              onClick={() => {
+   970→                resetConfigurator();
+   971→                useAppStore.getState().goBack();
+   972→              }}
+   973→              aria-label="Fermer"
+   974→            >
+   975→              <X className="size-4" />
+   976→            </Button>
+   977→          </div>
+   978→        </div>
+   979→
+   980→        {/* Progress bar */
+   981→        {!isConfirmation && (
+   982→          <Progress value={progressPercent} className="h-1 rounded-none" />
+   983→        )}
+   984→      </header>
+   985→
+   986→      {/* Step content */}
+   987→      <main className="flex-1 flex flex-col items-center justify-start px-4 py-6 md:py-10 overflow-y-auto">
+   988→        <div className="w-full max-w-lg">
+   989→          <AnimatePresence mode="wait" custom={direction}>
+   990→            <motion.div
+   991→              key={activeStep.id}
+   992→              custom={direction}
+   993→              variants={slideVariants}
+   994→              initial="enter"
+   995→              animate="center"
+   996→              exit="exit"
+   997→              transition={{ duration: 0.3, ease: 'easeInOut' }}
+   998→              className="w-full"
+   999→            >
+  1000→              {/* Title block */
+  1001→              {!isConfirmation && (
+  1002→                <div className="mb-6 text-center">
+  1003→                  <h2 className="text-xl md:text-2xl font-bold tracking-tight">{activeStep.title}</h2>
+  1004→                  {activeStep.subtitle && (
+  1005→                    <p className="text-sm text-muted-foreground mt-1.5">{activeStep.subtitle}</p>
+  1006→                  )}
+  1007→                </div>
+  1008→              )}
+  1009→
+  1010→              {/* Content */
+  1011→              {isConfirmation ? (
+  1012→                renderConfirmation()
+  1013→              ) : (
+  1014→                <Card className="border-border/50 shadow-sm">
+  1015→                  <CardContent className="p-4 md:p-6">
+  1016→                    {activeStep.type === 'choice-single' && renderChoiceSingle(activeStep)}
+  1017→                    {activeStep.type === 'choice-multi' && renderChoiceMulti(activeStep)}
+  1018→                    {activeStep.type === 'counter' && renderCounter(activeStep)}
+  1019→                    {activeStep.type === 'slider' && renderSlider(activeStep)}
+  1020→                    {activeStep.type === 'textarea' && renderTextarea(activeStep)}
+  1021→                    {activeStep.type === 'summary' && renderSummary()}
+  1022→                  </CardContent>
+  1023→                </Card>
+  1024→              )}
+  1025→            </motion.div>
+  1026→          </AnimatePresence>
+  1027→        </div>
+  1028→      </main>
+  1029→
+  1030→      {/* Bottom navigation */
+  1031→      {showNav && (
+  1032→        <footer className="sticky bottom-0 z-30 bg-background/95 backdrop-blur-md border-t">
+  1033→          <div className="flex items-center gap-2 px-4 py-3 max-w-lg mx-auto w-full">
+  1034→            {/* Back button */}
+  1035→            {!isFirstStep && (
+  1036→              <Button
+  1037→                variant="outline"
+  1038→                onClick={goBack}
+  1039→                className="flex-shrink-0 h-12 px-4 rounded-2xl"
+  1040→              >
+  1041→                <ArrowLeft className="size-4" />
+  1042→                <span className="hidden sm:inline ml-1">Précédent</span>
+  1043→              </Button>
+  1044→            )}
+  1045→
+  1046→            <div className="flex-1" />
+  1047→
+  1048→            {/* Skip button */
+  1049→            {activeStep.skippable && !isSummary && (
+  1050→              <Button
+  1051→                variant="ghost"
+  1052→                onClick={handleSkip}
+  1053→                className="flex-shrink-0 text-muted-foreground h-12 px-3 text-xs sm:text-sm rounded-2xl"
+  1054→              >
+  1055→                {activeStep.skipLabel || 'Je ne sais pas encore'}
+  1056→              </Button>
+  1057→            )}
+  1058→
+  1059→            {/* Primary action */
+  1060→            {isSummary ? (
+  1061→              <Button
+  1062→                onClick={handleSummarySubmit}
+  1063→                disabled={isSubmitting}
+  1064→                className="flex-shrink-0 h-12 px-6 font-semibold rounded-2xl"
+  1065→                size="lg"
+  1066→              >
+  1067→                {isSubmitting ? (
+  1068→                  <span className="flex items-center gap-2">
+  1069→                    <span className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+  1070→                    Envoi en cours...
+  1071→                  </span>
+  1072→                ) : (
+  1073→                  <>
+  1074→                    <Send className="size-4" />
+  1075→                    <span className="ml-1">Soumettre mon projet</span>
+  1076→                  </>
+  1077→                )}
+  1078→              </Button>
+  1079→            ) : (
+  1080→              <Button
+  1081→                onClick={goNext}
+  1082→                disabled={!canProceed}
+  1083→                className="flex-shrink-0 h-12 px-5 font-semibold rounded-2xl"
+  1084→              >
+  1085→                Suivant
+  1086→                <ArrowRight className="size-4 ml-1" />
+  1087→              </Button>
+  1088→            )}
+  1089→          </div>
+  1090→        </footer>
+  1091→      )}
+  1092→    </div>
+  1093→  );
+  1094→}
+  1095→

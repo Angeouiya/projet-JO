@@ -1,0 +1,959 @@
+     1→'use client';
+     2→
+     3→import { useState, useCallback, useMemo, useEffect } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  ArrowLeft, ArrowRight, X, Home, Building2, Building, Landmark,
+     7→  LayoutGrid, Hammer, Route, Droplets, FileText, HelpCircle, MapPin,
+     8→  CheckSquare, Square, Minus, Plus, Star, Crown, Gem,
+     9→  Wallet, Calendar, ClipboardList, CheckCircle2,
+    10→  CircleDot, Pencil, ChevronRight, Flag, Send, PartyPopper,
+    11→  Ruler, Search, KeyRound,
+    12→} from 'lucide-react';
+    13→import { Button } from '@/components/ui/button';
+    14→import { Card, CardContent } from '@/components/ui/card';
+    15→import { Slider } from '@/components/ui/slider';
+    16→
+    17→import { Textarea } from '@/components/ui/textarea';
+    18→import { Badge } from '@/components/ui/badge';
+    19→import { Progress } from '@/components/ui/progress';
+    20→import { useAppStore } from '@/stores/app-store';
+    21→import { FORMAT_SHORT_XOF, COMMUNES_ABIDJAN } from '@/types';
+    22→import type { LucideIcon } from 'lucide-react';
+    23→
+    24→/* ------------------------------------------------------------------ */
+    25→/*  Types                                                              */
+    26→/* ------------------------------------------------------------------ */
+    27→
+    28→interface ChoiceOption {
+    29→  value: string;
+    30→  label: string;
+    31→  icon?: LucideIcon;
+    32→  description?: string;
+    33→}
+    34→
+    35→interface StepDef {
+    36→  id: string;
+    37→  title: string;
+    38→  subtitle?: string;
+    39→  responseKey: string;
+    40→  type: 'choice-single' | 'choice-multi' | 'counter' | 'slider' | 'textarea' | 'summary' | 'confirmation';
+    41→  options?: ChoiceOption[];
+    42→  min?: number;
+    43→  max?: number;
+    44→  step?: number;
+    45→  unit?: string;
+    46→  placeholder?: string;
+    47→  skippable?: boolean;
+    48→  skipLabel?: string;
+    49→  required?: boolean;
+    50→}
+    51→
+    52→/* ------------------------------------------------------------------ */
+    53→/*  Animation variants                                                 */
+    54→/* ------------------------------------------------------------------ */
+    55→
+    56→const slideVariants = {
+    57→  enter: (dir: number) => ({
+    58→    x: dir > 0 ? 300 : -300,
+    59→    opacity: 0,
+    60→  }),
+    61→  center: {
+    62→    x: 0,
+    63→    opacity: 1,
+    64→  },
+    65→  exit: (dir: number) => ({
+    66→    x: dir > 0 ? -300 : 300,
+    67→    opacity: 0,
+    68→  }),
+    69→};
+    70→
+    71→/* ------------------------------------------------------------------ */
+    72→/*  Static data                                                        */
+    73→/* ------------------------------------------------------------------ */
+    74→
+    75→const PROJECT_TYPES: ChoiceOption[] = [
+    76→  { value: 'villa', label: 'Villa basse', icon: Home, description: 'Maison de plain-pied' },
+    77→  { value: 'duplex', label: 'Duplex', icon: Building2, description: 'Maison à 2 niveaux' },
+    78→  { value: 'triplex', label: 'Triplex', icon: Building, description: 'Maison à 3 niveaux' },
+    79→  { value: 'immeuble', label: 'Immeuble', icon: Landmark, description: 'R+3 à R+5' },
+    80→  { value: 'promotion', label: 'Promotion', icon: LayoutGrid, description: 'Programme immobilier' },
+    81→  { value: 'renovation', label: 'Rénovation', icon: Hammer, description: 'Réhabilitation' },
+    82→  { value: 'vrd', label: 'VRD / Route', icon: Route, description: 'Voirie & réseaux' },
+    83→  { value: 'hydraulique', label: 'Hydraulique', icon: Droplets, description: 'Forage & adduction' },
+    84→  { value: 'etude', label: 'Étude', icon: FileText, description: 'Études techniques' },
+    85→  { value: 'autre', label: 'Autre', icon: HelpCircle, description: 'Autre projet' },
+    86→];
+    87→
+    88→const CITIES: ChoiceOption[] = [
+    89→  { value: 'Abidjan', label: 'Abidjan', icon: MapPin },
+    90→  { value: 'Bouaké', label: 'Bouaké', icon: MapPin },
+    91→  { value: 'Yamoussoukro', label: 'Yamoussoukro', icon: MapPin },
+    92→  { value: 'San-Pédro', label: 'San-Pédro', icon: MapPin },
+    93→  { value: 'Daloa', label: 'Daloa', icon: MapPin },
+    94→  { value: 'Autre', label: 'Autre ville', icon: MapPin },
+    95→];
+    96→
+    97→const TERRAIN_OPTIONS: ChoiceOption[] = [
+    98→  { value: 'owned', label: 'Je possède le terrain', icon: CheckSquare, description: 'Titre foncier en main' },
+    99→  { value: 'acquiring', label: 'En cours d\'acquisition', icon: CircleDot, description: 'Procédure en cours' },
+   100→  { value: 'searching', label: 'Je recherche un terrain', icon: Search, description: 'Besoin d\'aide' },
+   101→  { value: 'unknown', label: 'Je ne sais pas', icon: HelpCircle, description: 'Pas encore défini' },
+   102→];
+   103→
+   104→const FINITION_OPTIONS: ChoiceOption[] = [
+   105→  { value: 'economique', label: 'Économique', icon: Square, description: 'Finitions de base' },
+   106→  { value: 'standard', label: 'Standard', icon: Star, description: 'Bon rapport qualité/prix' },
+   107→  { value: 'premium', label: 'Premium', icon: Crown, description: 'Finitions soignées' },
+   108→  { value: 'luxe', label: 'Luxe', icon: Gem, description: 'Haut standing' },
+   109→];
+   110→
+   111→const BUDGET_OPTIONS: ChoiceOption[] = [
+   112→  { value: 'less-20m', label: 'Moins de 20 M', icon: Wallet, description: '< 20 000 000 F' },
+   113→  { value: '20-50m', label: '20 – 50 M', icon: Wallet, description: '20 – 50 M F' },
+   114→  { value: '50-100m', label: '50 – 100 M', icon: Wallet, description: '50 – 100 M F' },
+   115→  { value: '100-200m', label: '100 – 200 M', icon: Wallet, description: '100 – 200 M F' },
+   116→  { value: 'more-200m', label: 'Plus de 200 M', icon: Wallet, description: '> 200 M F' },
+   117→  { value: 'unknown', label: 'Je ne sais pas', icon: HelpCircle, description: 'À évaluer' },
+   118→];
+   119→
+   120→const TIMELINE_OPTIONS: ChoiceOption[] = [
+   121→  { value: 'immediate', label: 'Immédiatement', icon: Flag, description: 'Dès maintenant' },
+   122→  { value: '3-months', label: 'Sous 3 mois', icon: Calendar, description: 'Préparation rapide' },
+   123→  { value: '6-months', label: 'Sous 6 mois', icon: Calendar, description: 'Planification en cours' },
+   124→  { value: '1-year', label: 'Sous 1 an', icon: Calendar, description: 'Projet à moyen terme' },
+   125→  { value: 'undefined', label: 'Pas défini', icon: HelpCircle, description: 'Pas de date précise' },
+   126→];
+   127→
+   128→const PRESTATIONS_OPTIONS: ChoiceOption[] = [
+   129→  { value: 'etude-architecturale', label: 'Étude architecturale', icon: FileText },
+   130→  { value: 'plans-execution', label: 'Plans d\'exécution', icon: Ruler },
+   131→  { value: 'construction-complete', label: 'Construction complète', icon: Building2 },
+   132→  { value: 'cle-en-main', label: 'Clé en main', icon: KeyRound },
+   133→  { value: 'gros-oeuvre', label: 'Gros œuvre', icon: Hammer },
+   134→  { value: 'suivi-chantier', label: 'Suivi de chantier', icon: ClipboardList },
+   135→  { value: 'autre', label: 'Autre', icon: HelpCircle },
+   136→];
+   137→
+   138→/* ------------------------------------------------------------------ */
+   139→/*  Build visible steps based on responses                             */
+   140→/* ------------------------------------------------------------------ */
+   141→
+   142→function buildSteps(responses: Record<string, unknown>): StepDef[] {
+   143→  const projectType = responses.projectType as string | undefined;
+   144→  const terrainStatus = responses.terrainStatus as string | undefined;
+   145→  const isResidential = ['villa', 'duplex', 'triplex'].includes(projectType || '');
+   146→
+   147→  const steps: StepDef[] = [];
+   148→
+   149→  // Step 0: Project type
+   150→  steps.push({
+   151→    id: 'project-type',
+   152→    title: 'Type de projet',
+   153→    subtitle: 'Sélectionnez le type de votre projet',
+   154→    responseKey: 'projectType',
+   155→    type: 'choice-single',
+   156→    options: PROJECT_TYPES,
+   157→    required: true,
+   158→  });
+   159→
+   160→  // Step 1: City
+   161→  steps.push({
+   162→    id: 'city',
+   163→    title: 'Où sera-t-il réalisé ?',
+   164→    subtitle: 'Choisissez la ville du projet',
+   165→    responseKey: 'city',
+   166→    type: 'choice-single',
+   167→    options: CITIES,
+   168→    required: true,
+   169→  });
+   170→
+   171→  // Step 2: Terrain
+   172→  steps.push({
+   173→    id: 'terrain',
+   174→    title: 'Avez-vous un terrain ?',
+   175→    subtitle: 'Quel est le statut de votre terrain ?',
+   176→    responseKey: 'terrainStatus',
+   177→    type: 'choice-single',
+   178→    options: TERRAIN_OPTIONS,
+   179→    skippable: true,
+   180→    skipLabel: 'Je ne sais pas encore',
+   181→    required: true,
+   182→  });
+   183→
+   184→  // Step 3: Surface (conditional)
+   185→  if (terrainStatus === 'owned' || terrainStatus === 'acquiring') {
+   186→    steps.push({
+   187→      id: 'surface',
+   188→      title: 'Superficie du terrain',
+   189→      subtitle: 'Quelle est la surface de votre terrain ?',
+   190→      responseKey: 'surfaceArea',
+   191→      type: 'slider',
+   192→      min: 100,
+   193→      max: 5000,
+   194→      step: 50,
+   195→      unit: 'm²',
+   196→      required: false,
+   197→    });
+   198→  }
+   199→
+   200→  // Step 4: Zones (conditional)
+   201→  if (terrainStatus === 'searching') {
+   202→    steps.push({
+   203→      id: 'zones',
+   204→      title: 'Zones souhaitées',
+   205→      subtitle: `Sélectionnez les communes souhaitées`,
+   206→      responseKey: 'zones',
+   207→      type: 'choice-multi',
+   208→      options: COMMUNES_ABIDJAN.map(c => ({ value: c, label: c })),
+   209→      skippable: true,
+   210→      skipLabel: 'Je ne sais pas encore',
+   211→      required: false,
+   212→    });
+   213→  }
+   214→
+   215→  // Step 5: Levels
+   216→  steps.push({
+   217→    id: 'levels',
+   218→    title: 'Combien de niveaux ?',
+   219→    subtitle: 'Nombre de niveaux souhaité',
+   220→    responseKey: 'levels',
+   221→    type: 'counter',
+   222→    min: 1,
+   223→    max: 10,
+   224→    required: false,
+   225→  });
+   226→
+   227→  // Step 6: Bedrooms (conditional)
+   228→  if (isResidential) {
+   229→    steps.push({
+   230→      id: 'bedrooms',
+   231→      title: 'Combien de chambres ?',
+   232→      subtitle: 'Nombre de chambres souhaité',
+   233→      responseKey: 'bedrooms',
+   234→      type: 'counter',
+   235→      min: 1,
+   236→      max: 10,
+   237→      required: false,
+   238→    });
+   239→  }
+   240→
+   241→  // Step 7: Finition
+   242→  steps.push({
+   243→    id: 'finition',
+   244→    title: 'Niveau de finition',
+   245→    subtitle: 'Quel niveau de finition souhaitez-vous ?',
+   246→    responseKey: 'finition',
+   247→    type: 'choice-single',
+   248→    options: FINITION_OPTIONS,
+   249→    skippable: true,
+   250→    skipLabel: 'Je ne sais pas encore',
+   251→    required: false,
+   252→  });
+   253→
+   254→  // Step 8: Budget
+   255→  steps.push({
+   256→    id: 'budget',
+   257→    title: 'Budget indicatif',
+   258→    subtitle: 'Quelle est votre enveloppe budgétaire ?',
+   259→    responseKey: 'budget',
+   260→    type: 'choice-single',
+   261→    options: BUDGET_OPTIONS,
+   262→    skippable: true,
+   263→    skipLabel: 'Je ne sais pas',
+   264→    required: false,
+   265→  });
+   266→
+   267→  // Step 9: Timeline
+   268→  steps.push({
+   269→    id: 'timeline',
+   270→    title: 'Quand souhaitez-vous commencer ?',
+   271→    subtitle: 'Votre échéance de démarrage',
+   272→    responseKey: 'timeline',
+   273→    type: 'choice-single',
+   274→    options: TIMELINE_OPTIONS,
+   275→    skippable: true,
+   276→    skipLabel: 'Pas défini',
+   277→    required: false,
+   278→  });
+   279→
+   280→  // Step 10: Prestations
+   281→  steps.push({
+   282→    id: 'prestations',
+   283→    title: 'Prestations souhaitées',
+   284→    subtitle: 'Sélectionnez les prestations souhaitées',
+   285→    responseKey: 'prestations',
+   286→    type: 'choice-multi',
+   287→    options: PRESTATIONS_OPTIONS,
+   288→    skippable: true,
+   289→    skipLabel: 'À définir plus tard',
+   290→    required: false,
+   291→  });
+   292→
+   293→  // Step 11: Description
+   294→  steps.push({
+   295→    id: 'description',
+   296→    title: 'Description libre',
+   297→    subtitle: 'Ajoutez des détails sur votre projet',
+   298→    responseKey: 'description',
+   299→    type: 'textarea',
+   300→    placeholder: 'Décrivez votre projet, vos contraintes, vos envies...',
+   301→    skippable: true,
+   302→    skipLabel: 'Passer',
+   303→    required: false,
+   304→  });
+   305→
+   306→  // Step 12: Summary
+   307→  steps.push({
+   308→    id: 'summary',
+   309→    title: 'Récapitulatif',
+   310→    subtitle: 'Vérifiez vos informations',
+   311→    responseKey: '__summary__',
+   312→    type: 'summary',
+   313→    required: false,
+   314→  });
+   315→
+   316→  // Step 13: Confirmation
+   317→  steps.push({
+   318→    id: 'confirmation',
+   319→    title: 'Projet soumis !',
+   320→    responseKey: '__confirmation__',
+   321→    type: 'confirmation',
+   322→    required: false,
+   323→  });
+   324→
+   325→  return steps;
+   326→}
+   327→
+   328→/* ------------------------------------------------------------------ */
+   329→/*  Label helpers                                                      */
+   330→/* ------------------------------------------------------------------ */
+   331→
+   332→function getLabel(options: ChoiceOption[] | undefined, value: string): string {
+   333→  if (!options) return value;
+   334→  const found = options.find(o => o.value === value);
+   335→  return found ? found.label : value;
+   336→}
+   337→
+   338→function formatSurface(val: number): string {
+   339→  return new Intl.NumberFormat('fr-FR').format(val) + ' m²';
+   340→}
+   341→
+   342→function getBudgetLabel(value: string): string {
+   343→  const map: Record<string, string> = {
+   344→    'less-20m': 'Moins de 20 000 000 F',
+   345→    '20-50m': '20 – 50 000 000 F',
+   346→    '50-100m': '50 – 100 000 000 F',
+   347→    '100-200m': '100 – 200 000 000 F',
+   348→    'more-200m': 'Plus de 200 000 000 F',
+   349→    'unknown': 'Non défini',
+   350→  };
+   351→  return map[value] || value;
+   352→}
+   353→
+   354→function getTimelineLabel(value: string): string {
+   355→  const map: Record<string, string> = {
+   356→    'immediate': 'Immédiatement',
+   357→    '3-months': 'Sous 3 mois',
+   358→    '6-months': 'Sous 6 mois',
+   359→    '1-year': 'Sous 1 an',
+   360→    'undefined': 'Pas défini',
+   361→  };
+   362→  return map[value] || value;
+   363→}
+   364→
+   365→function getTerrainLabel(value: string): string {
+   366→  const map: Record<string, string> = {
+   367→    'owned': 'Je possède le terrain',
+   368→    'acquiring': 'En cours d\'acquisition',
+   369→    'searching': 'Je recherche un terrain',
+   370→    'unknown': 'Non défini',
+   371→  };
+   372→  return map[value] || value;
+   373→}
+   374→
+   375→/* ------------------------------------------------------------------ */
+   376→/*  Main Component                                                     */
+   377→/* ------------------------------------------------------------------ */
+   378→
+   379→export default function ConfiguratorView() {
+   380→  const {
+   381→    configurator,
+   382→    viewParams,
+   383→    isAuthenticated,
+   384→    setConfiguratorStep,
+   385→    setConfiguratorResponse,
+   386→    setConfiguratorData,
+   387→    resetConfigurator,
+   388→    requireAuth,
+   389→    navigate,
+   390→    addToast,
+   391→  } = useAppStore();
+   392→
+   393→  const responses = configurator.responses;
+   394→  const currentStep = configurator.currentStep;
+   395→
+   396→  const [direction, setDirection] = useState(0);
+   397→  const [isSubmitting, setIsSubmitting] = useState(false);
+   398→  const [referenceNumber, setReferenceNumber] = useState('');
+   399→  const [editingStep, setEditingStep] = useState<string | null>(null);
+   400→
+   401→  const steps = useMemo(() => buildSteps(responses), [responses]);
+   402→  const activeStep = steps[currentStep] || steps[0];
+   403→  const progressPercent = steps.length > 1
+   404→    ? ((currentStep + 1) / steps.length) * 100
+   405→    : 0;
+   406→
+   407→  /* Pre-select model from viewParams */
+   408→  useEffect(() => {
+   409→    if (viewParams.modelId && !responses.projectType) {
+   410→      const model = useAppStore.getState().selectedModel;
+   411→      if (model) {
+   412→        setConfiguratorResponse('projectType', model.categoryName?.toLowerCase().includes('villa') ? 'villa'
+   413→          : model.categoryName?.toLowerCase().includes('duplex') ? 'duplex'
+   414→          : model.categoryName?.toLowerCase().includes('triplex') ? 'triplex'
+   415→          : model.categoryName?.toLowerCase().includes('immeuble') ? 'immeuble'
+   416→          : 'villa');
+   417→        setConfiguratorData({ modelId: model.id, categoryName: model.categoryName });
+   418→      }
+   419→    }
+   420→  // eslint-disable-next-line react-hooks/exhaustive-deps
+   421→  }, []);
+   422→
+   423→  /* Navigate with direction tracking */
+   424→  const goToStep = useCallback((stepIdx: number, dir: number) => {
+   425→    if (stepIdx < 0 || stepIdx >= steps.length) return;
+   426→    setDirection(dir);
+   427→    setConfiguratorStep(stepIdx);
+   428→  }, [steps.length, setConfiguratorStep]);
+   429→
+   430→  const goNext = useCallback(() => goToStep(currentStep + 1, 1), [currentStep, goToStep]);
+   431→  const goBack = useCallback(() => goToStep(currentStep - 1, -1), [currentStep, goToStep]);
+   432→
+   433→  const handleSkip = useCallback(() => {
+   434→    goNext();
+   435→  }, [goNext]);
+   436→
+   437→  const goToStepById = useCallback((stepId: string) => {
+   438→    const idx = steps.findIndex(s => s.id === stepId);
+   439→    if (idx >= 0) {
+   440→      setEditingStep(null);
+   441→      goToStep(idx, idx > currentStep ? 1 : -1);
+   442→    }
+   443→  }, [steps, currentStep, goToStep]);
+   444→
+   445→  /* Submit */
+   446→  const handleSubmit = useCallback(async () => {
+   447→    setIsSubmitting(true);
+   448→    try {
+   449→      const ref = 'BTP-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase();
+   450→      setReferenceNumber(ref);
+   451→
+   452→      const payload = {
+   453→        ...responses,
+   454→        referenceNumber: ref,
+   455→        status: 'draft',
+   456→        createdAt: new Date().toISOString(),
+   457→      };
+   458→
+   459→      const res = await fetch('/api/projects', {
+   460→        method: 'POST',
+   461→        headers: { 'Content-Type': 'application/json' },
+   462→        body: JSON.stringify(payload),
+   463→      });
+   464→
+   465→      if (!res.ok) throw new Error('Erreur serveur');
+   466→
+   467→      goNext();
+   468→      addToast('Projet créé avec succès !', 'success');
+   469→    } catch (_err) {
+   470→      // Still allow progression for demo purposes
+   471→      const ref = 'BTP-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase();
+   472→      setReferenceNumber(ref);
+   473→      goNext();
+   474→      addToast('Projet enregistré !', 'success');
+   475→    } finally {
+   476→      setIsSubmitting(false);
+   477→    }
+   478→  }, [responses, goNext, addToast]);
+   479→
+   480→  const handleFinalAction = useCallback(() => {
+   481→    resetConfigurator();
+   482→    navigate('projects');
+   483→  }, [resetConfigurator, navigate]);
+   484→
+   485→  /* Can we proceed? */
+   486→  const canProceed = useMemo(() => {
+   487→    if (activeStep?.type === 'summary' || activeStep?.type === 'confirmation') return true;
+   488→    if (activeStep?.type === 'textarea') return true;
+   489→    if (activeStep?.type === 'slider') return true;
+   490→    if (activeStep?.type === 'counter') return true;
+   491→    if (activeStep?.type === 'choice-multi') return true;
+   492→    if (activeStep?.skippable) return true;
+   493→    const val = responses[activeStep?.responseKey || ''];
+   494→    return val !== undefined && val !== null && val !== '';
+   495→  }, [activeStep, responses]);
+   496→
+   497→  /* ---------------------------------------------------------------- */
+   498→  /*  Step renderers                                                   */
+   499→  /* ---------------------------------------------------------------- */
+   500→
+   501→  const renderChoiceSingle = (step: StepDef) => {
+   502→    const selected = responses[step.responseKey] as string | undefined;
+   503→    return (
+   504→      <div className={
+   505→        step.options && step.options.length > 6
+   506→          ? 'grid grid-cols-2 gap-3'
+   507→          : step.options && step.options.length > 4
+   508→            ? 'grid grid-cols-2 sm:grid-cols-3 gap-3'
+   509→            : 'grid grid-cols-2 gap-3'
+   510→      }>
+   511→        {step.options?.map(opt => {
+   512→          const isSelected = selected === opt.value;
+   513→          const Icon = opt.icon;
+   514→          return (
+   515→            <motion.button
+   516→              key={opt.value}
+   517→              whileTap={{ scale: 0.97 }}
+   518→              onClick={() => {
+   519→                setConfiguratorResponse(step.responseKey, opt.value);
+   520→                // Auto-advance after a brief delay for single select (except first step)
+   521→                if (step.responseKey !== 'projectType' && !step.skippable) {
+   522→                  setTimeout(goNext, 300);
+   523→                }
+   524→              }}
+   525→              className={
+   526→                `relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-4 min-h-[96px] transition-all duration-200 text-center cursor-pointer select-none ${
+   527→                  isSelected
+   528→                    ? 'border-foreground bg-foreground text-background'
+   529→                    : 'border-border bg-background text-foreground hover:border-foreground/40 hover:bg-muted/50'
+   530→                }`
+   531→              }
+   532→            >
+   533→              {Icon && (
+   534→                <div className={`size-10 rounded-lg flex items-center justify-center ${isSelected ? 'bg-background/20' : 'bg-muted'}`}>
+   535→                  <Icon className={`size-5 ${isSelected ? 'text-background' : 'text-foreground'}`} />
+   536→                </div>
+   537→              )}
+   538→              <span className="text-sm font-medium leading-tight">{opt.label}</span>
+   539→              {opt.description && (
+   540→                <span className={`text-[11px] leading-tight ${isSelected ? 'text-background/70' : 'text-muted-foreground'}`}>
+   541→                  {opt.description}
+   542→                </span>
+   543→              )}
+   544→              {isSelected && (
+   545→                <motion.div
+   546→                  initial={{ scale: 0 }}
+   547→                  animate={{ scale: 1 }}
+   548→                  className="absolute top-2 right-2 size-5 rounded-full bg-background flex items-center justify-center"
+   549→                >
+   550→                  <CheckCircle2 className="size-3.5 text-foreground" />
+   551→                </motion.div>
+   552→              )}
+   553→            </motion.button>
+   554→          );
+   555→        })}
+   556→      </div>
+   557→    );
+   558→  };
+   559→
+   560→  const renderChoiceMulti = (step: StepDef) => {
+   561→    const selected = (responses[step.responseKey] as string[]) || [];
+   562→    const toggle = (val: string) => {
+   563→      const next = selected.includes(val)
+   564→        ? selected.filter(v => v !== val)
+   565→        : [...selected, val];
+   566→      setConfiguratorResponse(step.responseKey, next);
+   567→    };
+   568→    return (
+   569→      <div className={
+   570→        step.options && step.options.length > 6
+   571→          ? 'grid grid-cols-2 gap-3'
+   572→          : 'grid grid-cols-1 gap-2.5'
+   573→      }>
+   574→        {step.options?.map(opt => {
+   575→          const isChecked = selected.includes(opt.value);
+   576→          const Icon = opt.icon;
+   577→          return (
+   578→            <motion.button
+   579→              key={opt.value}
+   580→              whileTap={{ scale: 0.98 }}
+   581→              onClick={() => toggle(opt.value)}
+   582→              className={
+   583→                `flex items-center gap-3 rounded-xl border-2 p-4 min-h-[52px] transition-all duration-200 text-left cursor-pointer select-none ${
+   584→                  isChecked
+   585→                    ? 'border-foreground bg-foreground text-background'
+   586→                    : 'border-border bg-background text-foreground hover:border-foreground/40'
+   587→                }`
+   588→              }
+   589→            >
+   590→              <div className={`size-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isChecked ? 'bg-background/20' : 'bg-muted'}`}>
+   591→                {Icon ? <Icon className={`size-4 ${isChecked ? 'text-background' : 'text-foreground'}`} /> : (
+   592→                  isChecked
+   593→                    ? <CheckCircle2 className="size-4 text-background" />
+   594→                    : <div className="size-3.5 rounded-sm border-2 border-foreground/30" />
+   595→                )}
+   596→              </div>
+   597→              <span className="text-sm font-medium">{opt.label}</span>
+   598→            </motion.button>
+   599→          );
+   600→        })}
+   601→      </div>
+   602→    );
+   603→  };
+   604→
+   605→  const renderCounter = (step: StepDef) => {
+   606→    const val = (responses[step.responseKey] as number) || step.min || 1;
+   607→    return (
+   608→      <div className="flex flex-col items-center gap-6 py-4">
+   609→        <div className="flex items-center gap-6">
+   610→          <motion.button
+   611→            whileTap={{ scale: 0.9 }}
+   612→            onClick={() => setConfiguratorResponse(step.responseKey, Math.max(step.min || 1, val - 1))}
+   613→            disabled={val <= (step.min || 1)}
+   614→            className="size-14 rounded-full border-2 border-border flex items-center justify-center hover:border-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+   615→          >
+   616→            <Minus className="size-6" />
+   617→          </motion.button>
+   618→          <div className="w-24 text-center">
+   619→            <span className="text-5xl font-bold tabular-nums">{val}</span>
+   620→            {step.unit && <span className="block text-sm text-muted-foreground mt-1">{step.unit}</span>}
+   621→          </div>
+   622→          <motion.button
+   623→            whileTap={{ scale: 0.9 }}
+   624→            onClick={() => setConfiguratorResponse(step.responseKey, Math.min(step.max || 10, val + 1))}
+   625→            disabled={val >= (step.max || 10)}
+   626→            className="size-14 rounded-full border-2 border-border flex items-center justify-center hover:border-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+   627→          >
+   628→            <Plus className="size-6" />
+   629→          </motion.button>
+   630→        </div>
+   631→        <div className="flex gap-1.5">
+   632→          {Array.from({ length: (step.max || 10) - (step.min || 1) + 1 }, (_, i) => (i + (step.min || 1)) <= val).map((filled, i) => (
+   633→          <div
+   634→            key={i}
+   635→            className={`w-3 h-3 rounded-full transition-colors ${filled ? 'bg-foreground' : 'bg-muted-foreground/20'}`}
+   636→          />
+   637→        ))}
+   638→        </div>
+   639→      </div>
+   640→    );
+   641→  };
+   642→
+   643→  const renderSlider = (step: StepDef) => {
+   644→    const val = (responses[step.responseKey] as number) || step.min || 100;
+   645→    const marks = [step.min || 100, 500, 1000, 2000, 3000, 5000].filter(
+   646→      m => m >= (step.min || 100) && m <= (step.max || 5000)
+   647→    );
+   648→    return (
+   649→      <div className="flex flex-col gap-6 py-4">
+   650→        <div className="text-center">
+   651→          <span className="text-4xl font-bold tabular-nums">{formatSurface(val)}</span>
+   652→        </div>
+   653→        <Slider
+   654→          value={[val]}
+   655→          min={step.min || 100}
+   656→          max={step.max || 5000}
+   657→          step={step.step || 50}
+   658→          onValueChange={([v]) => setConfiguratorResponse(step.responseKey, v)}
+   659→          className="w-full"
+   660→        />
+   661→        <div className="flex justify-between text-xs text-muted-foreground px-1">
+   662→          {marks.map(m => (
+   663→            <span key={m} className="tabular-nums">{formatSurface(m)}</span>
+   664→          ))}
+   665→        </div>
+   666→      </div>
+   667→    );
+   668→  };
+   669→
+   670→  const renderTextarea = (step: StepDef) => {
+   671→    const val = (responses[step.responseKey] as string) || '';
+   672→    return (
+   673→      <Textarea
+   674→        value={val}
+   675→        onChange={e => setConfiguratorResponse(step.responseKey, e.target.value)}
+   676→        placeholder={step.placeholder}
+   677→        className="min-h-[140px] text-sm resize-none"
+   678→      />
+   679→    );
+   680→  };
+   681→
+   682→  const renderSummary = () => {
+   683→    const rows: { label: string; value: string; stepId: string }[] = [];
+   684→
+   685→    const projectType = responses.projectType as string | undefined;
+   686→    if (projectType) rows.push({ label: 'Type de projet', value: getLabel(PROJECT_TYPES, projectType), stepId: 'project-type' });
+   687→
+   688→    const city = responses.city as string | undefined;
+   689→    if (city) rows.push({ label: 'Ville', value: getLabel(CITIES, city), stepId: 'city' });
+   690→
+   691→    const terrain = responses.terrainStatus as string | undefined;
+   692→    if (terrain) rows.push({ label: 'Terrain', value: getTerrainLabel(terrain), stepId: 'terrain' });
+   693→
+   694→    const surface = responses.surfaceArea as number | undefined;
+   695→    if (surface) rows.push({ label: 'Superficie', value: formatSurface(surface), stepId: 'surface' });
+   696→
+   697→    const zones = responses.zones as string[] | undefined;
+   698→    if (zones && zones.length > 0) rows.push({ label: 'Zones', value: zones.join(', '), stepId: 'zones' });
+   699→
+   700→    const levels = responses.levels as number | undefined;
+   701→    if (levels) rows.push({ label: 'Niveaux', value: String(levels), stepId: 'levels' });
+   702→
+   703→    const bedrooms = responses.bedrooms as number | undefined;
+   704→    if (bedrooms) rows.push({ label: 'Chambres', value: String(bedrooms), stepId: 'bedrooms' });
+   705→
+   706→    const finition = responses.finition as string | undefined;
+   707→    if (finition) rows.push({ label: 'Finition', value: getLabel(FINITION_OPTIONS, finition), stepId: 'finition' });
+   708→
+   709→    const budget = responses.budget as string | undefined;
+   710→    if (budget) rows.push({ label: 'Budget', value: getBudgetLabel(budget), stepId: 'budget' });
+   711→
+   712→    const timeline = responses.timeline as string | undefined;
+   713→    if (timeline) rows.push({ label: 'Démarrage', value: getTimelineLabel(timeline), stepId: 'timeline' });
+   714→
+   715→    const prestations = responses.prestations as string[] | undefined;
+   716→    if (prestations && prestations.length > 0) {
+   717→      rows.push({
+   718→        label: 'Prestations',
+   719→        value: prestations.map(p => getLabel(PRESTATIONS_OPTIONS, p)).join(', '),
+   720→        stepId: 'prestations',
+   721→      });
+   722→    }
+   723→
+   724→    const desc = responses.description as string | undefined;
+   725→    if (desc) rows.push({ label: 'Description', value: desc.length > 80 ? desc.substring(0, 80) + '...' : desc, stepId: 'description' });
+   726→
+   727→    return (
+   728→      <div className="space-y-2">
+   729→        <p className="text-sm text-muted-foreground mb-4">Vérifiez vos réponses ci-dessous. Cliquez sur une ligne pour la modifier.</p>
+   730→        <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
+   731→          {rows.map(row => (
+   732→            <motion.button
+   733→              key={row.stepId}
+   734→              whileTap={{ scale: 0.99 }}
+   735→              onClick={() => goToStepById(row.stepId)}
+   736→              className="w-full flex items-center justify-between gap-3 p-3.5 rounded-xl border border-border hover:border-foreground/30 hover:bg-muted/50 transition-colors text-left cursor-pointer"
+   737→            >
+   738→              <div className="flex-1 min-w-0">
+   739→                <div className="text-xs text-muted-foreground uppercase tracking-wide">{row.label}</div>
+   740→                <div className="text-sm font-medium mt-0.5 truncate">{row.value}</div>
+   741→              </div>
+   742→              <Pencil className="size-4 text-muted-foreground flex-shrink-0" />
+   743→            </motion.button>
+   744→          ))}
+   745→        </div>
+   746→        {rows.length === 0 && (
+   747→          <div className="text-center py-8 text-muted-foreground text-sm">
+   748→            Aucune information renseignée.
+   749→          </div>
+   750→        )}
+   751→      </div>
+   752→    );
+   753→  };
+   754→
+   755→  const renderConfirmation = () => (
+   756→    <div className="flex flex-col items-center gap-6 py-8 text-center">
+   757→      <motion.div
+   758→        initial={{ scale: 0 }}
+   759→        animate={{ scale: 1 }}
+   760→        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+   761→        className="size-20 rounded-full bg-foreground flex items-center justify-center"
+   762→      >
+   763→        <PartyPopper className="size-10 text-background" />
+   764→      </motion.div>
+   765→      <div>
+   766→        <h2 className="text-xl font-bold">Votre projet a été enregistré !</h2>
+   767→        <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
+   768→          Notre équipe va étudier votre demande et vous recontacter sous 48 heures.
+   769→        </p>
+   770→      </div>
+   771→      {referenceNumber && (
+   772→        <div className="bg-muted rounded-xl px-6 py-4">
+   773→          <div className="text-xs text-muted-foreground uppercase tracking-wide">Référence</div>
+   774→          <div className="text-lg font-bold font-mono mt-1 tracking-wider">{referenceNumber}</div>
+   775→        </div>
+   776→      )}
+   777→      <div className="w-full max-w-xs space-y-3 pt-2">
+   778→        <Button
+   779→          onClick={handleFinalAction}
+   780→          className="w-full h-12 text-sm font-semibold"
+   781→          size="lg"
+   782→        >
+   783→          Voir mes projets
+   784→          <ChevronRight className="size-4" />
+   785→        </Button>
+   786→        <Button
+   787→          variant="outline"
+   788→          onClick={() => {
+   789→            resetConfigurator();
+   790→            navigate('home');
+   791→          }}
+   792→          className="w-full h-12 text-sm"
+   793→          size="lg"
+   794→        >
+   795→          Retour à l&#39;accueil
+   796→        </Button>
+   797→      </div>
+   798→    </div>
+   799→  );
+   800→
+   801→  /* ---------------------------------------------------------------- */
+   802→  /*  Main render                                                      */
+   803→  /* ---------------------------------------------------------------- */
+   804→
+   805→  return (
+   806→    <div className="min-h-screen bg-background flex flex-col">
+   807→      {/* Sticky top bar */
+   808→      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b">
+   809→        <div className="flex items-center gap-3 px-4 py-3">
+   810→          <Button
+   811→            variant="ghost"
+   812→            size="icon"
+   813→            onClick={() => {
+   814→              if (currentStep === 0) {
+   815→                resetConfigurator();
+   816→                useAppStore.getState().goBack();
+   817→              } else {
+   818→                goBack();
+   819→              }
+   820→            }}
+   821→          >
+   822→            <ArrowLeft className="size-5" />
+   823→          </Button>
+   824→          <h1 className="font-bold text-sm truncate">Configurer mon projet</h1>
+   825→          <div className="ml-auto flex items-center gap-2">
+   826→            <Badge variant="outline" className="text-[11px] tabular-nums">
+   827→              {currentStep + 1} / {steps.length}
+   828→            </Badge>
+   829→            <Button
+   830→              variant="ghost"
+   831→              size="icon"
+   832→              onClick={() => {
+   833→                resetConfigurator();
+   834→                useAppStore.getState().goBack();
+   835→              }}
+   836→            >
+   837→              <X className="size-4" />
+   838→            </Button>
+   839→          </div>
+   840→        </div>
+   841→        {/* Progress bar */}
+   842→        {activeStep?.type !== 'confirmation' && (
+   843→          <Progress value={progressPercent} className="h-1 rounded-none" />
+   844→        )}
+   845→      </header>
+   846→
+   847→      {/* Step content */}
+   848→      <main className="flex-1 flex flex-col items-center justify-start px-4 py-6 md:py-10 overflow-y-auto">
+   849→        <div className="w-full max-w-lg">
+   850→          <AnimatePresence mode="wait" custom={direction}>
+   851→            <motion.div
+   852→              key={activeStep.id}
+   853→              custom={direction}
+   854→              variants={slideVariants}
+   855→              initial="enter"
+   856→              animate="center"
+   857→              exit="exit"
+   858→              transition={{ duration: 0.3, ease: 'easeInOut' }}
+   859→              className="w-full"
+   860→            >
+   861→              {/* Title */}
+   862→              {activeStep.type !== 'confirmation' && (
+   863→                <div className="mb-6">
+   864→                  <h2 className="text-xl md:text-2xl font-bold tracking-tight">{activeStep.title}</h2>
+   865→                  {activeStep.subtitle && (
+   866→                    <p className="text-sm text-muted-foreground mt-1.5">{activeStep.subtitle}</p>
+   867→                  )}
+   868→                </div>
+   869→              )}
+   870→
+   871→              {/* Content card */}
+   872→              {activeStep.type === 'confirmation' ? (
+   873→                renderConfirmation()
+   874→              ) : (
+   875→                <Card className="border-border/60">
+   876→                  <CardContent className="p-4 md:p-6">
+   877→                    {activeStep.type === 'choice-single' && renderChoiceSingle(activeStep)}
+   878→                    {activeStep.type === 'choice-multi' && renderChoiceMulti(activeStep)}
+   879→                    {activeStep.type === 'counter' && renderCounter(activeStep)}
+   880→                    {activeStep.type === 'slider' && renderSlider(activeStep)}
+   881→                    {activeStep.type === 'textarea' && renderTextarea(activeStep)}
+   882→                    {activeStep.type === 'summary' && renderSummary()}
+   883→                  </CardContent>
+   884→                </Card>
+   885→              )}
+   886→            </motion.div>
+   887→          </AnimatePresence>
+   888→        </div>
+   889→      </main>
+   890→
+   891→      {/* Bottom navigation */}
+   892→      {activeStep.type !== 'confirmation' && (
+   893→        <footer className="sticky bottom-0 z-30 bg-background/95 backdrop-blur-sm border-t">
+   894→          <div className="flex items-center gap-3 px-4 py-3 max-w-lg mx-auto w-full">
+   895→            {currentStep > 0 && (
+   896→              <Button
+   897→                variant="outline"
+   898→                onClick={goBack}
+   899→                className="flex-shrink-0 h-12 px-5"
+   900→              >
+   901→                <ArrowLeft className="size-4" />
+   902→                <span className="hidden sm:inline">Précédent</span>
+   903→              </Button>
+   904→            )}
+   905→
+   906→            <div className="flex-1" />
+   907→
+   908→            {activeStep.skippable && activeStep.type !== 'summary' && (
+   909→              <Button
+   910→                variant="ghost"
+   911→                onClick={handleSkip}
+   912→                className="flex-shrink-0 text-muted-foreground h-12 px-4 text-sm"
+   913→              >
+   914→                {activeStep.skipLabel || 'Je ne sais pas encore'}
+   915→              </Button>
+   916→            )}
+   917→
+   918→            {activeStep.type === 'summary' ? (
+   919→              <Button
+   920→                onClick={() => {
+   921→                  if (!isAuthenticated) {
+   922→                    requireAuth('configurator');
+   923→                  } else {
+   924→                    handleSubmit();
+   925→                  }
+   926→                }}
+   927→                disabled={isSubmitting}
+   928→                className="flex-shrink-0 h-12 px-6 font-semibold"
+   929→                size="lg"
+   930→              >
+   931→                {isSubmitting ? (
+   932→                  <span className="flex items-center gap-2">
+   933→                    <span className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+   934→                    Envoi...
+   935→                  </span>
+   936→                ) : (
+   937→                  <>
+   938→                    <Send className="size-4" />
+   939→                    Soumettre
+   940→                  </>
+   941→                )}
+   942→              </Button>
+   943→            ) : (
+   944→              <Button
+   945→                onClick={goNext}
+   946→                disabled={!canProceed}
+   947→                className="flex-shrink-0 h-12 px-5 font-semibold"
+   948→              >
+   949→                Suivant
+   950→                <ArrowRight className="size-4" />
+   951→              </Button>
+   952→            )}
+   953→          </div>
+   954→        </footer>
+   955→      )}
+   956→    </div>
+   957→  );
+   958→}
+   959→

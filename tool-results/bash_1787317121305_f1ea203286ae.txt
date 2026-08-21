@@ -1,0 +1,1020 @@
+Next PID: 8745
+▲ Next.js 16.1.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://21.0.17.74:3000
+- Environments: .env
+
+✓ Starting...
+✓ Ready in 636ms
+○ Compiling / ...
+⨯ ./src/components/public/HomeView.tsx:5:1
+Export City doesn't exist in target module
+   3 | import { useRef } from 'react';
+   4 | import { motion, useInView } from 'framer-motion';
+>  5 | import {
+     | ^^^^^^^^
+>  6 |   Home, Building2, Building, Landmark, City, MapPin,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  7 |   Grid3X3, Hammer, Route, Construction, Droplets, FileText,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  8 |   ArrowRight, ChevronRight, Phone, Mail, MapPinIcon,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  9 |   Maximize2, BedDouble, Bath, Layers, Clock, Star,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 10 | } from 'lucide-react';
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+  11 | import { Button } from '@/components/ui/button';
+  12 | import { Card, CardContent } from '@/components/ui/card';
+  13 | import { Badge } from '@/components/ui/badge';
+
+The export City was not found in module [project]/node_modules/lucide-react/dist/esm/lucide-react.js [app-client] (ecmascript).
+Did you mean to import Citrus?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/components/public/HomeView.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/public/HomeView.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/components/public/HomeView.tsx:5:1
+Export City doesn't exist in target module
+   3 | import { useRef } from 'react';
+   4 | import { motion, useInView } from 'framer-motion';
+>  5 | import {
+     | ^^^^^^^^
+>  6 |   Home, Building2, Building, Landmark, City, MapPin,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  7 |   Grid3X3, Hammer, Route, Construction, Droplets, FileText,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  8 |   ArrowRight, ChevronRight, Phone, Mail, MapPinIcon,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  9 |   Maximize2, BedDouble, Bath, Layers, Clock, Star,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 10 | } from 'lucide-react';
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+  11 | import { Button } from '@/components/ui/button';
+  12 | import { Card, CardContent } from '@/components/ui/card';
+  13 | import { Badge } from '@/components/ui/badge';
+
+The export City was not found in module [project]/node_modules/lucide-react/dist/esm/lucide-react.js [app-ssr] (ecmascript).
+Did you mean to import Citrus?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/components/public/HomeView.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/public/HomeView.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/components/public/ServicesView.tsx:5:1
+Export City doesn't exist in target module
+   3 | import { useRef } from 'react';
+   4 | import { motion, useInView } from 'framer-motion';
+>  5 | import {
+     | ^^^^^^^^
+>  6 |   ArrowLeft, Home, Building2, Building, Landmark, City, Hammer,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  7 |   Route, Construction, Droplets, FileText, HardHat, Ruler,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  8 |   ClipboardCheck, Truck, ArrowRight, Phone, Mail, MapPinIcon,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  9 |   CheckCircle2,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 10 | } from 'lucide-react';
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+  11 | import { Button } from '@/components/ui/button';
+  12 | import { Card, CardContent } from '@/components/ui/card';
+  13 | import { Separator } from '@/components/ui/separator';
+
+The export City was not found in module [project]/node_modules/lucide-react/dist/esm/lucide-react.js [app-client] (ecmascript).
+Did you mean to import Citrus?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/components/public/ServicesView.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/public/ServicesView.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/components/public/ServicesView.tsx:5:1
+Export City doesn't exist in target module
+   3 | import { useRef } from 'react';
+   4 | import { motion, useInView } from 'framer-motion';
+>  5 | import {
+     | ^^^^^^^^
+>  6 |   ArrowLeft, Home, Building2, Building, Landmark, City, Hammer,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  7 |   Route, Construction, Droplets, FileText, HardHat, Ruler,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  8 |   ClipboardCheck, Truck, ArrowRight, Phone, Mail, MapPinIcon,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  9 |   CheckCircle2,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 10 | } from 'lucide-react';
+     | ^^^^^^^^^^^^^^^^^^^^^^^
+  11 | import { Button } from '@/components/ui/button';
+  12 | import { Card, CardContent } from '@/components/ui/card';
+  13 | import { Separator } from '@/components/ui/separator';
+
+The export City was not found in module [project]/node_modules/lucide-react/dist/esm/lucide-react.js [app-ssr] (ecmascript).
+Did you mean to import Citrus?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/components/public/ServicesView.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/public/ServicesView.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:8:1
+Export ConfiguratorView doesn't exist in target module
+   6 | import { ExploreView } from '@/components/public/ExploreView';
+   7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+>  8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+
+The export ConfiguratorView was not found in module [project]/src/components/public/ConfiguratorView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:8:1
+Export ConfiguratorView doesn't exist in target module
+   6 | import { ExploreView } from '@/components/public/ExploreView';
+   7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+>  8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+
+The export ConfiguratorView was not found in module [project]/src/components/public/ConfiguratorView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:6:1
+Export ExploreView doesn't exist in target module
+  4 | import { useAppStore } from '@/stores/app-store';
+  5 | import { HomeView } from '@/components/public/HomeView';
+> 6 | import { ExploreView } from '@/components/public/ExploreView';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+  8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+  9 | import { RealizationsView } from '@/components/public/RealizationsView';
+
+The export ExploreView was not found in module [project]/src/components/public/ExploreView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:6:1
+Export ExploreView doesn't exist in target module
+  4 | import { useAppStore } from '@/stores/app-store';
+  5 | import { HomeView } from '@/components/public/HomeView';
+> 6 | import { ExploreView } from '@/components/public/ExploreView';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+  8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+  9 | import { RealizationsView } from '@/components/public/RealizationsView';
+
+The export ExploreView was not found in module [project]/src/components/public/ExploreView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:14:1
+Export FavoritesView doesn't exist in target module
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+> 14 | import { FavoritesView } from '@/components/client/FavoritesView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  15 | import { NotificationsView } from '@/components/client/NotificationsView';
+  16 | import { AdminView } from '@/components/admin/AdminView';
+  17 | import { BottomNav } from '@/components/shared/BottomNav';
+
+The export FavoritesView was not found in module [project]/src/components/client/FavoritesView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:14:1
+Export FavoritesView doesn't exist in target module
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+> 14 | import { FavoritesView } from '@/components/client/FavoritesView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  15 | import { NotificationsView } from '@/components/client/NotificationsView';
+  16 | import { AdminView } from '@/components/admin/AdminView';
+  17 | import { BottomNav } from '@/components/shared/BottomNav';
+
+The export FavoritesView was not found in module [project]/src/components/client/FavoritesView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:5:1
+Export HomeView doesn't exist in target module
+  3 | import { AnimatePresence, motion } from 'framer-motion';
+  4 | import { useAppStore } from '@/stores/app-store';
+> 5 | import { HomeView } from '@/components/public/HomeView';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 | import { ExploreView } from '@/components/public/ExploreView';
+  7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+  8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+
+The export HomeView was not found in module [project]/src/components/public/HomeView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:5:1
+Export HomeView doesn't exist in target module
+  3 | import { AnimatePresence, motion } from 'framer-motion';
+  4 | import { useAppStore } from '@/stores/app-store';
+> 5 | import { HomeView } from '@/components/public/HomeView';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  6 | import { ExploreView } from '@/components/public/ExploreView';
+  7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+  8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+
+The export HomeView was not found in module [project]/src/components/public/HomeView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:7:1
+Export ModelDetailView doesn't exist in target module
+   5 | import { HomeView } from '@/components/public/HomeView';
+   6 | import { ExploreView } from '@/components/public/ExploreView';
+>  7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+
+The export ModelDetailView was not found in module [project]/src/components/public/ModelDetailView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:7:1
+Export ModelDetailView doesn't exist in target module
+   5 | import { HomeView } from '@/components/public/HomeView';
+   6 | import { ExploreView } from '@/components/public/ExploreView';
+>  7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+
+The export ModelDetailView was not found in module [project]/src/components/public/ModelDetailView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:15:1
+Export NotificationsView doesn't exist in target module
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+> 15 | import { NotificationsView } from '@/components/client/NotificationsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  16 | import { AdminView } from '@/components/admin/AdminView';
+  17 | import { BottomNav } from '@/components/shared/BottomNav';
+  18 | import { PublicHeader } from '@/components/shared/PublicHeader';
+
+The export NotificationsView was not found in module [project]/src/components/client/NotificationsView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:15:1
+Export NotificationsView doesn't exist in target module
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+> 15 | import { NotificationsView } from '@/components/client/NotificationsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  16 | import { AdminView } from '@/components/admin/AdminView';
+  17 | import { BottomNav } from '@/components/shared/BottomNav';
+  18 | import { PublicHeader } from '@/components/shared/PublicHeader';
+
+The export NotificationsView was not found in module [project]/src/components/client/NotificationsView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:13:1
+Export ProfileView doesn't exist in target module
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+> 13 | import { ProfileView } from '@/components/client/ProfileView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+  15 | import { NotificationsView } from '@/components/client/NotificationsView';
+  16 | import { AdminView } from '@/components/admin/AdminView';
+
+The export ProfileView was not found in module [project]/src/components/client/ProfileView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:13:1
+Export ProfileView doesn't exist in target module
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+> 13 | import { ProfileView } from '@/components/client/ProfileView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+  15 | import { NotificationsView } from '@/components/client/NotificationsView';
+  16 | import { AdminView } from '@/components/admin/AdminView';
+
+The export ProfileView was not found in module [project]/src/components/client/ProfileView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:12:1
+Export ProjectDetailView doesn't exist in target module
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+> 12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+  15 | import { NotificationsView } from '@/components/client/NotificationsView';
+
+The export ProjectDetailView was not found in module [project]/src/components/client/ProjectDetailView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:12:1
+Export ProjectDetailView doesn't exist in target module
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+> 12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+  15 | import { NotificationsView } from '@/components/client/NotificationsView';
+
+The export ProjectDetailView was not found in module [project]/src/components/client/ProjectDetailView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:11:1
+Export ProjectsView doesn't exist in target module
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+> 11 | import { ProjectsView } from '@/components/client/ProjectsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+
+The export ProjectsView was not found in module [project]/src/components/client/ProjectsView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:11:1
+Export ProjectsView doesn't exist in target module
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+> 11 | import { ProjectsView } from '@/components/client/ProjectsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+
+The export ProjectsView was not found in module [project]/src/components/client/ProjectsView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:9:1
+Export RealizationsView doesn't exist in target module
+   7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+   8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+>  9 | import { RealizationsView } from '@/components/public/RealizationsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+
+The export RealizationsView was not found in module [project]/src/components/public/RealizationsView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:9:1
+Export RealizationsView doesn't exist in target module
+   7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+   8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+>  9 | import { RealizationsView } from '@/components/public/RealizationsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+
+The export RealizationsView was not found in module [project]/src/components/public/RealizationsView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:10:1
+Export ServicesView doesn't exist in target module
+   8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+> 10 | import { ServicesView } from '@/components/public/ServicesView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+
+The export ServicesView was not found in module [project]/src/components/public/ServicesView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:10:1
+Export ServicesView doesn't exist in target module
+   8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+> 10 | import { ServicesView } from '@/components/public/ServicesView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+
+The export ServicesView was not found in module [project]/src/components/public/ServicesView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+ GET / 500 in 26.0s (compile: 25.9s, render: 124ms)
+⚠ Cross origin request detected from preview-chat-62940588-086e-44b7-b516-ca3489e7deff.space-z.ai to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+=== LOG ===
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+> 15 | import { NotificationsView } from '@/components/client/NotificationsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  16 | import { AdminView } from '@/components/admin/AdminView';
+  17 | import { BottomNav } from '@/components/shared/BottomNav';
+  18 | import { PublicHeader } from '@/components/shared/PublicHeader';
+
+The export NotificationsView was not found in module [project]/src/components/client/NotificationsView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:15:1
+Export NotificationsView doesn't exist in target module
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+> 15 | import { NotificationsView } from '@/components/client/NotificationsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  16 | import { AdminView } from '@/components/admin/AdminView';
+  17 | import { BottomNav } from '@/components/shared/BottomNav';
+  18 | import { PublicHeader } from '@/components/shared/PublicHeader';
+
+The export NotificationsView was not found in module [project]/src/components/client/NotificationsView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:13:1
+Export ProfileView doesn't exist in target module
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+> 13 | import { ProfileView } from '@/components/client/ProfileView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+  15 | import { NotificationsView } from '@/components/client/NotificationsView';
+  16 | import { AdminView } from '@/components/admin/AdminView';
+
+The export ProfileView was not found in module [project]/src/components/client/ProfileView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:13:1
+Export ProfileView doesn't exist in target module
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+> 13 | import { ProfileView } from '@/components/client/ProfileView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+  15 | import { NotificationsView } from '@/components/client/NotificationsView';
+  16 | import { AdminView } from '@/components/admin/AdminView';
+
+The export ProfileView was not found in module [project]/src/components/client/ProfileView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:12:1
+Export ProjectDetailView doesn't exist in target module
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+> 12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+  15 | import { NotificationsView } from '@/components/client/NotificationsView';
+
+The export ProjectDetailView was not found in module [project]/src/components/client/ProjectDetailView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:12:1
+Export ProjectDetailView doesn't exist in target module
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+> 12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+  15 | import { NotificationsView } from '@/components/client/NotificationsView';
+
+The export ProjectDetailView was not found in module [project]/src/components/client/ProjectDetailView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:11:1
+Export ProjectsView doesn't exist in target module
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+> 11 | import { ProjectsView } from '@/components/client/ProjectsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+
+The export ProjectsView was not found in module [project]/src/components/client/ProjectsView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:11:1
+Export ProjectsView doesn't exist in target module
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+> 11 | import { ProjectsView } from '@/components/client/ProjectsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+  14 | import { FavoritesView } from '@/components/client/FavoritesView';
+
+The export ProjectsView was not found in module [project]/src/components/client/ProjectsView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:9:1
+Export RealizationsView doesn't exist in target module
+   7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+   8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+>  9 | import { RealizationsView } from '@/components/public/RealizationsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+
+The export RealizationsView was not found in module [project]/src/components/public/RealizationsView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:9:1
+Export RealizationsView doesn't exist in target module
+   7 | import { ModelDetailView } from '@/components/public/ModelDetailView';
+   8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+>  9 | import { RealizationsView } from '@/components/public/RealizationsView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  10 | import { ServicesView } from '@/components/public/ServicesView';
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+
+The export RealizationsView was not found in module [project]/src/components/public/RealizationsView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:10:1
+Export ServicesView doesn't exist in target module
+   8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+> 10 | import { ServicesView } from '@/components/public/ServicesView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+
+The export ServicesView was not found in module [project]/src/components/public/ServicesView.tsx [app-client] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+
+./src/app/page.tsx:10:1
+Export ServicesView doesn't exist in target module
+   8 | import { ConfiguratorView } from '@/components/public/ConfiguratorView';
+   9 | import { RealizationsView } from '@/components/public/RealizationsView';
+> 10 | import { ServicesView } from '@/components/public/ServicesView';
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  11 | import { ProjectsView } from '@/components/client/ProjectsView';
+  12 | import { ProjectDetailView } from '@/components/client/ProjectDetailView';
+  13 | import { ProfileView } from '@/components/client/ProfileView';
+
+The export ServicesView was not found in module [project]/src/components/public/ServicesView.tsx [app-ssr] (ecmascript).
+Did you mean to import default?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+
+
+ GET / 500 in 26.0s (compile: 25.9s, render: 124ms)
+⚠ Cross origin request detected from preview-chat-62940588-086e-44b7-b516-ca3489e7deff.space-z.ai to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+=== PROCESS ===
+  PID TTY          TIME CMD
+ 8745 ?        00:00:00 bash
+=== PORTS ===
+tcp6       0      0 :::3000                 :::*                    LISTEN     
+tcp6       0      0 ::1:46310               ::1:3000                ESTABLISHED
+tcp6       0      0 ::1:3000                ::1:45950               TIME_WAIT  
+tcp6       0      0 ::1:3000                ::1:46332               TIME_WAIT  
+tcp6       0      0 ::1:3000                ::1:46320               TIME_WAIT  
+tcp6       0      0 ::1:3000                ::1:46310               ESTABLISHED

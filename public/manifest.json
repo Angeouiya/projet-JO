@@ -1,0 +1,21 @@
+{
+  "name": "BÂTI·CI — Construction & Architecture",
+  "short_name": "BÂTI·CI",
+  "description": "Votre projet de construction, bien construit. Villas, duplex, immeubles, promotion immobilière.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "fr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/images/hero-villa.png",
+      "sizes": "1344x768",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

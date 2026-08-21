@@ -1,0 +1,438 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  phone         String?   @unique
+  passwordHash  String?
+  name          String
+  type          String    @default("client") // client, admin, employee
+  role          String    @default("client") // super_admin, admin, direction, commercial, architecte, ingenieur, economiste, metreur, conducteur, chef_projet, comptable, support, lecteur
+  avatar        String?
+  isActive      Boolean   @default(true)
+  emailVerified Boolean   @default(false)
+  phoneVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  clientProfile  ClientProfile?
+  employeeProfile EmployeeProfile?
+  projects       Project[]
+  favorites      Favorite[]
+  notifications  Notification[]
+  messages       Message[]
+  activityLogs   ActivityLog[]
+}
+
+model ClientProfile {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientType      String  @default("particulier") // particulier, entreprise, promoteur, institution
+  companyName     String?
+  companyType     String?
+  rccm            String?
+  nif             String?
+  adresse         String?
+  ville           String?
+  commune         String?
+  quartier        String?
+}
+
+model EmployeeProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poste     String?
+  departement String?
+  specialite String?
+}
+
+model ProjectCategory {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  icon        String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  parentId    String?
+  parent      ProjectCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    ProjectCategory[]  @relation("CategoryTree")
+  models      CatalogModel[]
+  projects    Project[]
+  createdAt   DateTime @default(now())
+}
+
+model CatalogModel {
+  id                String   @id @default(cuid())
+  name              String
+  slug              String   @unique
+  description       String?
+  categoryId        String
+  category          ProjectCategory @relation(fields: [categoryId], references: [id])
+  mainImage         String?
+  images            String   @default("[]") // JSON array
+  plans             String   @default("[]")
+  levels            Int      @default(1)
+  rooms             Int?
+  bedrooms          Int?
+  bathrooms         Int?
+  surfaceArea       Float?
+  minLandArea       Float?
+  standing          String   @default("standard") // economique, standard, premium, luxe
+  style             String?
+  equipment         String   @default("[]") // JSON array
+  budgetMin         Float?
+  budgetMax         Float?
+  currency          String   @default("XOF")
+  durationMin       Int?
+  durationMax       Int?
+  variants          String   @default("[]")
+  features          String   @default("[]")
+  viewCount         Int      @default(0)
+  selectCount       Int      @default(0)
+  isPublished       Boolean  @default(false)
+  isFeatured        Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  favorites Favorite[]
+  projects Project[]
+  similarModels CatalogModelSimilar[] @relation("SimilarA")
+  similarTo     CatalogModelSimilar[] @relation("SimilarB")
+}
+
+model CatalogModelSimilar {
+  id         String        @id @default(cuid())
+  modelAId   String
+  modelBId   String
+  modelA     CatalogModel  @relation("SimilarA", fields: [modelAId], references: [id], onDelete: Cascade)
+  modelB     CatalogModel  @relation("SimilarB", fields: [modelBId], references: [id], onDelete: Cascade)
+  @@unique([modelAId, modelBId])
+}
+
+model Favorite {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  modelId   String
+  model     CatalogModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  @@unique([userId, modelId])
+}
+
+model Project {
+  id                String    @id @default(cuid())
+  referenceNumber   String    @unique
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  modelId           String?
+  model             CatalogModel? @relation(fields: [modelId], references: [id])
+  categoryId        String?
+  category          ProjectCategory? @relation(fields: [categoryId], references: [id])
+  status            String    @default("draft") // draft, submitted, verifying, info_required, visit_planned, studying, estimating, proposal_ready, quote_sent, modification_requested, awaiting_validation, accepted, contract_prep, payment_pending, planning, in_progress, suspended, provisional_acceptance, corrections, final_acceptance, delivered, archived, refused
+  title             String?
+  description       String?
+  budgetMin         Float?
+  budgetMax         Float?
+  currency          String    @default("XOF")
+  startDate         DateTime?
+  desiredStart      DateTime?
+  duration          Int?
+  urgency           String    @default("normal") // faible, normal, haut, urgent
+  financing         String?
+  country           String    @default("Côte d'Ivoire")
+  region            String?
+  city              String?
+  commune           String?
+  quartier          String?
+  adresse           String?
+  latitude          Float?
+  longitude         Float?
+  formData          String    @default("{}") // JSON - all dynamic form responses
+  missingInfo       String    @default("[]") // JSON array
+  technicalNotes    String?
+  assignedTo        String?
+  progress          Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  terrain           Terrain?
+  documents         ProjectDocument[]
+  messages          ProjectMessage[]
+  appointments      Appointment[]
+  estimates         Estimate[]
+  quotes            Quote[]
+  invoices          Invoice[]
+  payments          Payment[]
+  chantier          Chantier?
+  activityLogs      ActivityLog[]
+}
+
+model Terrain {
+  id               String   @id @default(cuid())
+  projectId        String   @unique
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status           String   @default("none") // owned, acquiring, searching, proposed, unknown
+  surfaceArea      Float?
+  length           Float?
+  width            Float?
+  shape            String?
+  slope            String?
+  currentUse       String?  // vide, batit
+  accessibility    String?
+  roadState        String?
+  hasWater         Boolean  @default(false)
+  hasElectricity   Boolean  @default(false)
+  hasSewerage      Boolean  @default(false)
+  hasACD           Boolean  @default(false)
+  hasTitleDeed     Boolean  @default(false)
+  hasVillageCert   Boolean  @default(false)
+  hasBoundaryPlan  Boolean  @default(false)
+  hasTopoSurvey    Boolean  @default(false)
+  hasGeoStudy      Boolean  @default(false)
+  hasPermit        Boolean  @default(false)
+  searchZones      String?  // JSON
+  searchBudget     Float?
+  usage            String?
+}
+
+model ProjectDocument {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  type        String   // plan, photo, video, document, contract, invoice, report, other
+  category    String?
+  filePath    String?
+  fileSize    Int?
+  mimeType    String?
+  version     Int      @default(1)
+  isVisible   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model ProjectMessage {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Appointment {
+  id          String    @id @default(cuid())
+  projectId   String?
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId      String
+  agentId     String?
+  title       String
+  description String?
+  date        DateTime
+  duration    Int       @default(60)
+  status      String    @default("planned") // planned, completed, cancelled, rescheduled
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  notes       String?
+  report      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Estimate {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version     Int       @default(1)
+  totalAmount Float?
+  currency    String    @default("XOF")
+  status      String    @default("draft") // draft, sent, accepted, refused, expired
+  notes       String?
+  isValidated Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Quote {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  estimateId  String?
+  version     Int       @default(1)
+  title       String?
+  totalAmount Float?
+  taxRate     Float?
+  taxAmount   Float?
+  discount    Float?
+  finalAmount Float?
+  currency    String    @default("XOF")
+  conditions  String?
+  status      String    @default("draft") // draft, sent, modification_requested, accepted, refused, expired
+  isValidated Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  lines       QuoteLine[]
+}
+
+model QuoteLine {
+  id          String  @id @default(cuid())
+  quoteId     String
+  quote       Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  lot         String?
+  description String
+  quantity    Float?
+  unit        String?
+  unitPrice   Float?
+  total       Float?
+  order       Int     @default(0)
+}
+
+model Invoice {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  quoteId       String?
+  invoiceNumber String    @unique
+  amount        Float
+  tax           Float?
+  total         Float?
+  currency      String    @default("XOF")
+  status        String    @default("pending") // pending, paid, partially_paid, overdue, cancelled
+  dueDate       DateTime?
+  paidAmount    Float     @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  payments      Payment[]
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  projectId     String?
+  project       Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  userId        String?
+  amount        Float
+  currency      String   @default("XOF")
+  method        String   // wave, orange_money, mtn, card, cash, bank_transfer
+  reference     String?
+  status        String   @default("pending") // pending, completed, failed, refunded
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+}
+
+model Chantier {
+  id              String   @id @default(cuid())
+  projectId       String   @unique
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status          String   @default("planning") // planning, started, in_progress, delayed, suspended, completed
+  startDate       DateTime?
+  endDate         DateTime?
+  progress        Int      @default(0)
+  phases          String   @default("[]") // JSON
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  reports         ChantierReport[]
+}
+
+model ChantierReport {
+  id          String   @id @default(cuid())
+  chantierId  String
+  chantier    Chantier @relation(fields: [chantierId], references: [id], onDelete: Cascade)
+  title       String
+  content     String
+  photos      String   @default("[]")
+  progress    Int?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  message     String
+  type        String   @default("info") // info, success, warning, error, action
+  link        String?  // internal link / view
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  senderId    String?
+  subject     String?
+  content     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  action      String
+  details     String?  // JSON
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+}
+
+model AnonymousDraft {
+  id          String   @id @default(cuid())
+  draftKey    String   @unique
+  formData    String   @default("{}")
+  currentStep Int      @default(0)
+  selectedModel String?
+  returnUrl   String?
+  filters     String?  // JSON
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FormQuestion {
+  id          String   @id @default(cuid())
+  categoryId  String?
+  step        Int      @default(1)
+  question    String
+  fieldType   String   // text, number, select, multiselect, radio, checkbox, slider, image_upload, file_upload, location, date
+  options     String   @default("[]") // JSON
+  placeholder String?
+  isRequired  Boolean  @default(false)
+  condition   String?  // JSON - conditional logic
+  icon        String?
+  image       String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SiteSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  type  String @default("string")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
