@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, type Variants } from 'framer-motion';
 import {
   ArrowLeft, Home, Building2, Building, Landmark, Hammer,
   Route, Construction, Droplets, FileText, HardHat, Ruler,
@@ -13,11 +13,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
 
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
 };
-const stagger = { visible: { transition: { staggerChildren: 0.08 } } };
+const stagger: Variants = { visible: { transition: { staggerChildren: 0.08 } } };
 
 interface Service {
   icon: React.ElementType;
@@ -32,7 +32,7 @@ const SERVICES: Service[] = [
     icon: Home,
     title: 'Construction de villas',
     description: 'Villas basses, maisons familiales, résidences de plain-pied ou à étage.',
-    details: ['Villa basse R+1', 'Maison contemporaine', 'Villa tropicale', 'Maison économique'],
+    details: ['Villa basse', 'Maison contemporaine', 'Villa tropicale', 'Maison économique'],
     image: '/images/villa-1.png',
   },
   {
@@ -51,9 +51,9 @@ const SERVICES: Service[] = [
   },
   {
     icon: Landmark,
-    title: 'Immeubles & R+4',
+    title: 'Immeubles R+',
     description: 'Immeubles collectifs, résidences avec ascenseur, parking et commerces.',
-    details: ['Immeuble R+3 à R+5', 'Résidence avec ascenseur', 'Immeuble mixte', 'Boutiques RDC'],
+    details: ['Immeuble R+', 'Résidence avec ascenseur', 'Immeuble mixte', 'Boutiques RDC'],
     image: '/images/immeuble-1.png',
   },
   {

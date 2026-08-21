@@ -29,7 +29,7 @@ const REALIZATIONS: Realization[] = [
     id: 'r1', title: 'Villa Cocody Palmeraie', category: 'Villa',
     image: '/images/villa-1.png', images: ['/images/villa-1.png', '/images/interieur-1.png'],
     city: 'Abidjan', surface: 280, year: '2024',
-    description: 'Villa R+1 avec piscine et jardin paysager. Livrée en 7 mois.',
+    description: 'Villa basse avec piscine et jardin paysager. Livrée en 7 mois.',
     span: 'col-span-2',
   },
   {
@@ -42,7 +42,7 @@ const REALIZATIONS: Realization[] = [
     id: 'r3', title: 'Immeuble Le Plateau', category: 'Immeuble',
     image: '/images/immeuble-1.png', images: ['/images/immeuble-1.png', '/images/chantier-1.png'],
     city: 'Abidjan', surface: 1800, year: '2023',
-    description: 'R+4 avec commerces RDC et parking sous-sol.',
+    description: 'Immeuble R+ avec commerces RDC et parking sous-sol.',
   },
   {
     id: 'r4', title: 'Cité Marcory 12', category: 'Cité',
@@ -80,7 +80,7 @@ const REALIZATIONS: Realization[] = [
     id: 'r9', title: 'Bureaux Plateau', category: 'Immeuble',
     image: '/images/bureau-1.png', images: ['/images/bureau-1.png', '/images/interieur-1.png'],
     city: 'Abidjan', surface: 800, year: '2024',
-    description: 'Immeuble de bureaux R+3 avec parking.',
+    description: 'Immeuble de bureaux R+ avec parking.',
   },
   {
     id: 'r10', title: 'Duplex Bouaké', category: 'Duplex',

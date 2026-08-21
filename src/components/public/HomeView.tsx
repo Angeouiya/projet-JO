@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, type Variants } from 'framer-motion';
 import {
   Home, Building2, Building, Landmark, MapPin,
   Grid3X3, Hammer, Route, Construction, Droplets, FileText,
@@ -15,11 +15,11 @@ import { useAppStore } from '@/stores/app-store';
 import { FORMAT_SHORT_XOF } from '@/types';
 import type { CatalogModelData } from '@/types';
 
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
 };
-const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
+const stagger: Variants = { visible: { transition: { staggerChildren: 0.1 } } };
 
 const categories = [
   { name: 'Villa basse', icon: Home, image: '/images/villa-1.png' },
@@ -90,7 +90,7 @@ const realizations = [
 
 const services = [
   { icon: Home, title: 'Construction maison', desc: 'Villas, duplex, triplex sur mesure' },
-  { icon: Landmark, title: 'Immeuble R+4', desc: 'Résidences et immeubles collectifs' },
+  { icon: Landmark, title: 'Immeuble R+', desc: 'Résidences et immeubles collectifs' },
   { icon: Landmark, title: 'Promotion', desc: 'Programmes immobiliers complets' },
   { icon: Hammer, title: 'Rénovation', desc: 'Réhabilitation et mise aux normes' },
   { icon: Route, title: 'VRD & Route', desc: 'Voirie, assainissement, réseau' },
@@ -107,7 +107,7 @@ const zones = [
 const testimonials = [
   { name: 'Aminata K.', quote: 'Ma villa livrée dans les délais, qualité irréprochable. Je recommande.', role: 'Propriétaire, Cocody' },
   { name: 'Moussa D.', quote: 'Professionnalisme de A à Z. Le suivi de chantier est transparent et rigoureux.', role: 'Promoteur, Riviera' },
-  { name: 'Fatou C.', quote: 'Notre immeuble R+3 a été livré en 16 mois. Excellent rapport qualité-prix.', role: 'Investisseuse, Plateau' },
+  { name: 'Fatou C.', quote: 'Notre immeuble R+ a été livré en 16 mois. Excellent rapport qualité-prix.', role: 'Investisseuse, Plateau' },
 ];
 
 function AnimatedSection({ children, className }: { children: React.ReactNode; className?: string }) {
