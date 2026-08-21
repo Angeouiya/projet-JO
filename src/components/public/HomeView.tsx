@@ -171,9 +171,8 @@ export function HomeView() {
               <ArrowRight className="size-4 ml-1" />
             </Button>
             <Button
-              variant="outline"
               size="lg"
-              className="border-white/30 text-white hover:bg-white/10 h-12 px-8 text-sm font-semibold"
+              className="border border-white/70 bg-black/35 text-white hover:bg-black/50 h-12 px-8 text-sm font-semibold"
               onClick={() => navigate('explore')}
             >
               Explorer les modèles
