@@ -78,12 +78,26 @@ function useDesktopViewport() {
   return isDesktop;
 }
 
-function LockedAccessView({ view, adminOnly = false }: { view: ViewName; adminOnly?: boolean }) {
+function LockedAccessView({
+  view,
+  adminOnly = false,
+  clientOnly = false,
+}: {
+  view: ViewName;
+  adminOnly?: boolean;
+  clientOnly?: boolean;
+}) {
   const { isAuthenticated, requireAuth, navigate } = useAppStore();
   const Icon = adminOnly ? ShieldAlert : LockKeyhole;
-  const title = adminOnly ? 'Accès administrateur verrouillé' : 'Espace privé verrouillé';
+  const title = adminOnly
+    ? 'Accès administrateur verrouillé'
+    : clientOnly
+      ? 'Espace client séparé'
+      : 'Espace privé verrouillé';
   const description = adminOnly
     ? "Cette zone est réservée aux comptes habilités. Aucun contenu d'administration n'est chargé sans autorisation."
+    : clientOnly
+      ? "Vous êtes connecté à la plateforme admin. Les projets, messages et profils clients restent dans un espace client distinct."
     : "Connectez-vous pour accéder aux données privées : profil, projets, messages, favoris et notifications.";
 
   return (
@@ -99,6 +113,11 @@ function LockedAccessView({ view, adminOnly = false }: { view: ViewName; adminOn
             {!isAuthenticated && (
               <Button className="h-11 rounded-lg" onClick={() => requireAuth(view)}>
                 Se connecter
+              </Button>
+            )}
+            {clientOnly && (
+              <Button className="h-11 rounded-lg" onClick={() => navigate('admin')}>
+                Ouvrir la plateforme admin
               </Button>
             )}
             <Button variant="outline" className="h-11 rounded-lg" onClick={() => navigate('home')}>
@@ -122,15 +141,20 @@ function GuardedViewRenderer({ view }: { view: ViewName }) {
     return <LockedAccessView view={view} />;
   }
 
+  if (PRIVATE_VIEWS.includes(view) && isAdmin) {
+    return <LockedAccessView view={view} clientOnly />;
+  }
+
   return <ViewRenderer view={view} />;
 }
 
 export default function Page() {
-  const { currentView, isAuthenticated } = useAppStore();
+  const { currentView, isAuthenticated, isAdmin } = useAppStore();
   const isDesktop = useDesktopViewport();
   const isFullscreen = FULLSCREEN_VIEWS.includes(currentView);
   const showDesktopClientShell = isDesktop
     && DESKTOP_CLIENT_SHELL_VIEWS.includes(currentView)
+    && !isAdmin
     && (isAuthenticated || !PUBLIC_VIEWS.includes(currentView));
 
   return (
@@ -147,13 +171,13 @@ export default function Page() {
         <>
           <PublicHeader />
 
-          <main className={`flex-1 ${isDesktop ? '' : 'pb-20'}`}>
+          <main className={`flex-1 ${isDesktop || isAdmin ? '' : 'pb-20'}`}>
             <div key={currentView}>
               <GuardedViewRenderer view={currentView} />
             </div>
           </main>
 
-          {!isDesktop && <BottomNav />}
+          {!isDesktop && !isAdmin && <BottomNav />}
         </>
       )}
       <AuthModal />

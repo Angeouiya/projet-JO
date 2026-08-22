@@ -52,26 +52,26 @@ export function PublicHeader() {
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <>
-              <Button
-                size="sm"
-                className="hidden gap-2 text-xs md:inline-flex"
-                onClick={() => navigate('dashboard')}
-              >
-                <LayoutDashboard className="size-3.5" />
-                Espace client
-              </Button>
-              {isAdmin && (
+              {isAdmin ? (
                 <Button
                   size="sm"
-                  variant="outline"
                   className="hidden gap-2 text-xs md:inline-flex"
                   onClick={() => navigate('admin')}
                 >
                   <ShieldCheck className="size-3.5" />
                   Plateforme admin
                 </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="hidden gap-2 text-xs md:inline-flex"
+                  onClick={() => navigate('dashboard')}
+                >
+                  <LayoutDashboard className="size-3.5" />
+                  Espace client
+                </Button>
               )}
-              <button onClick={() => navigate('notifications')} className="relative p-2 hover:bg-muted rounded-lg">
+              <button onClick={() => navigate(isAdmin ? 'admin-notifications' : 'notifications')} className="relative p-2 hover:bg-muted rounded-lg">
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-foreground text-background text-[9px] rounded-full flex items-center justify-center font-medium">
@@ -80,7 +80,7 @@ export function PublicHeader() {
                 )}
               </button>
               <button
-                onClick={() => navigate('profile')}
+                onClick={() => navigate(isAdmin ? 'admin-settings' : 'profile')}
                 className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium hover:bg-secondary transition-colors"
               >
                 {user?.name?.charAt(0) || 'U'}
@@ -111,25 +111,26 @@ export function PublicHeader() {
               <button onClick={() => { navigate('explore'); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm">Explorer</button>
               <button onClick={() => { navigate('realizations'); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm">Réalisations</button>
               <button onClick={() => { navigate('services'); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm">Services</button>
-              <button
-                onClick={() => {
-                  if (isAuthenticated) {
-                    navigate('dashboard');
-                  } else {
-                    requireAuth('dashboard');
-                  }
-                  setMenuOpen(false);
-                }}
-                className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm font-medium"
-              >
-                Espace client
-              </button>
-              {isAdmin && (
+              {isAdmin ? (
                 <button
                   onClick={() => { navigate('admin'); setMenuOpen(false); }}
                   className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm font-medium"
                 >
                   Plateforme admin
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (isAuthenticated) {
+                      navigate('dashboard');
+                    } else {
+                      requireAuth('dashboard');
+                    }
+                    setMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm font-medium"
+                >
+                  Espace client
                 </button>
               )}
               {!isAuthenticated && (

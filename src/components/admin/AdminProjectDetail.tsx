@@ -135,6 +135,7 @@ export function AdminProjectDetail() {
   const financing = project.financing || (project.formData?.financing as typeof project.financing);
   const visualProposal = project.visualProposal;
   const locationLabel = formatProjectLocation(project);
+  const latestInfoResponse = project.missingInfoResponses?.[0];
 
   const handleAssign = () => {
     if (!leadName.trim()) return;
@@ -439,6 +440,30 @@ export function AdminProjectDetail() {
                   <div>
                     <h2 className="text-sm font-semibold">Info demandée</h2>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">{project.missingInfo}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {latestInfoResponse && (
+            <Card className="py-0 gap-0">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <MessageSquareText className="mt-0.5 size-4 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-semibold">Réponse client reçue</h2>
+                    {latestInfoResponse.requestMessage && (
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Demande : {latestInfoResponse.requestMessage}
+                      </p>
+                    )}
+                    <p className="mt-2 rounded-lg border bg-muted/30 p-3 text-sm leading-6">
+                      {latestInfoResponse.message}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {latestInfoResponse.respondedBy || 'Client'} · {new Date(latestInfoResponse.respondedAt).toLocaleString('fr-FR')}
+                    </p>
                   </div>
                 </div>
               </CardContent>

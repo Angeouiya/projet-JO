@@ -9,7 +9,6 @@ import {
   LockKeyhole,
   MapPin,
   Search,
-  Settings,
   User,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +23,6 @@ type NavItem = {
   label: string;
   icon: typeof Home;
   private?: boolean;
-  admin?: boolean;
 };
 
 const DASHBOARD_NAV: NavItem[] = [
@@ -33,8 +31,6 @@ const DASHBOARD_NAV: NavItem[] = [
   { id: 'projects', label: 'Projets', icon: FolderKanban, private: true },
   { id: 'profile', label: 'Profil', icon: User, private: true },
 ];
-
-const ADMIN_NAV: NavItem = { id: 'admin', label: 'Administration', icon: Settings, private: true, admin: true };
 
 function getActiveId(view: ViewName): ViewName {
   if (['model-detail', 'search'].includes(view)) return 'explore';
@@ -168,15 +164,11 @@ export function DesktopDashboardShell({
   currentView: ViewName;
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isAdmin, user, navigate, requireAuth, notifications } = useAppStore();
+  const { isAuthenticated, user, navigate, requireAuth, notifications } = useAppStore();
   const activeId = getActiveId(currentView);
   const unreadCount = notifications.filter(notification => !notification.isRead).length;
 
   const handleNav = (item: NavItem) => {
-    if (item.admin && !isAdmin) {
-      requireAuth(item.id);
-      return;
-    }
     if (item.private && !isAuthenticated) {
       requireAuth(item.id);
       return;
@@ -187,7 +179,7 @@ export function DesktopDashboardShell({
   const renderNavItem = (item: NavItem) => {
     const Icon = item.icon;
     const active = activeId === item.id;
-    const locked = (item.private && !isAuthenticated) || (item.admin && !isAdmin);
+    const locked = item.private && !isAuthenticated;
 
     return (
       <button
@@ -224,11 +216,6 @@ export function DesktopDashboardShell({
               Nouveau dossier
               <ClipboardList className="size-4" />
             </Button>
-            {isAdmin && (
-              <div className="mt-4 border-t pt-4">
-                {renderNavItem(ADMIN_NAV)}
-              </div>
-            )}
           </nav>
 
           <div className="border-t p-4">

@@ -95,6 +95,7 @@ interface AppState {
   addProjectDocuments: (projectId: string, documents: ProjectDocumentData[]) => void;
   assignProjectLead: (projectId: string, leadName: string) => void;
   requestProjectInfo: (projectId: string, message: string) => void;
+  respondProjectInfo: (projectId: string, message: string) => void;
   sendProjectQuote: (projectId: string, amount: number, label?: string) => void;
   updateProjectQuoteStatus: (projectId: string, quoteId: string, status: 'accepted' | 'refused') => void;
   validateProjectVisualProposal: (projectId: string, proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
@@ -447,6 +448,53 @@ export const useAppStore = create<AppState>()(
             link: 'project-detail',
             projectId,
             actionLabel: 'Compléter',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications) };
+      }),
+      respondProjectInfo: (projectId, message) => set(s => {
+        const now = new Date().toISOString();
+        let projectRef = '';
+        const cleanMessage = message.trim();
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          projectRef = project.referenceNumber;
+          return {
+            ...project,
+            status: project.status === 'info_required' ? 'verifying' : project.status,
+            progress: Math.max(project.progress ?? 0, 10),
+            missingInfo: undefined,
+            missingInfoRequestedAt: undefined,
+            missingInfoResponses: [
+              {
+                id: uniqueId('info'),
+                message: cleanMessage,
+                requestMessage: project.missingInfo,
+                respondedAt: now,
+                respondedBy: s.user?.name || project.clientName || 'Client',
+              },
+              ...(project.missingInfoResponses ?? []),
+            ],
+            activityLog: [
+              activity('Information complémentaire transmise par le client', s.user?.name || project.clientName || 'Client', 'client'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+        const notifications = [
+          {
+            id: uniqueId('notif'),
+            title: 'Information client reçue',
+            message: `${projectRef || 'Le dossier'} a été complété par le client.`,
+            type: 'message',
+            link: 'admin-project-detail',
+            projectId,
+            actionLabel: 'Ouvrir',
             isRead: false,
             createdAt: now,
           },

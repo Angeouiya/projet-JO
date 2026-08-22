@@ -97,6 +97,7 @@ export interface ProjectData {
   assignedTo?: string;
   missingInfo?: string;
   missingInfoRequestedAt?: string;
+  missingInfoResponses?: ProjectInfoResponseData[];
   formData?: Record<string, unknown>;
   documents?: ProjectDocumentData[];
   quotes?: ProjectQuoteData[];
@@ -104,7 +105,7 @@ export interface ProjectData {
   financing?: ProjectFinancingData;
   activityLog?: ProjectActivityData[];
   createdAt: string;
- updatedAt: string;
+  updatedAt: string;
 }
 
 export interface ProjectDocumentData {
@@ -177,6 +178,14 @@ export interface ProjectFinancingData {
   notes?: string;
   milestones: ProjectPaymentMilestoneData[];
   updatedAt: string;
+}
+
+export interface ProjectInfoResponseData {
+  id: string;
+  message: string;
+  requestMessage?: string;
+  respondedAt: string;
+  respondedBy?: string;
 }
 
 export interface ProjectActivityData {

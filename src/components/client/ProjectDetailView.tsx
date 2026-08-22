@@ -45,6 +45,7 @@ type ProjectDetailData = {
   team: { name: string; role: string }[];
   documents: { type: string; name: string; date: string; icon: LucideIcon }[];
   messages: { id: string; sender: string; senderRole: string; text: string; time: string; isOwn: boolean }[];
+  infoResponses?: ProjectData['missingInfoResponses'];
   quotes: { id: string; label: string; amount: number; status: 'pending' | 'accepted' | 'refused'; date: string; }[];
   visualProposal?: ProjectVisualProposalData;
   financing?: ProjectFinancingData;
@@ -327,16 +328,27 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
       date: document.date,
       icon: getDocumentIcon(document.type, document.name),
     })),
-    messages: project.missingInfo ? [
-      {
-        id: `info-${project.id}`,
-        sender: 'Administration',
-        senderRole: 'Chargé de dossier',
-        text: project.missingInfo,
-        time: missingInfoDate,
-        isOwn: false,
-      },
-    ] : [],
+    messages: [
+      ...(project.missingInfo ? [
+        {
+          id: `info-${project.id}`,
+          sender: 'Administration',
+          senderRole: 'Chargé de dossier',
+          text: project.missingInfo,
+          time: missingInfoDate,
+          isOwn: false,
+        },
+      ] : []),
+      ...(project.missingInfoResponses ?? []).slice().reverse().map(response => ({
+        id: response.id,
+        sender: 'Vous',
+        senderRole: 'Client',
+        text: response.message,
+        time: new Date(response.respondedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        isOwn: true,
+      })),
+    ],
+    infoResponses: project.missingInfoResponses ?? [],
     quotes: (project.quotes ?? []).map(quote => ({
       id: quote.id,
       label: quote.label,
@@ -945,22 +957,29 @@ function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: 
   );
 }
 
-function MessagesTab({ data }: { data: ProjectDetailData }) {
+function MessagesTab({ data, onSend }: { data: ProjectDetailData; onSend?: (message: string) => void }) {
+  const addToast = useAppStore(state => state.addToast);
   const [newMessage, setNewMessage] = useState('');
   const [localMessages, setLocalMessages] = useState(data.messages);
+  const hasActiveInfoRequest = data.status === 'info_required' && data.messages.some(message => !message.isOwn);
 
   const handleSend = () => {
     if (!newMessage.trim()) return;
+    const text = newMessage.trim();
     const msg = {
       id: `m-${Date.now()}`,
       sender: 'Vous',
       senderRole: 'Client',
-      text: newMessage.trim(),
+      text,
       time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       isOwn: true,
     };
     setLocalMessages(prev => [...prev, msg]);
     setNewMessage('');
+    onSend?.(text);
+    if (onSend) {
+      addToast(hasActiveInfoRequest ? 'Information transmise à l’administration.' : 'Message transmis au dossier.', 'success');
+    }
   };
 
   return (
@@ -1003,7 +1022,7 @@ function MessagesTab({ data }: { data: ProjectDetailData }) {
       {/* Input */}
       <div className="border-t pt-3 flex gap-2">
         <Textarea
-          placeholder="Votre message..."
+          placeholder={hasActiveInfoRequest ? 'Répondez avec les informations demandées...' : 'Votre message...'}
           className="min-h-[44px] max-h-24 resize-none text-sm"
           rows={1}
           value={newMessage}
@@ -1020,6 +1039,7 @@ function MessagesTab({ data }: { data: ProjectDetailData }) {
           className="h-11 w-11 flex-shrink-0"
           onClick={handleSend}
           disabled={!newMessage.trim()}
+          aria-label={hasActiveInfoRequest ? 'Compléter le dossier' : 'Envoyer le message'}
         >
           <Send className="size-4" />
         </Button>
@@ -1564,7 +1584,7 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
 type TabValue = 'resume' | 'propositions' | 'financement' | 'documents' | 'messages' | 'devis' | 'chantier';
 
 export function ProjectDetailView() {
-  const { goBack, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal } = useAppStore();
+  const { goBack, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, respondProjectInfo } = useAppStore();
   const projectId = viewParams?.id || 'prj-001';
   const storedProject = userProjects.find(project => project.id === projectId || project.referenceNumber === projectId);
   const data = storedProject ? detailFromStoredProject(storedProject) : PROJECT_MAP[projectId] || PROJECT_MAP['prj-001'];
@@ -1655,7 +1675,12 @@ export function ProjectDetailView() {
                 onUpload={storedProject ? (documents) => addProjectDocuments(storedProject.id, documents) : undefined}
               />
             )}
-            {activeTab === 'messages' && <MessagesTab data={data} />}
+            {activeTab === 'messages' && (
+              <MessagesTab
+                data={data}
+                onSend={storedProject ? (message) => respondProjectInfo(storedProject.id, message) : undefined}
+              />
+            )}
             {activeTab === 'devis' && (
               <DevisTab
                 data={data}
