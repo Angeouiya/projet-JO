@@ -77,6 +77,14 @@ function isUniqueConstraintError(error: unknown) {
     && (error as { code?: unknown }).code === '23505';
 }
 
+function readonlyDatabaseResponse() {
+  return NextResponse.json({
+    error: 'Service base de données non configuré en écriture',
+    code: 'DATABASE_READONLY',
+    message: 'Le dossier peut être conservé localement, mais la persistance serveur nécessite une base de données externe writable.',
+  }, { status: 503 });
+}
+
 export async function GET(request: Request) {
   const parsed = projectQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   if (!parsed.success) return validationError(parsed.error);
@@ -174,6 +182,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ project, store: 'external' }, { status: 201 });
     }
 
+    if (process.env.VERCEL === '1') return readonlyDatabaseResponse();
+
     const result = await db.$transaction(async tx => {
       const user = userId
         ? await tx.user.upsert({
@@ -250,11 +260,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (isReadonlyDatabaseError(error)) {
       console.warn('Project create skipped: writable database is not configured for this runtime.');
-      return NextResponse.json({
-        error: 'Service base de données non configuré en écriture',
-        code: 'DATABASE_READONLY',
-        message: 'Le dossier peut être conservé localement, mais la persistance serveur nécessite une base de données externe writable.',
-      }, { status: 503 });
+      return readonlyDatabaseResponse();
     }
     if ((isPrismaKnownError(error) && error.code === 'P2002') || isUniqueConstraintError(error)) {
       return NextResponse.json({ error: 'Un dossier avec cette référence existe déjà.' }, { status: 409 });
