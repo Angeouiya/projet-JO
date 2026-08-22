@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { normalizeEmail, normalizeText, parseJsonField, serverError, validationError } from '@/lib/api-utils';
 import { createStoredProject, hasExternalProjectStore, listStoredProjects } from '@/lib/project-store';
+import type { ProjectDocumentData, ProjectFinancingData } from '@/types';
 
 const projectQuerySchema = z.object({
   userId: z.string().trim().min(1).optional(),
@@ -21,12 +22,24 @@ const projectCreateSchema = z.object({
   description: z.string().trim().max(2000).optional(),
   budgetMin: z.coerce.number().nonnegative().optional(),
   budgetMax: z.coerce.number().nonnegative().optional(),
+  categoryName: z.string().trim().min(1).max(120).optional(),
   clientName: z.string().trim().min(2).max(120).optional(),
   clientEmail: z.string().trim().email().optional(),
   clientPhone: z.string().trim().min(6).max(32).optional(),
   country: z.string().trim().min(1).max(120).optional(),
   city: z.string().trim().min(1).max(120).optional(),
   referenceNumber: z.string().trim().min(4).max(40).optional(),
+  status: z.string().trim().min(1).max(60).optional(),
+  progress: z.coerce.number().int().min(0).max(100).optional(),
+  financing: z.record(z.string(), z.unknown()).optional(),
+  documents: z.array(z.object({
+    id: z.string().trim().min(1),
+    name: z.string().trim().min(1),
+    type: z.string().trim().min(1),
+    date: z.string().trim().min(1),
+    url: z.string().trim().optional(),
+    size: z.coerce.number().optional(),
+  })).optional(),
   formData: z.record(z.string(), z.unknown()).optional(),
 }).passthrough();
 
@@ -143,15 +156,19 @@ export async function POST(request: Request) {
         clientEmail,
         clientPhone,
         categoryId: resolvedCategoryIdFromPayload || undefined,
+        categoryName: body.categoryName,
         modelId: body.modelId || undefined,
         title: body.title,
         description: body.description,
         formData: incomingFormData,
-        status: 'submitted',
+        status: body.status || 'submitted',
         city,
         budgetMin: body.budgetMin,
         budgetMax: body.budgetMax,
         country,
+        progress: body.progress ?? 5,
+        financing: body.financing as ProjectFinancingData | undefined,
+        documents: body.documents as ProjectDocumentData[] | undefined,
       });
 
       return NextResponse.json({ project, store: 'external' }, { status: 201 });

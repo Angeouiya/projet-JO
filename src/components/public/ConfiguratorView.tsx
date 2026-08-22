@@ -1441,6 +1441,12 @@ export function ConfiguratorView() {
       const city = getSubmittedCity(responses);
       const country = getSubmittedCountry(responses);
       const declaredDocuments = Array.isArray(responses.documents) ? responses.documents as string[] : [];
+      const declaredProjectDocuments = declaredDocuments.map((documentId) => ({
+        id: `doc-${ref}-${documentId}`,
+        name: getLabel(DOCUMENT_OPTIONS, documentId),
+        type: documentId,
+        date: new Date().toISOString().slice(0, 10),
+      }));
       setReferenceNumber(ref);
 
       const payload = {
@@ -1450,6 +1456,7 @@ export function ConfiguratorView() {
         clientEmail: user?.email,
         clientPhone: user?.phone,
         categorySlug: CATEGORY_SLUG_BY_TYPE[projectTypeValue] || projectTypeValue,
+        categoryName: getLabel(PROJECT_TYPES, projectTypeValue),
         modelId: configurator.modelId,
         title: `${getLabel(PROJECT_TYPES, projectTypeValue)}${city ? ` - ${city}` : ''}`,
         description: (responses.description as string | undefined) || buildAutoDescription(responses),
@@ -1457,6 +1464,10 @@ export function ConfiguratorView() {
         city: city || null,
         budgetMin: localBudgetMin,
         budgetMax: localBudgetMax,
+        progress: 5,
+        status: 'submitted',
+        financing,
+        documents: declaredProjectDocuments,
         formData: {
           ...responses,
           country,
@@ -1487,12 +1498,7 @@ export function ConfiguratorView() {
         status: 'submitted',
         formData: payload.formData,
         financing,
-        documents: declaredDocuments.map((documentId) => ({
-          id: `doc-${ref}-${documentId}`,
-          name: getLabel(DOCUMENT_OPTIONS, documentId),
-          type: documentId,
-          date: new Date().toISOString().slice(0, 10),
-        })),
+        documents: declaredProjectDocuments,
       };
 
       const res = await fetch('/api/projects', {
