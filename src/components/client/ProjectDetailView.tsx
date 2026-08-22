@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectVisualProposalData } from '@/types';
 
 // ── Mock data ──────────────────────────────────────────────
@@ -362,6 +363,90 @@ function getProposalStorageKey(referenceNumber: string) {
   return `${PROPOSAL_STORAGE_PREFIX}:${referenceNumber}`;
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildProposalHtml(proposal: VisualProposal, data: ProjectDetailData) {
+  const imageUrl = new URL(proposal.image, window.location.origin).href;
+  const strengths = proposal.strengths.map(strength => `<li>${escapeHtml(strength)}</li>`).join('');
+
+  return `<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(proposal.title)} - ${escapeHtml(data.referenceNumber)}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; color: #111; background: #fff; }
+    .sheet { max-width: 920px; margin: 0 auto; padding: 40px; }
+    .top { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #111; padding-bottom: 18px; }
+    .brand { font-size: 24px; font-weight: 800; }
+    .ref { text-align: right; font-size: 12px; line-height: 1.6; color: #555; }
+    h1 { margin: 28px 0 12px; font-size: 32px; line-height: 1.15; }
+    .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0; }
+    .box { border: 1px solid #ddd; border-radius: 8px; padding: 14px; }
+    .label { font-size: 10px; text-transform: uppercase; color: #666; letter-spacing: .08em; font-weight: 700; }
+    .value { margin-top: 8px; font-size: 14px; font-weight: 700; }
+    img { width: 100%; border-radius: 10px; margin: 20px 0; }
+    p { line-height: 1.65; color: #333; }
+    ul { margin: 10px 0 0; padding-left: 20px; line-height: 1.7; }
+    .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+    @media print { .sheet { padding: 24px; } }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <div class="top">
+      <div>
+        <div class="brand">Buildify</div>
+        <div>Fiche de proposition visuelle</div>
+      </div>
+      <div class="ref">
+        <div>Dossier ${escapeHtml(data.referenceNumber)}</div>
+        <div>${escapeHtml(data.title)}</div>
+        <div>${escapeHtml(data.city)}</div>
+      </div>
+    </div>
+    <h1>${escapeHtml(proposal.title)}</h1>
+    <p>${escapeHtml(proposal.description)}</p>
+    <img src="${imageUrl}" alt="${escapeHtml(proposal.title)}" />
+    <section class="meta">
+      <div class="box"><div class="label">Catégorie</div><div class="value">${escapeHtml(proposal.category)}</div></div>
+      <div class="box"><div class="label">Budget indicatif</div><div class="value">${escapeHtml(proposal.estimate)}</div></div>
+      <div class="box"><div class="label">Délai prévu</div><div class="value">${escapeHtml(proposal.duration)}</div></div>
+    </section>
+    <section class="box">
+      <div class="label">Livrable client</div>
+      <div class="value">${escapeHtml(proposal.deliverable)}</div>
+    </section>
+    <section class="box" style="margin-top: 12px;">
+      <div class="label">Points forts</div>
+      <ul>${strengths}</ul>
+    </section>
+    <div class="footer">
+      Cette fiche aide le client à comparer, télécharger et valider une proposition visuelle avant chiffrage, contrat et planning.
+    </div>
+  </main>
+</body>
+</html>`;
+}
+
+function downloadProposalSheet(proposal: VisualProposal, data: ProjectDetailData) {
+  const blob = new Blob([buildProposalHtml(proposal, data)], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${proposal.id}-fiche-buildify.html`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function buildVisualProposals(data: ProjectDetailData): VisualProposal[] {
   const baseEstimate = `${FORMAT_XOF(data.budgetMin)} – ${FORMAT_XOF(data.budgetMax)}`;
   const category = data.categoryName.toLowerCase();
@@ -639,7 +724,7 @@ const FINANCING_COMMITMENT_LABELS: Record<string, string> = {
 
 // ── Sub-views ──────────────────────────────────────────────
 
-function ResumeTab({ data }: { data: ProjectDetailData }) {
+function ResumeTab({ data, onOpenProposals }: { data: ProjectDetailData; onOpenProposals?: () => void }) {
   const infoItems = [
     { icon: Building2, label: 'Type', value: data.categoryName },
     { icon: MapPin, label: 'Localisation', value: data.city },
@@ -648,6 +733,8 @@ function ResumeTab({ data }: { data: ProjectDetailData }) {
     { icon: Calendar, label: 'Début prévu', value: data.startDate },
     { icon: Calendar, label: 'Fin estimée', value: data.estimatedEnd },
   ];
+  const proposals = buildVisualProposals(data);
+  const proposalPreview = data.visualProposal ?? proposals[0];
 
   return (
     <div className="space-y-4">
@@ -679,6 +766,53 @@ function ResumeTab({ data }: { data: ProjectDetailData }) {
           </div>
         </CardContent>
       </Card>
+
+      {proposalPreview && (
+        <Card className="py-0 gap-0 overflow-hidden border-foreground/10">
+          <div className="grid gap-0 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            <div className="relative min-h-52 bg-muted md:min-h-full">
+              <NextImage
+                src={proposalPreview.image}
+                alt={proposalPreview.title}
+                fill
+                className="object-cover"
+                loading="eager"
+                sizes="(min-width: 768px) 45vw, 100vw"
+              />
+              <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                <Badge className="bg-white text-black hover:bg-white">Propositions</Badge>
+                {data.visualProposal && (
+                  <Badge className="gap-1 bg-white text-black hover:bg-white">
+                    <CheckCircle2 className="size-3" />
+                    Validée
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <CardContent className="p-4 sm:p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Propositions visuelles client</p>
+              <h3 className="mt-2 text-lg font-bold leading-tight">{proposalPreview.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Consultez les variantes proposées, téléchargez l’image ou la fiche complète, puis validez le choix à rattacher au dossier.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Variantes</p>
+                  <p className="mt-1 font-bold">{proposals.length}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">État</p>
+                  <p className="mt-1 font-bold">{data.visualProposal ? 'Validée' : 'À choisir'}</p>
+                </div>
+              </div>
+              <Button className="mt-4 w-full gap-2" onClick={onOpenProposals}>
+                <Eye className="size-4" />
+                Voir les propositions
+              </Button>
+            </CardContent>
+          </div>
+        </Card>
+      )}
 
       {/* Team */}
       {data.team.length > 0 && (
@@ -900,6 +1034,7 @@ function ProposalsTab({
   data: ProjectDetailData;
   onValidate?: (proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
 }) {
+  const addToast = useAppStore(state => state.addToast);
   const proposals = useMemo(() => buildVisualProposals(data), [data]);
   const storageKey = getProposalStorageKey(data.referenceNumber);
   const [selectedId, setSelectedId] = useState(proposals[0]?.id ?? '');
@@ -918,6 +1053,7 @@ function ProposalsTab({
     window.localStorage.setItem(storageKey, selectedProposal.id);
     setLocalValidatedId(selectedProposal.id);
     onValidate?.(selectedProposal);
+    addToast('Proposition visuelle validée et rattachée au dossier.', 'success');
   };
 
   if (!selectedProposal) {
@@ -937,7 +1073,8 @@ function ProposalsTab({
             src={selectedProposal.image}
             alt={selectedProposal.title}
             fill
-            className="object-cover grayscale"
+            className="object-cover"
+            loading="eager"
             sizes="(min-width: 1024px) 1120px, 100vw"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
@@ -978,17 +1115,32 @@ function ProposalsTab({
               </a>
             </Button>
             <Button
+              variant="outline"
               className="w-full sm:w-auto gap-2"
-              onClick={handleValidate}
-              disabled={validatedId === selectedProposal.id}
+              onClick={() => downloadProposalSheet(selectedProposal, data)}
             >
-              {validatedId === selectedProposal.id ? (
-                <CheckCircle2 className="size-4" />
-              ) : (
-                <ShieldCheck className="size-4" />
-              )}
-              {validatedId === selectedProposal.id ? 'Proposition validée' : 'Valider cette proposition'}
+              <Receipt className="size-4" />
+              Télécharger la fiche
             </Button>
+            <ConfirmActionDialog
+              title="Valider cette proposition visuelle ?"
+              description={`Cette validation retient "${selectedProposal.title}" pour le dossier ${data.referenceNumber}. Elle servira de base pour le chiffrage, les arbitrages techniques et la suite du contrat.`}
+              confirmLabel="Valider"
+              onConfirm={handleValidate}
+              trigger={(
+                <Button
+                  className="w-full sm:w-auto gap-2"
+                  disabled={validatedId === selectedProposal.id}
+                >
+                  {validatedId === selectedProposal.id ? (
+                    <CheckCircle2 className="size-4" />
+                  ) : (
+                    <ShieldCheck className="size-4" />
+                  )}
+                  {validatedId === selectedProposal.id ? 'Proposition validée' : 'Valider cette proposition'}
+                </Button>
+              )}
+            />
           </div>
 
           {validatedProposal && (
@@ -1030,7 +1182,8 @@ function ProposalsTab({
                     src={proposal.image}
                     alt={proposal.title}
                     fill
-                    className="object-cover grayscale"
+                    className="object-cover"
+                    loading="eager"
                     sizes="(min-width: 768px) 33vw, 100vw"
                   />
                   <div className="absolute left-2 top-2 flex gap-1.5">
@@ -1411,11 +1564,17 @@ type TabValue = 'resume' | 'propositions' | 'financement' | 'documents' | 'messa
 
 export function ProjectDetailView() {
   const { goBack, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal } = useAppStore();
-  const [activeTab, setActiveTab] = useState<TabValue>('resume');
-
   const projectId = viewParams?.id || 'prj-001';
   const storedProject = userProjects.find(project => project.id === projectId || project.referenceNumber === projectId);
   const data = storedProject ? detailFromStoredProject(storedProject) : PROJECT_MAP[projectId] || PROJECT_MAP['prj-001'];
+  const preferredTab: TabValue = data.visualProposal || ['proposal_ready', 'proposal_validated'].includes(data.status)
+    ? 'propositions'
+    : 'resume';
+  const [activeTabsByProject, setActiveTabsByProject] = useState<Record<string, TabValue>>({});
+  const activeTab = activeTabsByProject[projectId] ?? preferredTab;
+  const setActiveTab = (tab: TabValue) => {
+    setActiveTabsByProject(prev => ({ ...prev, [projectId]: tab }));
+  };
 
   const tabs = [
     { value: 'resume' as const, label: 'Résumé' },
@@ -1481,7 +1640,7 @@ export function ProjectDetailView() {
             exit={{ opacity: 0, x: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'resume' && <ResumeTab data={data} />}
+            {activeTab === 'resume' && <ResumeTab data={data} onOpenProposals={() => setActiveTab('propositions')} />}
             {activeTab === 'propositions' && (
               <ProposalsTab
                 data={data}

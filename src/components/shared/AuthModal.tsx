@@ -17,11 +17,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
 import { BrandLogo } from './BrandLogo';
 
-type AuthMode = 'choice' | 'login' | 'register' | 'forgot' | 'reset-sent';
+type AuthMode = 'choice' | 'login' | 'register' | 'forgot' | 'reset-sent' | 'admin-login';
 
 const COUNTRY_CODES = [
   { code: 'CI', name: "Côte d'Ivoire", dial: '+225', example: '07 00 00 00 00' },
@@ -79,6 +78,8 @@ export function AuthModal() {
     password: '',
     confirmPassword: '',
     resetEmail: '',
+    adminEmail: 'admin@buildify.ci',
+    adminPassword: '',
   });
 
   if (!showAuthModal) return null;
@@ -175,15 +176,28 @@ export function AuthModal() {
     goMode('reset-sent');
   };
 
-  const handleAdminLogin = () => {
+  const handleAdminLogin = async () => {
+    const adminEmail = form.adminEmail.trim();
+    if (!isEmail(adminEmail)) {
+      setError("Saisissez l'e-mail administrateur.");
+      return;
+    }
+    if (!form.adminPassword) {
+      setError('Le mot de passe administrateur est obligatoire.');
+      return;
+    }
+
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 650));
     login({
       id: 'admin-buildify-1',
       name: 'Diabaté Ibrahim',
-      email: 'admin@buildify.ci',
+      email: adminEmail,
       phone: '+225 01 02 03 04',
       type: 'admin',
       role: 'super_admin',
     });
+    setLoading(false);
   };
 
   return (
@@ -210,7 +224,7 @@ export function AuthModal() {
           </div>
 
           <div className="p-6">
-            {mode !== 'forgot' && mode !== 'reset-sent' && (
+            {mode !== 'forgot' && mode !== 'reset-sent' && mode !== 'admin-login' && (
               <div className="mb-4 rounded-xl border bg-muted/40 px-4 py-3 text-xs leading-5 text-muted-foreground">
                 Indicatif Côte d'Ivoire : <span className="font-semibold text-foreground">+225</span>. Vous pouvez aussi choisir un autre pays pour vous connecter par téléphone.
               </div>
@@ -243,26 +257,76 @@ export function AuthModal() {
                 </div>
 
                 <div className="space-y-3">
-                  <Button className="w-full justify-start gap-3 h-12" onClick={() => goMode('login')}>
-                    <LockKeyhole className="w-4 h-4" />
-                    Se connecter
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => goMode('register')}>
-                    <BadgeCheck className="w-4 h-4" />
-                    Créer un compte
-                  </Button>
+                  <div className="rounded-xl border bg-card p-3">
+                    <p className="text-sm font-semibold">Espace client</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Créer ou suivre vos dossiers, devis, propositions et documents.</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <Button className="justify-start gap-3 h-11" onClick={() => goMode('login')}>
+                        <LockKeyhole className="w-4 h-4" />
+                        Connexion client
+                      </Button>
+                      <Button variant="outline" className="justify-start gap-3 h-11" onClick={() => goMode('register')}>
+                        <BadgeCheck className="w-4 h-4" />
+                        Créer un compte
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-foreground/15 bg-muted/30 p-3">
+                    <p className="text-sm font-semibold">Plateforme admin distincte</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Réservée au pilotage Buildify : demandes, clients, devis, finance, documents et opérations.</p>
+                    <Button variant="outline" className="mt-3 w-full justify-start gap-3 h-11" onClick={() => goMode('admin-login')}>
+                      <ShieldCheck className="w-4 h-4" />
+                      Connexion administrateur
+                    </Button>
+                  </div>
                 </div>
-
-                <Separator />
-
-                <button
-                  type="button"
-                  onClick={handleAdminLogin}
-                  className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
-                >
-                  Accès administrateur Buildify
-                </button>
               </div>
+            )}
+
+            {mode === 'admin-login' && (
+              <form
+                className="space-y-4"
+                onSubmit={event => {
+                  event.preventDefault();
+                  handleAdminLogin();
+                }}
+              >
+                <div>
+                  <h3 className="text-lg font-bold">Plateforme admin</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Accès séparé pour les comptes habilités Buildify.</p>
+                </div>
+                <div className="rounded-xl border bg-muted/40 px-4 py-3 text-xs leading-5 text-muted-foreground">
+                  Les clients restent dans l’espace client. Les actions d’administration, devis, finance et suivi interne restent dans cette plateforme.
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="auth-admin-email" className="text-xs">E-mail administrateur</Label>
+                  <Input
+                    id="auth-admin-email"
+                    placeholder="admin@buildify.ci"
+                    value={form.adminEmail}
+                    onChange={event => set('adminEmail', event.target.value)}
+                    type="email"
+                    className="h-12"
+                    autoComplete="username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="auth-admin-password" className="text-xs">Mot de passe</Label>
+                  <Input
+                    id="auth-admin-password"
+                    value={form.adminPassword}
+                    onChange={event => set('adminPassword', event.target.value)}
+                    type="password"
+                    className="h-12"
+                    autoComplete="current-password"
+                  />
+                </div>
+                <Button className="w-full h-12" type="submit" disabled={!form.adminEmail || !form.adminPassword || loading}>
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+                  Entrer dans l’admin
+                </Button>
+              </form>
             )}
 
             {mode === 'login' && (
