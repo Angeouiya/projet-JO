@@ -25,7 +25,7 @@ import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { formatProjectLocation } from '@/lib/project-format';
 import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectVisualProposalData } from '@/types';
 
-// ── Mock data ──────────────────────────────────────────────
+// ── Types dossier client ───────────────────────────────────
 
 type ProjectDetailData = {
   referenceNumber: string;
@@ -55,212 +55,6 @@ type ProjectDetailData = {
 
 type VisualProposal = Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy' | 'strengths'> & {
   strengths: string[];
-};
-
-const PROJECT_MAP: Record<string, ProjectDetailData> = {
-  'prj-001': {
-    referenceNumber: 'BTP-2024-0042',
-    title: 'Villa Aurore',
-    status: 'in_progress',
-    categoryName: 'Villa basse',
-    modelName: 'Villa Aurore',
-    city: 'Cocody, Abidjan',
-    budgetMin: 55_000_000,
-    budgetMax: 75_000_000,
-    progress: 65,
-    terrain: '600 m² – Lot 14, Cocody Riviera Palmeraie',
-    terrainStatus: 'Acquis – Titre foncier disponible',
-    startDate: '2024-10-01',
-    estimatedEnd: '2025-06-30',
-    team: [
-      { name: 'Kouamé A.', role: 'Chef de projet' },
-      { name: 'Traoré M.', role: 'Ingénieur BET' },
-      { name: 'Diallo S.', role: 'Conducteur de travaux' },
-    ],
-    documents: [
-      { type: 'plan', name: 'Plan d\'exécution RDC', date: '2024-09-20', icon: DraftingCompass },
-      { type: 'plan', name: 'Plan d\'exécution Étage', date: '2024-09-20', icon: Layers },
-      { type: 'photo', name: 'Photo terrain – État initial', date: '2024-09-25', icon: ImageIcon },
-      { type: 'photo', name: 'Fondations – Avancement 100%', date: '2024-11-10', icon: ImageIcon },
-      { type: 'contrat', name: 'Contrat de construction', date: '2024-09-30', icon: FileCheck },
-      { type: 'facture', name: 'Facture acompte 30%', date: '2024-10-05', icon: Receipt },
-    ],
-    messages: [
-      { id: 'm1', sender: 'Kouamé A.', senderRole: 'Chef de projet', text: 'Bonjour, les fondations sont terminées. Nous passons à l\'élévation cette semaine.', time: '10:30', isOwn: false },
-      { id: 'm2', sender: 'Vous', senderRole: 'Client', text: 'Excellent ! Merci pour le suivi. Quand pouvons-nous visiter ?', time: '10:45', isOwn: true },
-      { id: 'm3', sender: 'Kouamé A.', senderRole: 'Chef de projet', text: 'Une visite est prévue vendredi à 10h. Je vous enverrai la confirmation.', time: '11:02', isOwn: false },
-      { id: 'm4', sender: 'Vous', senderRole: 'Client', text: 'Parfait, je serai présent. Merci !', time: '11:05', isOwn: true },
-    ],
-    quotes: [
-      { id: 'q1', label: 'Devis initial – Construction villa', amount: 62_500_000, status: 'accepted', date: '2024-09-15' },
-      { id: 'q2', label: 'Avenant piscine', amount: 8_500_000, status: 'pending', date: '2024-12-01' },
-    ],
-    phases: [
-      { name: 'Études & Permis', status: 'done', progress: 100 },
-      { name: 'Fondations', status: 'done', progress: 100 },
-      { name: 'Élévation & Maçonnerie', status: 'done', progress: 100 },
-      { name: 'Toiture & Charpente', status: 'in_progress', progress: 60 },
-      { name: 'Second œuvre', status: 'pending', progress: 0 },
-      { name: 'Finitions & Livraison', status: 'pending', progress: 0 },
-    ],
-    photos: [
-      { id: 'p1', caption: 'Terrain brut – Vue sud', date: '2024-09-25' },
-      { id: 'p2', caption: 'Fondations terminées', date: '2024-11-10' },
-      { id: 'p3', caption: 'Élévation – Mur RDC', date: '2024-12-05' },
-      { id: 'p4', caption: 'Élévation – Mur Étage', date: '2025-01-02' },
-    ],
-  },
-  'prj-002': {
-    referenceNumber: 'BTP-2024-0058',
-    title: 'Duplex Horizon',
-    status: 'quote_sent',
-    categoryName: 'Duplex',
-    modelName: 'Duplex Horizon',
-    city: 'Riviera, Abidjan',
-    budgetMin: 85_000_000,
-    budgetMax: 120_000_000,
-    progress: 15,
-    terrain: '450 m² – Riviera Golf',
-    terrainStatus: 'En cours d\'acquisition',
-    startDate: '2025-02-15',
-    estimatedEnd: '2026-02-15',
-    team: [
-      { name: 'Bamba K.', role: 'Chef de projet' },
-    ],
-    documents: [
-      { type: 'plan', name: 'Plan masse', date: '2024-12-01', icon: MapPin },
-      { type: 'contrat', name: 'Contrat de réservation', date: '2024-11-25', icon: FileCheck },
-    ],
-    messages: [
-      { id: 'm1', sender: 'Bamba K.', senderRole: 'Chef de projet', text: 'Le devis est prêt pour votre duplex. N\'hésitez pas à le consulter.', time: '14:00', isOwn: false },
-    ],
-    quotes: [
-      { id: 'q1', label: 'Devis duplex', amount: 98_000_000, status: 'pending', date: '2025-01-08' },
-    ],
-    phases: [
-      { name: 'Études & Permis', status: 'in_progress', progress: 40 },
-      { name: 'Fondations', status: 'pending', progress: 0 },
-      { name: 'Élévation & Maçonnerie', status: 'pending', progress: 0 },
-      { name: 'Toiture & Charpente', status: 'pending', progress: 0 },
-      { name: 'Second œuvre', status: 'pending', progress: 0 },
-      { name: 'Finitions & Livraison', status: 'pending', progress: 0 },
-    ],
-    photos: [],
-  },
-  'prj-003': {
-    referenceNumber: 'BTP-2025-0003',
-    title: 'Projet résidentiel Bingerville',
-    status: 'draft',
-    categoryName: 'Villa basse',
-    modelName: 'Villa Émeraude',
-    city: 'Bingerville',
-    budgetMin: 30_000_000,
-    budgetMax: 45_000_000,
-    progress: 0,
-    terrain: 'Non défini',
-    terrainStatus: 'À déterminer',
-    startDate: 'Non défini',
-    estimatedEnd: 'Non défini',
-    team: [],
-    documents: [],
-    messages: [],
-    quotes: [],
-    phases: [
-      { name: 'Études & Permis', status: 'pending', progress: 0 },
-      { name: 'Fondations', status: 'pending', progress: 0 },
-      { name: 'Élévation & Maçonnerie', status: 'pending', progress: 0 },
-      { name: 'Toiture & Charpente', status: 'pending', progress: 0 },
-      { name: 'Second œuvre', status: 'pending', progress: 0 },
-      { name: 'Finitions & Livraison', status: 'pending', progress: 0 },
-    ],
-    photos: [],
-  },
-  'prj-004': {
-    referenceNumber: 'BTP-2023-0018',
-    title: 'Immeuble Élysée',
-    status: 'delivered',
-    categoryName: 'Immeuble R+',
-    modelName: 'Immeuble Élysée',
-    city: 'Plateau, Abidjan',
-    budgetMin: 350_000_000,
-    budgetMax: 500_000_000,
-    progress: 100,
-    terrain: '800 m² – Plateau',
-    terrainStatus: 'Acquis',
-    startDate: '2023-08-01',
-    estimatedEnd: '2024-08-01',
-    team: [
-      { name: 'Koné M.', role: 'Chef de projet' },
-      { name: 'Ouattara F.', role: 'Ingénieur BET' },
-    ],
-    documents: [
-      { type: 'plan', name: 'Plans définitifs', date: '2023-07-15', icon: ClipboardCheck },
-      { type: 'contrat', name: 'Contrat de construction', date: '2023-07-20', icon: FileCheck },
-      { type: 'facture', name: 'Facture solde', date: '2024-07-30', icon: Receipt },
-      { type: 'photo', name: 'Livraison – Vue extérieure', date: '2024-08-20', icon: ImageIcon },
-    ],
-    messages: [
-      { id: 'm1', sender: 'Koné M.', senderRole: 'Chef de projet', text: 'L\'immeuble est livré ! Tous les contrôles sont conformes.', time: '09:00', isOwn: false },
-      { id: 'm2', sender: 'Vous', senderRole: 'Client', text: 'Merci beaucoup pour tout le travail accompli !', time: '09:30', isOwn: true },
-    ],
-    quotes: [
-      { id: 'q1', label: 'Devis immeuble R+', amount: 420_000_000, status: 'accepted', date: '2023-07-10' },
-    ],
-    phases: [
-      { name: 'Études & Permis', status: 'done', progress: 100 },
-      { name: 'Fondations', status: 'done', progress: 100 },
-      { name: 'Élévation & Maçonnerie', status: 'done', progress: 100 },
-      { name: 'Toiture & Charpente', status: 'done', progress: 100 },
-      { name: 'Second œuvre', status: 'done', progress: 100 },
-      { name: 'Finitions & Livraison', status: 'done', progress: 100 },
-    ],
-    photos: [
-      { id: 'p1', caption: 'Livraison – Façade principale', date: '2024-08-20' },
-      { id: 'p2', caption: 'Livraison – Hall d\'entrée', date: '2024-08-20' },
-    ],
-  },
-  'prj-005': {
-    referenceNumber: 'BTP-2024-0071',
-    title: 'Villa Émeraude',
-    status: 'in_progress',
-    categoryName: 'Villa basse',
-    modelName: 'Villa Émeraude',
-    city: 'Yamoussoukro',
-    budgetMin: 30_000_000,
-    budgetMax: 45_000_000,
-    progress: 40,
-    terrain: '400 m² – Zone résidentielle',
-    terrainStatus: 'Acquis',
-    startDate: '2024-11-01',
-    estimatedEnd: '2025-07-01',
-    team: [
-      { name: 'Diarra I.', role: 'Chef de projet' },
-      { name: 'Coulibaly A.', role: 'Conducteur de travaux' },
-    ],
-    documents: [
-      { type: 'plan', name: 'Plan villa', date: '2024-10-15', icon: Home },
-      { type: 'photo', name: 'Début des travaux', date: '2024-11-05', icon: ImageIcon },
-      { type: 'contrat', name: 'Contrat de construction', date: '2024-10-25', icon: FileCheck },
-    ],
-    messages: [
-      { id: 'm1', sender: 'Diarra I.', senderRole: 'Chef de projet', text: 'Les travaux de fondation sont bien avancés. Tout se passe bien.', time: '16:00', isOwn: false },
-    ],
-    quotes: [
-      { id: 'q1', label: 'Devis villa standard', amount: 35_500_000, status: 'accepted', date: '2024-10-10' },
-    ],
-    phases: [
-      { name: 'Études & Permis', status: 'done', progress: 100 },
-      { name: 'Fondations', status: 'done', progress: 100 },
-      { name: 'Élévation & Maçonnerie', status: 'in_progress', progress: 50 },
-      { name: 'Toiture & Charpente', status: 'pending', progress: 0 },
-      { name: 'Second œuvre', status: 'pending', progress: 0 },
-      { name: 'Finitions & Livraison', status: 'pending', progress: 0 },
-    ],
-    photos: [
-      { id: 'p1', caption: 'Terrassement', date: '2024-11-05' },
-      { id: 'p2', caption: 'Fondations en cours', date: '2024-11-20' },
-    ],
-  },
 };
 
 // ── Helper ─────────────────────────────────────────────────
@@ -1830,11 +1624,11 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
 type TabValue = 'resume' | 'propositions' | 'financement' | 'documents' | 'messages' | 'devis' | 'chantier';
 
 export function ProjectDetailView() {
-  const { goBack, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, respondProjectInfo } = useAppStore();
-  const projectId = viewParams?.id || 'prj-001';
+  const { goBack, navigate, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, respondProjectInfo } = useAppStore();
+  const projectId = viewParams?.id || '';
   const storedProject = userProjects.find(project => project.id === projectId || project.referenceNumber === projectId);
-  const data = storedProject ? detailFromStoredProject(storedProject) : PROJECT_MAP[projectId] || PROJECT_MAP['prj-001'];
-  const preferredTab: TabValue = data.visualProposal || ['proposal_ready', 'proposal_validated'].includes(data.status)
+  const data = storedProject ? detailFromStoredProject(storedProject) : null;
+  const preferredTab: TabValue = data?.visualProposal || (data && ['proposal_ready', 'proposal_validated'].includes(data.status))
     ? 'propositions'
     : 'resume';
   const [activeTabsByProject, setActiveTabsByProject] = useState<Record<string, TabValue>>({});
@@ -1852,6 +1646,30 @@ export function ProjectDetailView() {
     { value: 'devis' as const, label: 'Devis' },
     { value: 'chantier' as const, label: 'Chantier' },
   ];
+
+  if (!data) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+        <Card className="w-full max-w-lg border-dashed">
+          <CardContent className="p-8 text-center">
+            <FolderArchive className="mx-auto size-10 text-muted-foreground" />
+            <h1 className="mt-4 text-lg font-semibold">Dossier client introuvable</h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Ce dossier n’est pas rattaché à votre espace client sur cet appareil. Créez une demande ou ouvrez un dossier réel depuis votre liste de projets.
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <Button variant="outline" className="h-11 rounded-lg" onClick={goBack}>
+                Retour
+              </Button>
+              <Button className="h-11 rounded-lg" onClick={() => navigate('projects')}>
+                Mes projets
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-background">

@@ -16,87 +16,6 @@ import { PROJECT_STATUS_LABELS, FORMAT_SHORT_XOF } from '@/types';
 import { formatProjectLocation } from '@/lib/project-format';
 import type { ProjectData } from '@/types';
 
-const MOCK_PROJECTS: ProjectData[] = [
-  {
-    id: 'prj-001',
-    referenceNumber: 'BTP-2024-0042',
-    title: 'Villa Aurore',
-    status: 'in_progress',
-    categoryId: 'villa',
-    categoryName: 'Villa basse',
-    modelId: '1',
-    modelName: 'Villa Aurore',
-    budgetMin: 55_000_000,
-    budgetMax: 75_000_000,
-    city: 'Cocody, Abidjan',
-    progress: 65,
-    createdAt: '2024-09-15T10:00:00Z',
-    updatedAt: '2025-01-10T14:30:00Z',
-  },
-  {
-    id: 'prj-002',
-    referenceNumber: 'BTP-2024-0058',
-    title: 'Duplex Horizon',
-    status: 'quote_sent',
-    categoryId: 'duplex',
-    categoryName: 'Duplex',
-    modelId: '2',
-    modelName: 'Duplex Horizon',
-    budgetMin: 85_000_000,
-    budgetMax: 120_000_000,
-    city: 'Riviera, Abidjan',
-    progress: 15,
-    createdAt: '2024-11-20T09:00:00Z',
-    updatedAt: '2025-01-08T11:15:00Z',
-  },
-  {
-    id: 'prj-003',
-    referenceNumber: 'BTP-2025-0003',
-    title: 'Projet residentiel Bingerville',
-    status: 'draft',
-    categoryId: 'villa',
-    categoryName: 'Villa basse',
-    budgetMin: 30_000_000,
-    budgetMax: 45_000_000,
-    city: 'Bingerville',
-    progress: 0,
-    createdAt: '2025-01-05T16:00:00Z',
-    updatedAt: '2025-01-05T16:00:00Z',
-  },
-  {
-    id: 'prj-004',
-    referenceNumber: 'BTP-2023-0018',
-    title: 'Immeuble Elysee',
-    status: 'delivered',
-    categoryId: 'immeuble',
-    categoryName: 'Immeuble',
-    modelId: '3',
-    modelName: 'Immeuble Elysee',
-    budgetMin: 350_000_000,
-    budgetMax: 500_000_000,
-    city: 'Plateau, Abidjan',
-    progress: 100,
-    createdAt: '2023-06-01T08:00:00Z',
-    updatedAt: '2024-08-20T10:00:00Z',
-  },
-  {
-    id: 'prj-005',
-    referenceNumber: 'BTP-2024-0071',
-    title: 'Villa Emeraude',
-    status: 'in_progress',
-    categoryId: 'villa',
-    categoryName: 'Villa basse',
-    modelId: '4',
-    modelName: 'Villa Emeraude',
-    budgetMin: 30_000_000,
-    budgetMax: 45_000_000,
-    city: 'Yamoussoukro',
-    progress: 40,
-    createdAt: '2024-10-10T12:00:00Z',
-    updatedAt: '2025-01-09T09:45:00Z',
-  },
-];
-
 type FilterTab = 'all' | 'submitted' | 'info_required' | 'proposal_validated' | 'quote_sent' | 'in_progress' | 'draft' | 'delivered';
 
 const FILTER_TABS: { value: FilterTab; label: string }[] = [
@@ -151,7 +70,7 @@ function EmptyState({ activeTab, onNavigate }: { activeTab: FilterTab; onNavigat
       <p className="mt-4 text-sm text-muted-foreground">{message}</p>
       <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={onNavigate}>
         <Plus className="size-3.5" />
-        Creer un projet
+        Créer un projet
       </Button>
     </motion.div>
   );
@@ -205,7 +124,7 @@ function ProjectCard({ project, onClick }: { project: ProjectData; onClick: () =
         <Separator className="my-3" />
 
         <p className="text-[11px] text-muted-foreground">
-          Mis a jour {formatDate(project.updatedAt)}
+          Mis à jour {formatDate(project.updatedAt)}
         </p>
       </CardContent>
     </Card>
@@ -221,19 +140,14 @@ export function ProjectsView() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const firstName = user?.name?.split(' ')[0] || 'Client';
-  const projects = useMemo(() => {
-    const userRefs = new Set(userProjects.map(project => project.referenceNumber));
-    return [
-      ...userProjects,
-      ...MOCK_PROJECTS.filter(project => !userRefs.has(project.referenceNumber)),
-    ];
-  }, [userProjects]);
+  const projects = useMemo(() => userProjects, [userProjects]);
 
   const filteredProjects = activeTab === 'all'
     ? projects
     : projects.filter(p => {
       if (activeTab === 'in_progress') return ['in_progress', 'planning', 'studying', 'verifying'].includes(p.status);
       if (activeTab === 'quote_sent') return ['quote_sent', 'proposal_ready'].includes(p.status);
+      if (activeTab === 'proposal_validated') return ['proposal_ready', 'proposal_validated'].includes(p.status);
       return p.status === activeTab;
     });
 
@@ -241,7 +155,7 @@ export function ProjectsView() {
     submitted: projects.filter(p => p.status === 'submitted').length,
     info_required: projects.filter(p => p.status === 'info_required').length,
     delivered: projects.filter(p => p.status === 'delivered').length,
-    proposal_validated: projects.filter(p => p.status === 'proposal_validated').length,
+    proposal_validated: projects.filter(p => ['proposal_ready', 'proposal_validated'].includes(p.status)).length,
     quote_sent: projects.filter(p => p.status === 'quote_sent').length,
   };
 
