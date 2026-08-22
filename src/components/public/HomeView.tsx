@@ -4,9 +4,9 @@ import { useRef } from 'react';
 import { motion, useInView, type Variants } from 'framer-motion';
 import {
   Home, Building2, Building, Landmark, MapPin,
-  Grid3X3, Hammer, Route, Construction, Droplets, FileText,
+  Grid3X3, Hammer, Route, Construction, Droplets, DraftingCompass,
   ArrowRight, ChevronRight, Phone, Mail, MapPinIcon,
-  Maximize2, BedDouble, Bath, Layers, Clock, Star,
+  Maximize2, BedDouble, Bath, Layers, Clock, BadgeCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,7 +34,7 @@ const categories = [
   { name: 'Route', icon: Route, image: '/images/road-1.png' },
   { name: 'VRD', icon: Construction, image: '/images/chantier-1.png' },
   { name: 'Hydraulique', icon: Droplets, image: '/images/hydraulique-1.png' },
-  { name: 'Étude', icon: FileText, image: '/images/plan-1.png' },
+  { name: 'Étude', icon: DraftingCompass, image: '/images/plan-1.png' },
 ];
 
 const popularModels: (CatalogModelData & { image: string })[] = [
@@ -96,7 +96,7 @@ const services = [
   { icon: Hammer, title: 'Rénovation', desc: 'Réhabilitation et mise aux normes' },
   { icon: Route, title: 'VRD & Route', desc: 'Voirie, assainissement, réseau' },
   { icon: Droplets, title: 'Hydraulique', desc: 'Adduction d\'eau et forage' },
-  { icon: FileText, title: 'Études techniques', desc: 'Faisabilité, avant-projet, BET' },
+  { icon: DraftingCompass, title: 'Études techniques', desc: 'Faisabilité, avant-projet, BET' },
   { icon: Construction, title: 'Suivi de chantier', desc: 'Contrôle qualité et planning' },
 ];
 
@@ -370,10 +370,9 @@ export function HomeView() {
             <motion.div key={t.name} variants={fadeUp}>
               <Card className="py-0 gap-0 border-border/50 h-full">
                 <CardContent className="p-6 flex flex-col h-full">
-                  <div className="flex gap-0.5 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="size-3.5 fill-foreground" />
-                    ))}
+                  <div className="mb-4 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <BadgeCheck className="size-3.5" />
+                    Client vérifié
                   </div>
                   <p className="text-sm leading-relaxed flex-1">&ldquo;{t.quote}&rdquo;</p>
                   <div className="mt-4 flex items-center gap-3">

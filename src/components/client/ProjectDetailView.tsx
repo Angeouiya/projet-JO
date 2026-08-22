@@ -5,10 +5,10 @@ import { useMemo, useState, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, MapPin, Calendar, Wallet, Layers, Users,
-  FileText, Upload, Image as ImageIcon, FileCheck, Receipt,
+  DraftingCompass, Upload, Image as ImageIcon, FileCheck, Receipt,
   Send, MessageSquare, Check, X, Clock, Camera,
   ClipboardCheck, AlertCircle, Building2, Eye, Download,
-  ShieldCheck, CheckCircle2,
+  ShieldCheck, CheckCircle2, FolderArchive, ClipboardList, Home,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -84,8 +84,8 @@ const PROJECT_MAP: Record<string, ProjectDetailData> = {
       { name: 'Diallo S.', role: 'Conducteur de travaux' },
     ],
     documents: [
-      { type: 'plan', name: 'Plan d\'exécution RDC', date: '2024-09-20', icon: FileText },
-      { type: 'plan', name: 'Plan d\'exécution Étage', date: '2024-09-20', icon: FileText },
+      { type: 'plan', name: 'Plan d\'exécution RDC', date: '2024-09-20', icon: DraftingCompass },
+      { type: 'plan', name: 'Plan d\'exécution Étage', date: '2024-09-20', icon: Layers },
       { type: 'photo', name: 'Photo terrain – État initial', date: '2024-09-25', icon: ImageIcon },
       { type: 'photo', name: 'Fondations – Avancement 100%', date: '2024-11-10', icon: ImageIcon },
       { type: 'contrat', name: 'Contrat de construction', date: '2024-09-30', icon: FileCheck },
@@ -134,7 +134,7 @@ const PROJECT_MAP: Record<string, ProjectDetailData> = {
       { name: 'Bamba K.', role: 'Chef de projet' },
     ],
     documents: [
-      { type: 'plan', name: 'Plan masse', date: '2024-12-01', icon: FileText },
+      { type: 'plan', name: 'Plan masse', date: '2024-12-01', icon: MapPin },
       { type: 'contrat', name: 'Contrat de réservation', date: '2024-11-25', icon: FileCheck },
     ],
     messages: [
@@ -200,7 +200,7 @@ const PROJECT_MAP: Record<string, ProjectDetailData> = {
       { name: 'Ouattara F.', role: 'Ingénieur BET' },
     ],
     documents: [
-      { type: 'plan', name: 'Plans définitifs', date: '2023-07-15', icon: FileText },
+      { type: 'plan', name: 'Plans définitifs', date: '2023-07-15', icon: ClipboardCheck },
       { type: 'contrat', name: 'Contrat de construction', date: '2023-07-20', icon: FileCheck },
       { type: 'facture', name: 'Facture solde', date: '2024-07-30', icon: Receipt },
       { type: 'photo', name: 'Livraison – Vue extérieure', date: '2024-08-20', icon: ImageIcon },
@@ -244,7 +244,7 @@ const PROJECT_MAP: Record<string, ProjectDetailData> = {
       { name: 'Coulibaly A.', role: 'Conducteur de travaux' },
     ],
     documents: [
-      { type: 'plan', name: 'Plan villa', date: '2024-10-15', icon: FileText },
+      { type: 'plan', name: 'Plan villa', date: '2024-10-15', icon: Home },
       { type: 'photo', name: 'Début des travaux', date: '2024-11-05', icon: ImageIcon },
       { type: 'contrat', name: 'Contrat de construction', date: '2024-10-25', icon: FileCheck },
     ],
@@ -285,6 +285,18 @@ function getQuoteStatusBadge(status: string) {
   return { label: 'En attente', variant: 'secondary' as const };
 }
 
+function getDocumentIcon(type: string, name = ''): LucideIcon {
+  const normalized = `${type} ${name}`.toLowerCase();
+  if (normalized.includes('photo') || normalized.includes('image')) return ImageIcon;
+  if (normalized.includes('facture')) return Receipt;
+  if (normalized.includes('contrat')) return FileCheck;
+  if (normalized.includes('rapport')) return ClipboardList;
+  if (normalized.includes('villa')) return Home;
+  if (normalized.includes('étage') || normalized.includes('etage')) return Layers;
+  if (normalized.includes('plan')) return DraftingCompass;
+  return FolderArchive;
+}
+
 function detailFromStoredProject(project: ProjectData): ProjectDetailData {
   const startDate = project.createdAt?.slice(0, 10) || 'Non défini';
   const missingInfoDate = project.missingInfoRequestedAt
@@ -311,7 +323,7 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
       type: document.type,
       name: document.name,
       date: document.date,
-      icon: document.type.includes('photo') || document.type.includes('image') ? ImageIcon : FileText,
+      icon: getDocumentIcon(document.type, document.name),
     })),
     messages: project.missingInfo ? [
       {
@@ -533,6 +545,9 @@ function buildDefaultFinancing(data: ProjectDetailData): ProjectFinancingData {
     readiness: 'to_structure',
     paymentPrinciple: 'Aucune avance de démarrage imposée : paiements déclenchés par niveaux d’avancement vérifiés.',
     estimatedBudget,
+    documentReadiness: [],
+    guarantees: ['notary-contract', 'milestone-payment'],
+    commitments: [],
     notaryContract: true,
     escrowRequested: false,
     bankSupportRequested: true,
@@ -564,6 +579,63 @@ function financingReadinessLabel(readiness: ProjectFinancingData['readiness']) {
   if (readiness === 'to_structure') return 'À structurer';
   return 'À confirmer';
 }
+
+function financingDetailLabel(value: string | undefined, labels: Record<string, string>, fallback = 'À compléter') {
+  if (!value) return fallback;
+  return labels[value] || value;
+}
+
+function amountOrTodo(value: number | undefined) {
+  return value !== undefined ? FORMAT_XOF(value) : 'À compléter';
+}
+
+function percentOrTodo(value: number | undefined) {
+  return value !== undefined ? `${value}%` : 'À calculer';
+}
+
+const FINANCING_PURPOSE_LABELS: Record<string, string> = {
+  'construction-only': 'Construction uniquement',
+  'land-and-construction': 'Terrain + construction',
+  'works-lot': 'Lot de travaux',
+  'vrd-infra': 'VRD / réseaux',
+  'studies-permits': 'Études / permis',
+  'completion-finishes': 'Achèvement / finitions',
+};
+
+const BANK_STAGE_LABELS: Record<string, string> = {
+  'not-started': 'Pas encore démarré',
+  simulation: 'Simulation reçue',
+  'documents-requested': 'Pièces demandées',
+  'under-review': 'Dossier en étude',
+  'pre-approved': 'Préaccord obtenu',
+  'funds-available': 'Fonds disponibles',
+};
+
+const DOWN_PAYMENT_SOURCE_LABELS: Record<string, string> = {
+  savings: 'Épargne personnelle',
+  'salary-business': 'Revenus d’activité',
+  'family-support': 'Appui familial / associé',
+  'asset-sale': 'Vente d’actif',
+  'company-cash': 'Trésorerie entreprise',
+  'to-confirm': 'À confirmer',
+};
+
+const FINANCING_DOCUMENT_LABELS: Record<string, string> = {
+  id: 'Pièce d’identité',
+  'income-proof': 'Justificatifs revenus',
+  'bank-statements': 'Relevés bancaires',
+  'land-document': 'Document terrain',
+  'company-documents': 'Documents entreprise',
+  'quote-or-plans': 'Plans / devis / métré',
+  'none-yet': 'Aucun document prêt',
+};
+
+const FINANCING_COMMITMENT_LABELS: Record<string, string> = {
+  'truthful-data': 'Données sincères',
+  'bank-verification': 'Vérification banque acceptée',
+  'progress-payment': 'Paiement par avancement compris',
+  'no-hidden-advance': 'Avances non sécurisées évitées',
+};
 
 // ── Sub-views ──────────────────────────────────────────────
 
@@ -666,7 +738,7 @@ function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: 
       type: document.type,
       name: document.name,
       date: document.date,
-      icon: document.type === 'photo' ? ImageIcon : FileText,
+      icon: getDocumentIcon(document.type, document.name),
     }));
 
     if (onUpload) {
@@ -707,7 +779,7 @@ function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: 
 
       {Object.keys(grouped).length === 0 ? (
         <div className="flex flex-col items-center py-12 text-center">
-          <FileText className="size-8 text-muted-foreground/30" />
+          <FolderArchive className="size-8 text-muted-foreground/30" />
           <p className="mt-3 text-sm text-muted-foreground">Aucun document pour le moment.</p>
         </div>
       ) : (
@@ -1031,11 +1103,43 @@ function FinancingTab({ data }: { data: ProjectDetailData }) {
             </div>
             <div className="rounded-lg border p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Revenu déclaré</p>
-              <p className="mt-1 text-sm font-semibold">{financing.monthlyIncome ? FORMAT_XOF(financing.monthlyIncome) : 'À compléter'}</p>
+              <p className="mt-1 text-sm font-semibold">{amountOrTodo(financing.monthlyIncome)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Charges mensuelles</p>
+              <p className="mt-1 text-sm font-semibold">{amountOrTodo(financing.existingMonthlyDebt)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mensualité cible</p>
+              <p className="mt-1 text-sm font-semibold">{amountOrTodo(financing.monthlyPaymentCapacity)}</p>
             </div>
             <div className="rounded-lg border p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Apport</p>
-              <p className="mt-1 text-sm font-semibold">{financing.ownContribution ? FORMAT_XOF(financing.ownContribution) : 'À compléter'}</p>
+              <p className="mt-1 text-sm font-semibold">{amountOrTodo(financing.ownContribution)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Montant à financer</p>
+              <p className="mt-1 text-sm font-semibold">{amountOrTodo(financing.requestedLoanAmount)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Durée souhaitée</p>
+              <p className="mt-1 text-sm font-semibold">{financing.desiredLoanDurationYears ? `${financing.desiredLoanDurationYears} an(s)` : 'À compléter'}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ratio projeté</p>
+              <p className="mt-1 text-sm font-semibold">{percentOrTodo(financing.projectedDebtRatioPercent)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Objet</p>
+              <p className="mt-1 text-sm font-semibold">{financingDetailLabel(financing.financingPurpose, FINANCING_PURPOSE_LABELS)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Origine apport</p>
+              <p className="mt-1 text-sm font-semibold">{financingDetailLabel(financing.downPaymentSource, DOWN_PAYMENT_SOURCE_LABELS)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Accord banque</p>
+              <p className="mt-1 text-sm font-semibold">{financingDetailLabel(financing.bankAgreementStage, BANK_STAGE_LABELS)}</p>
             </div>
             <div className="rounded-lg border p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Banque</p>
@@ -1050,6 +1154,36 @@ function FinancingTab({ data }: { data: ProjectDetailData }) {
                 {flag.label}
               </Badge>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="py-0 gap-0">
+        <CardContent className="p-4 sm:p-5">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <h3 className="text-sm font-semibold">Pièces financières déclarées</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Ces pièces orientent la préparation du dossier banque ou notaire.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(financing.documentReadiness?.length ? financing.documentReadiness : ['none-yet']).map(item => (
+                  <Badge key={item} variant="outline">{financingDetailLabel(item, FINANCING_DOCUMENT_LABELS, item)}</Badge>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold">Engagements compris</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Le client sait pourquoi les informations sont demandées et comment les paiements seront sécurisés.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(financing.commitments ?? []).map(item => (
+                  <Badge key={item} variant="secondary">{financingDetailLabel(item, FINANCING_COMMITMENT_LABELS, item)}</Badge>
+                ))}
+                {(financing.commitments ?? []).length === 0 && <Badge variant="outline">À confirmer</Badge>}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1251,14 +1385,14 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
           </h4>
           <div className="space-y-2">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <FileText className="size-4 text-muted-foreground" />
+              <ClipboardList className="size-4 text-muted-foreground" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Rapport hebdomadaire S02</p>
                 <p className="text-[11px] text-muted-foreground">2025-01-06 – 2025-01-10</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <FileText className="size-4 text-muted-foreground" />
+              <ClipboardCheck className="size-4 text-muted-foreground" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Rapport hebdomadaire S01</p>
                 <p className="text-[11px] text-muted-foreground">2024-12-30 – 2025-01-03</p>

@@ -17,7 +17,6 @@ import {
   CreditCard,
   Download,
   FileSignature,
-  FileText,
   FolderArchive,
   FolderKanban,
   HardHat,
@@ -50,6 +49,7 @@ import { AdminProjects } from './AdminProjects';
 import { AdminRequests } from './AdminRequests';
 import { AdminSettings } from './AdminSettings';
 import { BrandLogo, BrandMark } from '@/components/shared/BrandLogo';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 
 type AdminNavItem = {
   id: string;
@@ -79,7 +79,7 @@ const NAV_GROUPS: AdminNavGroup[] = [
     label: 'Pilotage',
     items: [
       { id: 'dashboard', label: 'Vue d’ensemble', icon: LayoutDashboard },
-      { id: 'requests', label: 'Demandes', icon: FileText },
+      { id: 'requests', label: 'Demandes', icon: ClipboardList },
       { id: 'projects', label: 'Projets', icon: FolderKanban },
       { id: 'clients', label: 'Clients', icon: Users },
       { id: 'prospects', label: 'Prospects', icon: BriefcaseBusiness },
@@ -112,7 +112,7 @@ const NAV_GROUPS: AdminNavGroup[] = [
     label: 'Finance',
     items: [
       { id: 'reports', label: 'Rapports', icon: BarChart3 },
-      { id: 'invoices', label: 'Factures', icon: FileText },
+      { id: 'invoices', label: 'Factures', icon: Receipt },
       { id: 'payments', label: 'Paiements', icon: CreditCard },
     ],
   },
@@ -187,6 +187,10 @@ export function AdminView() {
   const workflowRequests = userProjects.filter(project => ['submitted', 'info_required'].includes(project.status)).length;
   const missingInfoCount = userProjects.filter(project => project.missingInfo).length;
   const quoteCount = userProjects.reduce((total, project) => total + (project.quotes?.length ?? 0), 0);
+  const confirmLogout = () => {
+    setSidebarOpen(false);
+    logout();
+  };
 
   useEffect(() => {
     const tabFromView = ADMIN_VIEW_TO_TAB[currentView];
@@ -452,10 +456,18 @@ export function AdminView() {
                 {renderNavGroups(true)}
               </div>
               <div className="border-t border-border p-4">
-                <Button variant="ghost" className="w-full justify-start gap-3" onClick={logout}>
-                  <LogOut className="size-4" />
-                  Déconnexion
-                </Button>
+                <ConfirmActionDialog
+                  title="Se déconnecter de l’administration ?"
+                  description="Vous allez quitter l’espace admin Buildify sur cet appareil. Les actions en cours non enregistrées peuvent être perdues."
+                  confirmLabel="Se déconnecter"
+                  onConfirm={confirmLogout}
+                  trigger={(
+                    <Button variant="ghost" className="w-full justify-start gap-3">
+                      <LogOut className="size-4" />
+                      Déconnexion
+                    </Button>
+                  )}
+                />
               </div>
             </motion.aside>
           </>
@@ -528,9 +540,17 @@ export function AdminView() {
             <button type="button" onClick={() => navigate('profile')} className="hidden rounded-lg p-2 hover:bg-muted sm:inline-flex" aria-label="Profil">
               <User className="size-5" />
             </button>
-            <button type="button" onClick={logout} className="hidden rounded-lg p-2 hover:bg-muted sm:inline-flex" aria-label="Déconnexion">
-              <LogOut className="size-5" />
-            </button>
+            <ConfirmActionDialog
+              title="Se déconnecter de l’administration ?"
+              description="Vous allez quitter l’espace admin Buildify sur cet appareil. Confirmez seulement si vous avez terminé vos actions en cours."
+              confirmLabel="Se déconnecter"
+              onConfirm={confirmLogout}
+              trigger={(
+                <button type="button" className="hidden rounded-lg p-2 hover:bg-muted sm:inline-flex" aria-label="Déconnexion">
+                  <LogOut className="size-5" />
+                </button>
+              )}
+            />
           </div>
         </header>
 

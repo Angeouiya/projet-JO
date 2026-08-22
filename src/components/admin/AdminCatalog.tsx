@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Search, Plus, Eye, Pencil, Trash2, EyeOff, Eye as EyeOn, MoreVertical, Grid3X3, List, Star
+  Search, Plus, Eye, Pencil, Trash2, EyeOff, Eye as EyeOn, MoreVertical, Grid3X3, List, Gem
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +62,7 @@ export function AdminCatalog() {
                   <Badge variant={m.status === 'published' ? 'default' : 'secondary'} className="text-[10px]">
                     {m.status === 'published' ? 'Publié' : 'Brouillon'}
                   </Badge>
-                  {m.standing === 'luxe' && <Badge variant="secondary" className="text-[10px]"><Star className="w-2.5 h-2.5 mr-0.5" />Luxe</Badge>}
+                  {m.standing === 'luxe' && <Badge variant="secondary" className="text-[10px]"><Gem className="w-2.5 h-2.5 mr-0.5" />Luxe</Badge>}
                 </div>
               </div>
               <CardContent className="p-3">

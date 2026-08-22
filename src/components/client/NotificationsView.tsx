@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, CheckCheck, Bell, FileText, MessageSquare,
+  ArrowLeft, CheckCheck, Bell, ClipboardList, MessageSquare,
   AlertCircle, CheckCircle2, Clock, FolderKanban, Receipt,
   Camera, ChevronRight,
 } from 'lucide-react';
@@ -96,7 +96,7 @@ function getNotificationIcon(type: string) {
   switch (type) {
     case 'quote': return Receipt;
     case 'message': return MessageSquare;
-    case 'report': return FileText;
+    case 'report': return ClipboardList;
     case 'photo': return Camera;
     case 'invoice': return Receipt;
     case 'status': return CheckCircle2;

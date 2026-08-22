@@ -4,9 +4,9 @@ import { useRef } from 'react';
 import { motion, useInView, type Variants } from 'framer-motion';
 import {
   ArrowLeft, Home, Building2, Building, Landmark, Hammer,
-  Route, Construction, Droplets, FileText, HardHat, Ruler,
+  Route, Construction, Droplets, DraftingCompass, HardHat, Ruler,
   ClipboardCheck, Truck, ArrowRight, Phone, Mail, MapPinIcon,
-  CheckCircle2,
+  CheckCircle2, FileSignature,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -92,7 +92,7 @@ const SERVICES: Service[] = [
     image: '/images/hydraulique-1.png',
   },
   {
-    icon: FileText,
+    icon: DraftingCompass,
     title: 'Études techniques',
     description: 'Études de faisabilité, avant-projets, dossiers techniques et supervision.',
     details: ['Étude de faisabilité', 'Avant-projet', 'Dossier BET', 'Expertise technique'],
@@ -112,7 +112,7 @@ const PROCESS = [
     desc: 'Nos architectes conçoivent les plans adaptés à votre terrain et vos envies.',
   },
   {
-    icon: FileText,
+    icon: FileSignature,
     title: 'Devis & contrat',
     desc: 'Devis détaillé, transparent. Contrat clair avec planning et conditions.',
   },

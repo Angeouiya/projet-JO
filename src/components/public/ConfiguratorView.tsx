@@ -5,43 +5,91 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   ArrowRight,
+  AirVent,
+  Armchair,
   BadgeCheck,
+  BadgeDollarSign,
   Banknote,
+  BanknoteArrowDown,
+  Bath,
+  BatteryCharging,
+  BedDouble,
+  BrickWall,
+  BriefcaseBusiness,
   Building,
   Building2,
+  Calculator,
   Calendar,
+  CalendarCheck,
+  CalendarClock,
   CheckCircle2,
   CheckSquare,
   ChevronRight,
   CircleDot,
+  CircleDollarSign,
+  CircleParking,
   ClipboardList,
+  ClipboardCheck,
+  Clock,
+  Coins,
+  CookingPot,
   Crown,
+  DoorOpen,
   Droplets,
+  DraftingCompass,
+  Drill,
   Eye,
-  FileText,
+  Fence,
   Flag,
+  Gauge,
   Gem,
   Hammer,
+  Handshake,
   HelpCircle,
   Home,
+  Hourglass,
   KeyRound,
+  LandPlot,
   Landmark,
   Layers,
+  Lightbulb,
   ListChecks,
   MapPin,
   Minus,
+  Network,
+  NotebookTabs,
+  PaintBucket,
+  PanelTop,
   Paintbrush,
   PartyPopper,
   Pencil,
+  Pickaxe,
+  PlugZap,
   Plus,
+  RadioTower,
+  ReceiptText,
   Route,
   RotateCcw,
   Ruler,
   Search,
   Send,
+  Scale,
+  ShieldPlus,
   ShieldCheck,
-  Star,
-  Truck,
+  ShowerHead,
+  Signature,
+  Siren,
+  Sprout,
+  Stamp,
+  Timer,
+  ToolCase,
+  TrafficCone,
+  UserCheck,
+  Users,
+  Vault,
+  Wallet,
+  Warehouse,
+  Waves,
   Wrench,
   X,
 } from 'lucide-react';
@@ -53,7 +101,7 @@ import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Checkbox } from '@/components/ui/checkbox';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { useAppStore } from '@/stores/app-store';
 import { CITIES_CI, COMMUNES_ABIDJAN } from '@/types';
 import type { LucideIcon } from 'lucide-react';
@@ -109,6 +157,8 @@ interface StepDef {
   skippable?: boolean;
   skipLabel?: string;
   required?: boolean;
+  minSelections?: number;
+  requiredMessage?: string;
 }
 
 const PROJECT_TYPES: ChoiceOption[] = [
@@ -120,7 +170,7 @@ const PROJECT_TYPES: ChoiceOption[] = [
   { value: 'hydraulique', label: 'Hydraulique', icon: Droplets, description: 'Forage, eau, assainissement' },
   { value: 'lot-travaux', label: 'Lot de travaux', icon: Hammer, description: 'Gros œuvre, second œuvre, finition' },
   { value: 'renovation', label: 'Rénovation', icon: Paintbrush, description: 'Réhabilitation, extension, reprise' },
-  { value: 'etude-suivi', label: 'Étude / suivi', icon: FileText, description: 'Plans, contrôle, chiffrage' },
+  { value: 'etude-suivi', label: 'Étude / suivi', icon: DraftingCompass, description: 'Plans, contrôle, chiffrage' },
   { value: 'autre', label: 'Autre besoin', icon: HelpCircle, description: 'Demande à préciser' },
 ];
 
@@ -140,8 +190,8 @@ const CATEGORY_SLUG_BY_TYPE: Record<string, string> = {
 const CITY_OPTIONS: ChoiceOption[] = [
   ...Array.from(new Set(CITIES_CI))
     .sort((a, b) => a.localeCompare(b, 'fr'))
-    .map(city => ({ value: city, label: city, icon: MapPin })),
-  { value: 'Autre ville', label: 'Autre ville', icon: MapPin },
+    .map(city => ({ value: city, label: city })),
+  { value: 'Autre ville', label: 'Autre ville', icon: LandPlot },
 ];
 
 const TERRAIN_OPTIONS: ChoiceOption[] = [
@@ -178,30 +228,30 @@ const BUILDING_USE_OPTIONS: ChoiceOption[] = [
 ];
 
 const FINITION_OPTIONS: ChoiceOption[] = [
-  { value: 'economique', label: 'Économique', icon: Star, description: 'Essentiel et maîtrisé' },
-  { value: 'standard', label: 'Standard', icon: Star, description: 'Bon rapport qualité-prix' },
+  { value: 'economique', label: 'Économique', icon: Wallet, description: 'Essentiel et maîtrisé' },
+  { value: 'standard', label: 'Standard', icon: Scale, description: 'Bon rapport qualité-prix' },
   { value: 'premium', label: 'Premium', icon: Crown, description: 'Matériaux et détails soignés' },
   { value: 'luxe', label: 'Luxe', icon: Gem, description: 'Haut standing' },
   { value: 'a-definir', label: 'À définir', icon: HelpCircle, description: 'À cadrer avec l’équipe' },
 ];
 
 const BUDGET_OPTIONS: ChoiceOption[] = [
-  { value: 'less-10m', label: 'Moins de 10 M', icon: Banknote, description: '< 10 000 000 F' },
-  { value: '10-30m', label: '10 - 30 M', icon: Banknote, description: '10 à 30 M F' },
+  { value: 'less-10m', label: 'Moins de 10 M', icon: Coins, description: '< 10 000 000 F' },
+  { value: '10-30m', label: '10 - 30 M', icon: Wallet, description: '10 à 30 M F' },
   { value: '30-75m', label: '30 - 75 M', icon: Banknote, description: '30 à 75 M F' },
-  { value: '75-150m', label: '75 - 150 M', icon: Banknote, description: '75 à 150 M F' },
-  { value: '150-300m', label: '150 - 300 M', icon: Banknote, description: '150 à 300 M F' },
-  { value: 'more-300m', label: 'Plus de 300 M', icon: Banknote, description: '> 300 000 000 F' },
-  { value: 'unknown', label: 'À estimer', icon: HelpCircle, description: 'Budget à chiffrer' },
+  { value: '75-150m', label: '75 - 150 M', icon: CircleDollarSign, description: '75 à 150 M F' },
+  { value: '150-300m', label: '150 - 300 M', icon: BadgeDollarSign, description: '150 à 300 M F' },
+  { value: 'more-300m', label: 'Plus de 300 M', icon: Vault, description: '> 300 000 000 F' },
+  { value: 'unknown', label: 'À estimer', icon: Calculator, description: 'Budget à chiffrer' },
 ];
 
 const TIMELINE_OPTIONS: ChoiceOption[] = [
   { value: 'immediate', label: 'Immédiatement', icon: Flag, description: 'Démarrage urgent' },
-  { value: '1-month', label: 'Sous 1 mois', icon: Calendar, description: 'Préparation rapide' },
-  { value: '3-months', label: 'Sous 3 mois', icon: Calendar, description: 'Études à finaliser' },
-  { value: '6-months', label: 'Sous 6 mois', icon: Calendar, description: 'Projet en préparation' },
+  { value: '1-month', label: 'Sous 1 mois', icon: Timer, description: 'Préparation rapide' },
+  { value: '3-months', label: 'Sous 3 mois', icon: CalendarClock, description: 'Études à finaliser' },
+  { value: '6-months', label: 'Sous 6 mois', icon: CalendarCheck, description: 'Projet en préparation' },
   { value: '1-year', label: 'Sous 1 an', icon: Calendar, description: 'Projet à moyen terme' },
-  { value: 'unknown', label: 'À définir', icon: HelpCircle, description: 'Calendrier ouvert' },
+  { value: 'unknown', label: 'À définir', icon: Hourglass, description: 'Calendrier ouvert' },
 ];
 
 const FINANCING_OPTIONS: ChoiceOption[] = [
@@ -214,59 +264,103 @@ const FINANCING_OPTIONS: ChoiceOption[] = [
 ];
 
 const PAYMENT_SECURITY_OPTIONS: ChoiceOption[] = [
-  { value: 'notary-contract', label: 'Contrat notarié', icon: FileText },
-  { value: 'bank-disbursement', label: 'Décaissement banque', icon: Landmark },
-  { value: 'escrow', label: 'Blocage / séquestre', icon: ShieldCheck },
-  { value: 'progress-photos', label: 'Photos par étape', icon: Eye },
-  { value: 'milestone-payment', label: 'Paiement par jalons', icon: ClipboardList },
-  { value: 'bank-support', label: 'Accompagnement banque', icon: BadgeCheck },
+  { value: 'notary-contract', label: 'Contrat notarié', icon: Signature, description: 'Engagements formalisés avant démarrage' },
+  { value: 'bank-disbursement', label: 'Décaissement banque', icon: BanknoteArrowDown, description: 'Versements déclenchés par la banque' },
+  { value: 'escrow', label: 'Blocage / séquestre', icon: Vault, description: 'Fonds sécurisés avant libération' },
+  { value: 'progress-photos', label: 'Photos par étape', icon: Eye, description: 'Preuves visuelles avant paiement' },
+  { value: 'milestone-payment', label: 'Paiement par jalons', icon: ClipboardCheck, description: 'Paiement par niveau d’avancement validé' },
+  { value: 'bank-support', label: 'Accompagnement banque', icon: Handshake, description: 'Aide au montage et au suivi banque' },
+];
+
+const FINANCING_PURPOSE_OPTIONS: ChoiceOption[] = [
+  { value: 'construction-only', label: 'Construction uniquement', icon: BrickWall },
+  { value: 'land-and-construction', label: 'Terrain + construction', icon: LandPlot },
+  { value: 'works-lot', label: 'Lot de travaux', icon: Hammer },
+  { value: 'vrd-infra', label: 'VRD / réseaux', icon: Network },
+  { value: 'studies-permits', label: 'Études / permis', icon: DraftingCompass },
+  { value: 'completion-finishes', label: 'Achèvement / finitions', icon: PaintBucket },
+];
+
+const BANK_AGREEMENT_STAGE_OPTIONS: ChoiceOption[] = [
+  { value: 'not-started', label: 'Pas encore démarré', icon: CircleDot },
+  { value: 'simulation', label: 'Simulation reçue', icon: Calculator },
+  { value: 'documents-requested', label: 'Pièces demandées', icon: NotebookTabs },
+  { value: 'under-review', label: 'Dossier en étude', icon: Clock },
+  { value: 'pre-approved', label: 'Préaccord obtenu', icon: BadgeCheck },
+  { value: 'funds-available', label: 'Fonds disponibles', icon: Vault },
+];
+
+const DOWN_PAYMENT_SOURCE_OPTIONS: ChoiceOption[] = [
+  { value: 'savings', label: 'Épargne personnelle', icon: Banknote },
+  { value: 'salary-business', label: 'Revenus d’activité', icon: BriefcaseBusiness },
+  { value: 'family-support', label: 'Appui familial / associé', icon: Users },
+  { value: 'asset-sale', label: 'Vente d’actif', icon: Landmark },
+  { value: 'company-cash', label: 'Trésorerie entreprise', icon: Warehouse },
+  { value: 'to-confirm', label: 'À confirmer', icon: HelpCircle },
+];
+
+const FINANCING_DOCUMENT_OPTIONS: ChoiceOption[] = [
+  { value: 'id', label: 'Pièce d’identité', icon: UserCheck },
+  { value: 'income-proof', label: 'Justificatifs de revenus', icon: ReceiptText },
+  { value: 'bank-statements', label: 'Relevés bancaires', icon: Landmark },
+  { value: 'land-document', label: 'Document terrain', icon: LandPlot },
+  { value: 'company-documents', label: 'Documents entreprise', icon: BriefcaseBusiness },
+  { value: 'quote-or-plans', label: 'Plans / devis / métré', icon: ClipboardList },
+  { value: 'none-yet', label: 'Aucun document pour le moment', icon: HelpCircle },
+];
+
+const FINANCING_COMMITMENT_OPTIONS: ChoiceOption[] = [
+  { value: 'truthful-data', label: 'Je fournis des données sincères', icon: BadgeCheck },
+  { value: 'bank-verification', label: 'J’accepte la vérification banque', icon: Landmark },
+  { value: 'progress-payment', label: 'Je comprends le paiement par avancement', icon: CalendarClock },
+  { value: 'no-hidden-advance', label: 'Je veux éviter les avances non sécurisées', icon: ShieldPlus },
 ];
 
 const MAISON_SPACES: ChoiceOption[] = [
-  { value: 'suite-parentale', label: 'Suite parentale', icon: Home },
-  { value: 'terrasse', label: 'Terrasse', icon: Home },
-  { value: 'garage', label: 'Garage', icon: Truck },
-  { value: 'cuisine-exterieure', label: 'Cuisine extérieure', icon: Home },
-  { value: 'dependance', label: 'Dépendance', icon: Building2 },
-  { value: 'cloture', label: 'Clôture', icon: ShieldCheck },
-  { value: 'piscine', label: 'Piscine', icon: Droplets },
-  { value: 'jardin', label: 'Jardin', icon: Home },
+  { value: 'suite-parentale', label: 'Suite parentale', icon: BedDouble },
+  { value: 'terrasse', label: 'Terrasse', icon: Armchair },
+  { value: 'garage', label: 'Garage', icon: CircleParking },
+  { value: 'cuisine-exterieure', label: 'Cuisine extérieure', icon: CookingPot },
+  { value: 'dependance', label: 'Dépendance', icon: DoorOpen },
+  { value: 'cloture', label: 'Clôture', icon: Fence },
+  { value: 'piscine', label: 'Piscine', icon: Waves },
+  { value: 'jardin', label: 'Jardin', icon: Sprout },
 ];
 
 const RPLUS_OPTIONS: ChoiceOption[] = [
   { value: 'ascenseur', label: 'Ascenseur', icon: Layers },
-  { value: 'parking', label: 'Parking', icon: Truck },
-  { value: 'sous-sol', label: 'Sous-sol', icon: Building },
-  { value: 'groupe-electrogene', label: 'Groupe électrogène', icon: Wrench },
-  { value: 'surpresseur', label: 'Surpresseur', icon: Droplets },
-  { value: 'securite-incendie', label: 'Sécurité incendie', icon: ShieldCheck },
-  { value: 'loge-gardien', label: 'Loge gardien', icon: Home },
-  { value: 'local-technique', label: 'Local technique', icon: Wrench },
+  { value: 'parking', label: 'Parking', icon: CircleParking },
+  { value: 'sous-sol', label: 'Sous-sol', icon: Warehouse },
+  { value: 'groupe-electrogene', label: 'Groupe électrogène', icon: BatteryCharging },
+  { value: 'surpresseur', label: 'Surpresseur', icon: Gauge },
+  { value: 'securite-incendie', label: 'Sécurité incendie', icon: Siren },
+  { value: 'loge-gardien', label: 'Loge gardien', icon: DoorOpen },
+  { value: 'local-technique', label: 'Local technique', icon: ToolCase },
 ];
 
 const VRD_LOTS: ChoiceOption[] = [
-  { value: 'terrassement', label: 'Terrassement', icon: Hammer },
+  { value: 'terrassement', label: 'Terrassement', icon: Pickaxe },
   { value: 'voirie', label: 'Voirie', icon: Route },
-  { value: 'caniveaux', label: 'Caniveaux', icon: Droplets },
-  { value: 'assainissement', label: 'Assainissement', icon: Droplets },
+  { value: 'caniveaux', label: 'Caniveaux', icon: Waves },
+  { value: 'assainissement', label: 'Assainissement', icon: ShowerHead },
   { value: 'eau-potable', label: 'Eau potable', icon: Droplets },
-  { value: 'electricite', label: 'Électricité', icon: Wrench },
-  { value: 'telecom', label: 'Télécom', icon: Wrench },
-  { value: 'eclairage-public', label: 'Éclairage public', icon: Eye },
-  { value: 'signalisation', label: 'Signalisation', icon: Flag },
+  { value: 'electricite', label: 'Électricité', icon: PlugZap },
+  { value: 'telecom', label: 'Télécom', icon: RadioTower },
+  { value: 'eclairage-public', label: 'Éclairage public', icon: Lightbulb },
+  { value: 'signalisation', label: 'Signalisation', icon: TrafficCone },
 ];
 
 const LOT_TRAVAUX_OPTIONS: ChoiceOption[] = [
-  { value: 'gros-oeuvre', label: 'Gros œuvre', icon: Hammer },
+  { value: 'gros-oeuvre', label: 'Gros œuvre', icon: BrickWall },
   { value: 'second-oeuvre', label: 'Second œuvre', icon: Layers },
-  { value: 'plomberie', label: 'Plomberie', icon: Wrench },
-  { value: 'electricite', label: 'Électricité', icon: Wrench },
-  { value: 'carrelage', label: 'Carrelage', icon: Layers },
+  { value: 'plomberie', label: 'Plomberie', icon: Bath },
+  { value: 'electricite', label: 'Électricité', icon: PlugZap },
+  { value: 'carrelage', label: 'Carrelage', icon: PanelTop },
   { value: 'peinture', label: 'Peinture', icon: Paintbrush },
-  { value: 'menuiserie', label: 'Menuiserie', icon: Wrench },
+  { value: 'menuiserie', label: 'Menuiserie', icon: Drill },
   { value: 'etancheite', label: 'Étanchéité', icon: Droplets },
   { value: 'toiture', label: 'Charpente / toiture', icon: Home },
-  { value: 'climatisation', label: 'Climatisation', icon: Wrench },
+  { value: 'climatisation', label: 'Climatisation', icon: AirVent },
   { value: 'finition-complete', label: 'Finition complète', icon: Gem },
 ];
 
@@ -274,26 +368,26 @@ const HYDRAULIC_WORKS: ChoiceOption[] = [
   { value: 'forage', label: 'Forage', icon: Droplets },
   { value: 'chateau-eau', label: 'Château d’eau', icon: Landmark },
   { value: 'adduction', label: 'Adduction d’eau', icon: Route },
-  { value: 'pompage', label: 'Pompage', icon: Wrench },
-  { value: 'drainage', label: 'Drainage', icon: Droplets },
+  { value: 'pompage', label: 'Pompage', icon: Gauge },
+  { value: 'drainage', label: 'Drainage', icon: Waves },
   { value: 'station-traitement', label: 'Traitement', icon: ShieldCheck },
 ];
 
 const STUDY_SCOPES: ChoiceOption[] = [
-  { value: 'architecture', label: 'Architecture', icon: Home },
+  { value: 'architecture', label: 'Architecture', icon: DraftingCompass },
   { value: 'structure', label: 'Structure béton', icon: Building2 },
   { value: 'metre-devis', label: 'Métré / devis', icon: Ruler },
-  { value: 'permis', label: 'Permis de construire', icon: FileText },
+  { value: 'permis', label: 'Permis de construire', icon: Stamp },
   { value: 'planning', label: 'Planning travaux', icon: Calendar },
   { value: 'controle-chantier', label: 'Contrôle chantier', icon: ClipboardList },
   { value: 'expertise', label: 'Expertise technique', icon: ShieldCheck },
 ];
 
 const DOCUMENT_OPTIONS: ChoiceOption[] = [
-  { value: 'titre-foncier', label: 'Titre foncier / ACD', icon: FileText },
-  { value: 'attestation', label: 'Attestation villageoise', icon: FileText },
+  { value: 'titre-foncier', label: 'Titre foncier / ACD', icon: Stamp },
+  { value: 'attestation', label: 'Attestation villageoise', icon: Signature },
   { value: 'plan-topo', label: 'Plan topographique', icon: Ruler },
-  { value: 'plan-archi', label: 'Plan architectural', icon: Home },
+  { value: 'plan-archi', label: 'Plan architectural', icon: DraftingCompass },
   { value: 'etude-sol', label: 'Étude de sol', icon: Layers },
   { value: 'photos-site', label: 'Photos du site', icon: Eye },
   { value: 'devis-existant', label: 'Devis existant', icon: Banknote },
@@ -318,6 +412,18 @@ function getLabel(options: ChoiceOption[] | undefined, value: string): string {
 
 function formatSurface(value: number): string {
   return new Intl.NumberFormat('fr-FR').format(value) + ' m²';
+}
+
+function optionInitials(label: string): string {
+  return label
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[\s/-]+/)
+    .filter(Boolean)
+    .map(part => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || '•';
 }
 
 function normalizeSearchText(value: string): string {
@@ -361,7 +467,7 @@ function getPrestationsOptions(family: ProjectFamily): ChoiceOption[] {
   if (family === 'vrd') {
     return [
       { value: 'topographie', label: 'Topographie', icon: Ruler },
-      { value: 'etude-vrd', label: 'Étude VRD', icon: FileText },
+      { value: 'etude-vrd', label: 'Étude VRD', icon: DraftingCompass },
       { value: 'terrassement', label: 'Terrassement', icon: Hammer },
       { value: 'execution-vrd', label: 'Exécution VRD', icon: Route },
       { value: 'controle-qualite', label: 'Contrôle qualité', icon: ShieldCheck },
@@ -381,9 +487,9 @@ function getPrestationsOptions(family: ProjectFamily): ChoiceOption[] {
     return STUDY_SCOPES;
   }
   return [
-    { value: 'etude-architecturale', label: 'Étude architecturale', icon: FileText },
+    { value: 'etude-architecturale', label: 'Étude architecturale', icon: DraftingCompass },
     { value: 'plans-execution', label: 'Plans d’exécution', icon: Ruler },
-    { value: 'permis', label: 'Permis de construire', icon: FileText },
+    { value: 'permis', label: 'Permis de construire', icon: Stamp },
     { value: 'gros-oeuvre', label: 'Gros œuvre', icon: Hammer },
     { value: 'second-oeuvre', label: 'Second œuvre', icon: Layers },
     { value: 'finition', label: 'Finition', icon: Paintbrush },
@@ -444,8 +550,8 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       responseKey: 'terrainStatus',
       type: 'choice-single',
       options: TERRAIN_OPTIONS,
-      skippable: true,
-      skipLabel: 'À clarifier plus tard',
+      required: true,
+      requiredMessage: 'Indiquez si le terrain est disponible, en acquisition ou encore à rechercher.',
     });
 
     if (terrainStatus === 'owned' || terrainStatus === 'acquiring') {
@@ -459,8 +565,8 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         max: family === 'promotion' ? 20000 : 5000,
         step: 50,
         unit: 'm²',
-        skippable: true,
-        skipLabel: 'Je ne sais pas',
+        required: true,
+        requiredMessage: 'Saisissez ou ajustez la superficie du terrain avant de continuer.',
       });
     }
 
@@ -471,7 +577,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         subtitle: 'Sélectionnez les communes souhaitées',
         responseKey: 'zones',
         type: 'choice-multi',
-        options: COMMUNES_ABIDJAN.map(commune => ({ value: commune, label: commune, icon: MapPin })),
+        options: COMMUNES_ABIDJAN.map(commune => ({ value: commune, label: commune })),
         skippable: true,
         skipLabel: 'À définir plus tard',
       });
@@ -484,22 +590,22 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       responseKey: '__terrain_details__',
       type: 'field-group',
       fields: [
-        { key: 'topography', label: 'Topographie', type: 'select', options: TOPOGRAPHY_OPTIONS },
+        { key: 'topography', label: 'Topographie', type: 'select', options: TOPOGRAPHY_OPTIONS, required: true },
         { key: 'existingUtilities', label: 'Réseaux disponibles', type: 'select', options: [
           { value: 'eau-electricite', label: 'Eau et électricité' },
           { value: 'electricite-seule', label: 'Électricité seule' },
           { value: 'eau-seule', label: 'Eau seule' },
           { value: 'aucun', label: 'Aucun réseau' },
           { value: 'inconnu', label: 'À vérifier' },
-        ] },
+        ], required: true },
         { key: 'soilKnown', label: 'Étude de sol', type: 'select', options: [
           { value: 'faite', label: 'Déjà faite' },
           { value: 'a-faire', label: 'À faire' },
           { value: 'inconnue', label: 'Je ne sais pas' },
-        ] },
+        ], required: true },
       ],
-      skippable: true,
-      skipLabel: 'Passer',
+      required: true,
+      requiredMessage: 'Renseignez les contraintes minimales du terrain pour fiabiliser l’étude.',
     });
   }
 
@@ -515,8 +621,8 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         max: projectType === 'duplex-triplex' ? 900 : 600,
         step: 10,
         unit: 'm²',
-        skippable: true,
-        skipLabel: 'À estimer',
+        required: true,
+        requiredMessage: 'Saisissez la surface bâtie ou l’emprise souhaitée de la maison.',
       },
       {
         id: 'bedrooms',
@@ -527,8 +633,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         min: 1,
         max: 12,
         unit: 'chambre(s)',
-        skippable: true,
-        skipLabel: 'À définir',
+        required: true,
       },
       {
         id: 'maison-spaces',
@@ -563,8 +668,8 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         responseKey: 'buildingUse',
         type: 'choice-single',
         options: BUILDING_USE_OPTIONS,
-        skippable: true,
-        skipLabel: 'À définir',
+        required: true,
+        requiredMessage: 'Précisez l’usage principal de l’immeuble R+.',
       },
       {
         id: 'rplus-program',
@@ -573,18 +678,18 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         responseKey: '__rplus_program__',
         type: 'field-group',
         fields: [
-          { key: 'unitsPerFloor', label: 'Logements / locaux par étage', type: 'number', placeholder: 'Ex : 2', min: 1, unit: 'unité(s)' },
+          { key: 'unitsPerFloor', label: 'Logements / locaux par étage', type: 'number', placeholder: 'Ex : 2', min: 1, unit: 'unité(s)', required: true },
           { key: 'groundFloorUse', label: 'Rez-de-chaussée', type: 'select', options: [
             { value: 'parking', label: 'Parking' },
             { value: 'commerce', label: 'Commerces' },
             { value: 'logements', label: 'Logements' },
             { value: 'mixte', label: 'Mixte' },
             { value: 'a-definir', label: 'À définir' },
-          ] },
-          { key: 'estimatedFootprint', label: 'Emprise au sol estimée', type: 'number', placeholder: 'Ex : 450', unit: 'm²' },
+          ], required: true },
+          { key: 'estimatedFootprint', label: 'Emprise au sol estimée', type: 'number', placeholder: 'Ex : 450', unit: 'm²', min: 1, required: true },
         ],
-        skippable: true,
-        skipLabel: 'À préciser plus tard',
+        required: true,
+        requiredMessage: 'Renseignez le programme minimum de l’immeuble R+.',
       },
       {
         id: 'rplus-options',
@@ -617,13 +722,13 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         responseKey: '__vrd_dimensions__',
         type: 'field-group',
         fields: [
-          { key: 'roadLength', label: 'Linéaire estimé', type: 'number', placeholder: 'Ex : 750', unit: 'm' },
-          { key: 'roadWidth', label: 'Largeur moyenne', type: 'number', placeholder: 'Ex : 7', unit: 'm' },
-          { key: 'plotCount', label: 'Nombre de lots desservis', type: 'number', placeholder: 'Ex : 45', unit: 'lot(s)' },
-          { key: 'outfallPoint', label: 'Exutoire / raccordement', type: 'text', placeholder: 'Ex : caniveau existant, bassin, réseau public' },
+          { key: 'roadLength', label: 'Linéaire estimé', type: 'number', placeholder: 'Ex : 750', unit: 'm', min: 1, required: true },
+          { key: 'roadWidth', label: 'Largeur moyenne', type: 'number', placeholder: 'Ex : 7', unit: 'm', min: 1, required: true },
+          { key: 'plotCount', label: 'Nombre de lots desservis', type: 'number', placeholder: 'Ex : 45', unit: 'lot(s)', min: 0 },
+          { key: 'outfallPoint', label: 'Exutoire / raccordement', type: 'text', placeholder: 'Ex : caniveau existant, bassin, réseau public', required: true },
         ],
-        skippable: true,
-        skipLabel: 'À relever sur site',
+        required: true,
+        requiredMessage: 'Renseignez les dimensions VRD minimales avant de continuer.',
       },
       {
         id: 'vrd-context',
@@ -637,8 +742,8 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
           { value: 'lotissement', label: 'Lotissement', icon: ListChecks, description: 'Voiries et réseaux à créer' },
           { value: 'site-occupe', label: 'Site occupé', icon: Building, description: 'Travaux sous contraintes' },
         ],
-        skippable: true,
-        skipLabel: 'À confirmer',
+        required: true,
+        requiredMessage: 'Indiquez l’état de l’emprise VRD.',
       }
     );
   }
@@ -661,19 +766,19 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         responseKey: '__hydraulic_data__',
         type: 'field-group',
         fields: [
-          { key: 'beneficiaries', label: 'Bénéficiaires estimés', type: 'number', placeholder: 'Ex : 250', unit: 'pers.' },
-          { key: 'dailyNeed', label: 'Besoin journalier', type: 'number', placeholder: 'Ex : 15', unit: 'm³/j' },
-          { key: 'waterSource', label: 'Source actuelle', type: 'text', placeholder: 'Ex : puits, SODECI, forage existant' },
+          { key: 'beneficiaries', label: 'Bénéficiaires estimés', type: 'number', placeholder: 'Ex : 250', unit: 'pers.', min: 1, required: true },
+          { key: 'dailyNeed', label: 'Besoin journalier', type: 'number', placeholder: 'Ex : 15', unit: 'm³/j', min: 1, required: true },
+          { key: 'waterSource', label: 'Source actuelle', type: 'text', placeholder: 'Ex : puits, SODECI, forage existant', required: true },
           { key: 'energySource', label: 'Énergie disponible', type: 'select', options: [
             { value: 'reseau', label: 'Réseau électrique' },
             { value: 'solaire', label: 'Solaire' },
             { value: 'groupe', label: 'Groupe électrogène' },
             { value: 'aucune', label: 'Aucune' },
             { value: 'inconnue', label: 'À vérifier' },
-          ] },
+          ], required: true },
         ],
-        skippable: true,
-        skipLabel: 'À diagnostiquer',
+        required: true,
+        requiredMessage: 'Renseignez les données hydrauliques minimales.',
       }
     );
   }
@@ -703,12 +808,12 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
             { value: 'renovation', label: 'Rénovation' },
             { value: 'reprise', label: 'Reprise après malfaçon' },
           ], required: true },
-          { key: 'affectedArea', label: 'Surface concernée', type: 'number', placeholder: 'Ex : 120', unit: 'm²' },
+          { key: 'affectedArea', label: 'Surface concernée', type: 'number', placeholder: 'Ex : 120', unit: 'm²', min: 1, required: true },
           { key: 'occupiedSite', label: 'Site occupé ?', type: 'select', options: [
             { value: 'oui', label: 'Oui' },
             { value: 'non', label: 'Non' },
             { value: 'partiellement', label: 'Partiellement' },
-          ] },
+          ], required: true },
           { key: 'qualityTarget', label: 'Objectif qualité', type: 'text', placeholder: 'Ex : finition premium, reprise complète plomberie' },
         ],
         required: true,
@@ -776,11 +881,11 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         type: 'choice-multi',
         options: [
           { value: 'voirie-interne', label: 'Voirie interne', icon: Route },
-          { value: 'espaces-verts', label: 'Espaces verts', icon: Home },
-          { value: 'parking', label: 'Parking', icon: Truck },
-          { value: 'aire-jeux', label: 'Aire de jeux', icon: Home },
+          { value: 'espaces-verts', label: 'Espaces verts', icon: Sprout },
+          { value: 'parking', label: 'Parking', icon: CircleParking },
+          { value: 'aire-jeux', label: 'Aire de jeux', icon: Armchair },
           { value: 'gardiennage', label: 'Gardiennage', icon: ShieldCheck },
-          { value: 'local-technique', label: 'Local technique', icon: Wrench },
+          { value: 'local-technique', label: 'Local technique', icon: ToolCase },
         ],
         skippable: true,
         skipLabel: 'Aucun pour l’instant',
@@ -809,8 +914,9 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       responseKey: 'prestations',
       type: 'choice-multi',
       options: getPrestationsOptions(family),
-      skippable: true,
-      skipLabel: 'À cadrer avec l’équipe',
+      required: true,
+      minSelections: 1,
+      requiredMessage: 'Choisissez au moins une prestation attendue.',
     },
     {
       id: 'documents',
@@ -829,43 +935,98 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       responseKey: 'budget',
       type: 'choice-single',
       options: BUDGET_OPTIONS,
-      skippable: true,
-      skipLabel: 'À estimer',
+      required: true,
+      requiredMessage: 'Choisissez une enveloppe, même “À estimer”, pour cadrer le financement.',
     },
     {
       id: 'financing',
       title: 'Financement du projet',
-      subtitle: 'Dites comment sécuriser les paiements par avancement',
+      subtitle: 'Choisissez le montage qui correspond à votre situation actuelle',
       responseKey: 'financingMode',
       type: 'choice-single',
       options: FINANCING_OPTIONS,
-      skippable: true,
-      skipLabel: 'À structurer avec l’équipe',
+      required: true,
+      requiredMessage: 'Choisissez un mode de financement pour clarifier l’engagement.',
+      insight: 'Cette étape ne valide pas un crédit : elle sert à comprendre votre capacité, les fonds disponibles et la façon de payer sans avance non sécurisée.',
+    },
+    {
+      id: 'financing-purpose',
+      title: 'Objet du financement',
+      subtitle: 'Précisez ce que l’argent doit réellement couvrir',
+      responseKey: 'financingPurpose',
+      type: 'choice-single',
+      options: FINANCING_PURPOSE_OPTIONS,
+      required: true,
+      requiredMessage: 'Indiquez l’objet précis du financement.',
     },
     {
       id: 'financing-profile',
-      title: 'Capacité et banque',
-      subtitle: 'Ces informations servent à préparer le montage, sans encaisser d’avance',
+      title: 'Capacité financière',
+      subtitle: 'Renseignez les montants clés pour mesurer une mensualité réaliste',
       responseKey: '__financing_profile__',
       type: 'field-group',
       fields: [
-        { key: 'monthlyIncome', label: 'Revenu mensuel indicatif', type: 'number', placeholder: 'Ex : 1500000', unit: 'F CFA' },
-        { key: 'ownContribution', label: 'Apport disponible', type: 'number', placeholder: 'Ex : 5000000', unit: 'F CFA' },
-        { key: 'bankName', label: 'Banque ou institution', type: 'text', placeholder: 'Ex : BNI, SGCI, NSIA, banque à contacter' },
-        { key: 'bankContact', label: 'Contact banque', type: 'text', placeholder: 'Nom, agence, téléphone ou email si disponible' },
+        { key: 'monthlyIncome', label: 'Revenu mensuel net', type: 'number', placeholder: 'Ex : 1500000', unit: 'F CFA', min: 0, required: true, helper: 'Revenu stable disponible chaque mois : salaire, activité, loyers ou revenus d’entreprise.' },
+        { key: 'existingMonthlyDebt', label: 'Charges ou crédits mensuels', type: 'number', placeholder: 'Ex : 250000', unit: 'F CFA', min: 0, required: true, helper: 'Indiquez 0 si vous n’avez pas de crédit ou charge fixe importante.' },
+        { key: 'monthlyPaymentCapacity', label: 'Mensualité acceptable', type: 'number', placeholder: 'Ex : 450000', unit: 'F CFA', min: 0, required: true, helper: 'Montant maximum que vous pensez pouvoir payer sans mettre votre foyer ou activité sous tension.' },
+        { key: 'ownContribution', label: 'Apport disponible immédiatement', type: 'number', placeholder: 'Ex : 5000000', unit: 'F CFA', min: 0, required: true },
+        { key: 'availableSavings', label: 'Épargne de sécurité restante', type: 'number', placeholder: 'Ex : 1000000', unit: 'F CFA', min: 0, helper: 'Montant que vous souhaitez garder après apport pour les imprévus.' },
+        { key: 'requestedLoanAmount', label: 'Montant à financer', type: 'number', placeholder: 'Ex : 35000000', unit: 'F CFA', min: 0, required: true },
+        { key: 'desiredLoanDurationYears', label: 'Durée souhaitée', type: 'number', placeholder: 'Ex : 10', unit: 'an(s)', min: 1, max: 30, required: true },
       ],
-      skippable: true,
-      skipLabel: 'À compléter plus tard',
+      required: true,
+      requiredMessage: 'Complétez les montants financiers de base avant de continuer.',
+      insight: 'Ces informations permettent d’estimer le taux d’endettement et de préparer un échange sérieux avec une banque ou un notaire.',
+    },
+    {
+      id: 'financing-bank',
+      title: 'Banque et origine de l’apport',
+      subtitle: 'Expliquez où en est le dossier financier',
+      responseKey: '__financing_bank__',
+      type: 'field-group',
+      fields: [
+        { key: 'bankAgreementStage', label: 'Niveau d’accord banque', type: 'select', options: BANK_AGREEMENT_STAGE_OPTIONS, required: true },
+        { key: 'bankName', label: 'Banque ou institution envisagée', type: 'text', placeholder: 'Ex : BNI, SGCI, NSIA, aucune pour le moment' },
+        { key: 'bankContact', label: 'Contact banque', type: 'text', placeholder: 'Nom, agence, téléphone ou e-mail si disponible' },
+        { key: 'downPaymentSource', label: 'Origine de l’apport', type: 'select', options: DOWN_PAYMENT_SOURCE_OPTIONS, required: true },
+        { key: 'financingNotes', label: 'Précision financière utile', type: 'textarea', placeholder: 'Ex : préaccord oral, apport détenu sur compte, financement familial, dossier employeur, besoin d’accompagnement banque...' },
+      ],
+      required: true,
+      requiredMessage: 'Indiquez le niveau banque et l’origine de l’apport.',
     },
     {
       id: 'payment-security',
       title: 'Sécurisation des paiements',
-      subtitle: 'Choisissez les garanties souhaitées pour payer par niveau d’avancement',
+      subtitle: 'Choisissez les garanties souhaitées avant tout décaissement',
       responseKey: 'paymentSecurity',
       type: 'choice-multi',
       options: PAYMENT_SECURITY_OPTIONS,
-      skippable: true,
-      skipLabel: 'À cadrer au contrat',
+      required: true,
+      minSelections: 1,
+      requiredMessage: 'Sélectionnez au moins une règle de sécurisation des paiements.',
+      insight: 'Le principe recommandé : aucun paiement important sans étape contrôlée, preuve d’avancement et cadre contractuel clair.',
+    },
+    {
+      id: 'financing-documents',
+      title: 'Pièces financières disponibles',
+      subtitle: 'Cochez les pièces que vous pouvez fournir ou dites si rien n’est prêt',
+      responseKey: 'documentReadiness',
+      type: 'choice-multi',
+      options: FINANCING_DOCUMENT_OPTIONS,
+      required: true,
+      minSelections: 1,
+      requiredMessage: 'Indiquez au moins l’état des pièces financières disponibles.',
+    },
+    {
+      id: 'financing-commitments',
+      title: 'Engagements de compréhension',
+      subtitle: 'Validez les points clés avant transmission du dossier',
+      responseKey: 'commitments',
+      type: 'choice-multi',
+      options: FINANCING_COMMITMENT_OPTIONS,
+      required: true,
+      minSelections: FINANCING_COMMITMENT_OPTIONS.length,
+      requiredMessage: 'Validez tous les engagements pour confirmer que le financement est bien compris.',
     },
     {
       id: 'timeline',
@@ -874,8 +1035,8 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       responseKey: 'timeline',
       type: 'choice-single',
       options: TIMELINE_OPTIONS,
-      skippable: true,
-      skipLabel: 'À définir',
+      required: true,
+      requiredMessage: 'Choisissez un délai de démarrage, même approximatif.',
     },
     {
       id: 'description',
@@ -931,9 +1092,19 @@ function stepValueToString(step: StepDef, value: unknown): string {
   return String(value);
 }
 
+function getSubmittedCity(responses: Record<string, unknown>): string | undefined {
+  const city = String(responses.city || '').trim();
+  if (!city) return undefined;
+  if (city === 'Autre ville') {
+    return String(responses.otherCity || '').trim() || city;
+  }
+  return city;
+}
+
 function buildAutoDescription(responses: Record<string, unknown>): string {
   const type = getLabel(PROJECT_TYPES, String(responses.projectType || 'autre'));
-  const city = responses.city ? ` à ${responses.city}` : '';
+  const cityName = getSubmittedCity(responses);
+  const city = cityName ? ` à ${cityName}` : '';
   const lots = [
     ...(Array.isArray(responses.workLots) ? responses.workLots : []),
     ...(Array.isArray(responses.vrdLots) ? responses.vrdLots : []),
@@ -943,9 +1114,19 @@ function buildAutoDescription(responses: Record<string, unknown>): string {
   return `${type}${city}${lotText}`;
 }
 
-function numberResponse(value: unknown): number | undefined {
+function numberResponse(value: unknown, allowZero = false): number | undefined {
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  if (!Number.isFinite(parsed)) return undefined;
+  return allowZero ? (parsed >= 0 ? parsed : undefined) : (parsed > 0 ? parsed : undefined);
+}
+
+function arrayResponse(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String) : [];
+}
+
+function percentRatio(numerator?: number, denominator?: number): number | undefined {
+  if (!denominator || denominator <= 0 || numerator === undefined) return undefined;
+  return Math.round((numerator / denominator) * 100);
 }
 
 function buildPaymentMilestones(estimatedBudget?: number): ProjectPaymentMilestoneData[] {
@@ -967,23 +1148,48 @@ function buildPaymentMilestones(estimatedBudget?: number): ProjectPaymentMilesto
 
 function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: number, budgetMax?: number): ProjectFinancingData {
   const mode = String(responses.financingMode || 'to-structure');
-  const paymentSecurity = Array.isArray(responses.paymentSecurity) ? responses.paymentSecurity.map(String) : [];
+  const paymentSecurity = arrayResponse(responses.paymentSecurity);
+  const documentReadiness = arrayResponse(responses.documentReadiness);
+  const commitments = arrayResponse(responses.commitments);
+  const monthlyIncome = numberResponse(responses.monthlyIncome, true);
+  const existingMonthlyDebt = numberResponse(responses.existingMonthlyDebt, true);
+  const monthlyPaymentCapacity = numberResponse(responses.monthlyPaymentCapacity, true);
+  const ownContribution = numberResponse(responses.ownContribution, true);
+  const requestedLoanAmount = numberResponse(responses.requestedLoanAmount, true);
+  const desiredLoanDurationYears = numberResponse(responses.desiredLoanDurationYears);
+  const availableSavings = numberResponse(responses.availableSavings, true);
+  const bankAgreementStage = String(responses.bankAgreementStage || '').trim() || undefined;
   const estimatedBudget = budgetMax || budgetMin || undefined;
   const readiness: ProjectFinancingData['readiness'] =
-    mode === 'confirmed-bank' ? 'confirmed'
-      : mode === 'bank-support' ? 'bank_review'
+    mode === 'confirmed-bank' || bankAgreementStage === 'funds-available' || bankAgreementStage === 'pre-approved' ? 'confirmed'
+      : mode === 'bank-support' || bankAgreementStage === 'under-review' || bankAgreementStage === 'documents-requested' ? 'bank_review'
         : mode === 'to-structure' || mode === 'land-and-finance' ? 'to_structure'
           : 'unknown';
+  const currentDebtRatioPercent = percentRatio(existingMonthlyDebt, monthlyIncome);
+  const projectedDebtRatioPercent = percentRatio((existingMonthlyDebt ?? 0) + (monthlyPaymentCapacity ?? 0), monthlyIncome);
 
   return {
     mode,
     readiness,
-    paymentPrinciple: 'Aucune avance de démarrage imposée : paiements déclenchés par niveaux d’avancement vérifiés.',
+    paymentPrinciple: 'Objectif Buildify : structurer un financement lisible, protéger l’apport, éviter les avances non sécurisées et déclencher les paiements uniquement par jalons vérifiés.',
     estimatedBudget,
-    monthlyIncome: numberResponse(responses.monthlyIncome),
-    ownContribution: numberResponse(responses.ownContribution),
+    monthlyIncome,
+    existingMonthlyDebt,
+    monthlyPaymentCapacity,
+    ownContribution,
+    requestedLoanAmount,
+    desiredLoanDurationYears,
+    availableSavings,
     bankName: String(responses.bankName || '').trim() || undefined,
     bankContact: String(responses.bankContact || '').trim() || undefined,
+    bankAgreementStage,
+    financingPurpose: String(responses.financingPurpose || '').trim() || undefined,
+    downPaymentSource: String(responses.downPaymentSource || '').trim() || undefined,
+    documentReadiness,
+    guarantees: paymentSecurity,
+    commitments,
+    currentDebtRatioPercent,
+    projectedDebtRatioPercent,
     notaryContract: mode === 'notary-secured' || paymentSecurity.includes('notary-contract'),
     escrowRequested: paymentSecurity.includes('escrow'),
     bankSupportRequested: mode === 'bank-support' || paymentSecurity.includes('bank-support'),
@@ -992,6 +1198,64 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
     milestones: buildPaymentMilestones(estimatedBudget),
     updatedAt: new Date().toISOString(),
   };
+}
+
+function hasStoredValue(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return String(value).trim() !== '';
+}
+
+function isFieldComplete(field: FieldDef, value: unknown): boolean {
+  if (!hasStoredValue(value)) return false;
+  if (field.type !== 'number') return true;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return false;
+  if (field.min !== undefined && parsed < field.min) return false;
+  if (field.max !== undefined && parsed > field.max) return false;
+  return true;
+}
+
+function stepRequirementMessage(step: StepDef | undefined, responses: Record<string, unknown>): string | null {
+  if (!step || step.type === 'summary' || step.type === 'confirmation') return null;
+
+  if (step.type === 'field-group') {
+    const requiredFields = step.fields?.filter(field => field.required) || [];
+    const missingField = requiredFields.find(field => !isFieldComplete(field, responses[field.key]));
+    if (missingField) return step.requiredMessage || `Complétez le champ “${missingField.label}” avant de continuer.`;
+    if (step.required && requiredFields.length === 0) {
+      const hasAnyField = (step.fields || []).some(field => hasStoredValue(responses[field.key]));
+      if (!hasAnyField) return step.requiredMessage || 'Complétez au moins une information avant de continuer.';
+    }
+    return null;
+  }
+
+  if (!step.required) return null;
+
+  if (step.type === 'choice-multi') {
+    const selected = arrayResponse(responses[step.responseKey]);
+    const minSelections = step.minSelections ?? 1;
+    return selected.length >= minSelections ? null : step.requiredMessage || `Sélectionnez au moins ${minSelections} élément(s).`;
+  }
+
+  if (step.type === 'slider') {
+    const value = responses[step.responseKey];
+    return isFieldComplete({ key: step.responseKey, label: step.title, type: 'number', min: step.min, max: step.max }, value)
+      ? null
+      : step.requiredMessage || `Saisissez “${step.title}” avant de continuer.`;
+  }
+
+  if (step.type === 'counter') return null;
+
+  if (!hasStoredValue(responses[step.responseKey])) {
+    return step.requiredMessage || `Renseignez “${step.title}” avant de continuer.`;
+  }
+
+  if (step.id === 'city' && responses.city === 'Autre ville' && !hasStoredValue(responses.otherCity)) {
+    return 'Précisez la ville avant de continuer.';
+  }
+
+  return null;
 }
 
 export function ConfiguratorView() {
@@ -1082,11 +1346,14 @@ export function ConfiguratorView() {
   }, [steps]);
 
   const goNext = useCallback(() => {
+    if (activeStep?.type === 'counter' && !hasStoredValue(responses[activeStep.responseKey])) {
+      setConfiguratorResponse(activeStep.responseKey, activeStep.min ?? 1);
+    }
     const nextIdx = currentIdx + 1;
     if (nextIdx < steps.length) {
       setLocalStepId(steps[nextIdx].id);
     }
-  }, [currentIdx, steps]);
+  }, [activeStep, currentIdx, responses, setConfiguratorResponse, steps]);
 
   const goBack = useCallback(() => {
     const prevIdx = currentIdx - 1;
@@ -1106,7 +1373,7 @@ export function ConfiguratorView() {
       const localBudgetMin = budgetMin ?? undefined;
       const localBudgetMax = budgetMax ?? undefined;
       const financing = buildProjectFinancing(responses, localBudgetMin, localBudgetMax);
-      const city = responses.city as string | undefined;
+      const city = getSubmittedCity(responses);
       const declaredDocuments = Array.isArray(responses.documents) ? responses.documents as string[] : [];
       setReferenceNumber(ref);
 
@@ -1182,7 +1449,7 @@ export function ConfiguratorView() {
       const localBudgetMin = budgetMin ?? undefined;
       const localBudgetMax = budgetMax ?? undefined;
       const financing = buildProjectFinancing(responses, localBudgetMin, localBudgetMax);
-      const city = responses.city as string | undefined;
+      const city = getSubmittedCity(responses);
       createProjectRequest({
         id: `local-${ref}`,
         referenceNumber: ref,
@@ -1243,22 +1510,18 @@ export function ConfiguratorView() {
     navigate('projects');
   }, [navigate, resetConfigurator]);
 
-  const canProceed = useMemo(() => {
-    if (!activeStep) return false;
-    if (activeStep.type === 'summary' || activeStep.type === 'confirmation') return true;
-    if (activeStep.skippable) return true;
-    if (activeStep.type === 'choice-multi') {
-      const selected = responses[activeStep.responseKey];
-      return !activeStep.required || (Array.isArray(selected) && selected.length > 0);
-    }
-    if (activeStep.type === 'field-group') {
-      const requiredFields = activeStep.fields?.filter(field => field.required) || [];
-      return requiredFields.every(field => String(responses[field.key] ?? '').trim() !== '');
-    }
-    if (activeStep.type === 'textarea' || activeStep.type === 'slider' || activeStep.type === 'counter') return true;
-    const val = responses[activeStep.responseKey];
-    return val !== undefined && val !== null && val !== '';
-  }, [activeStep, responses]);
+  const handleCloseConfigurator = useCallback(() => {
+    resetConfigurator();
+    useAppStore.getState().goBack();
+  }, [resetConfigurator]);
+
+  const handleNewProject = useCallback(() => {
+    resetConfigurator();
+    navigate('home');
+  }, [navigate, resetConfigurator]);
+
+  const requirementMessage = useMemo(() => stepRequirementMessage(activeStep, responses), [activeStep, responses]);
+  const canProceed = !requirementMessage;
 
   const renderChoiceSingle = (step: StepDef) => {
     const selected = responses[step.responseKey] as string | undefined;
@@ -1297,9 +1560,13 @@ export function ConfiguratorView() {
                 }`}
                 aria-pressed={isSelected}
               >
-                {Icon && (
+                {(Icon || !option.icon) && (
                   <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10 ${isSelected ? 'bg-background/15' : 'bg-muted'}`}>
+                    {Icon ? (
                     <Icon className={`size-4 sm:size-5 ${isSelected ? 'text-background' : 'text-foreground'}`} />
+                    ) : (
+                      <span className={`text-[11px] font-bold ${isSelected ? 'text-background' : 'text-foreground'}`}>{optionInitials(option.label)}</span>
+                    )}
                   </span>
                 )}
                 <span className="min-w-0 flex-1">
@@ -1375,10 +1642,17 @@ export function ConfiguratorView() {
                   {Icon ? (
                     <Icon className={`size-4 ${isChecked ? 'text-background' : 'text-foreground'}`} />
                   ) : (
-                    <Checkbox checked={isChecked} className="pointer-events-none" aria-hidden />
+                    <span className={`text-[11px] font-bold ${isChecked ? 'text-background' : 'text-foreground'}`}>{optionInitials(option.label)}</span>
                   )}
                 </span>
-                <span className="min-w-0 text-[13px] font-medium leading-tight sm:text-sm">{option.label}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-medium leading-tight sm:text-sm">{option.label}</span>
+                  {option.description && (
+                    <span className={`mt-1 block text-[11px] leading-snug ${isChecked ? 'text-background/75' : 'text-muted-foreground'}`}>
+                      {option.description}
+                    </span>
+                  )}
+                </span>
                 {isChecked && (
                   <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-background">
                     <CheckCircle2 className="size-3.5 text-foreground" />
@@ -1429,7 +1703,15 @@ export function ConfiguratorView() {
                       : 'border-border bg-card text-foreground hover:border-foreground/40 hover:bg-muted/40'
                   }`}
                 >
-                  {Icon && <Icon className="size-3.5 shrink-0" />}
+                  {Icon ? (
+                    <Icon className="size-3.5 shrink-0" />
+                  ) : (
+                    <span className={`flex size-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold ${
+                      isSelected ? 'bg-background/15 text-background' : 'bg-muted text-foreground'
+                    }`}>
+                      {optionInitials(option.label)}
+                    </span>
+                  )}
                   <span className="min-w-0">{option.label}</span>
                 </button>
               );
@@ -1598,9 +1880,14 @@ export function ConfiguratorView() {
     const min = step.min ?? 100;
     const max = step.max ?? 5000;
     const stepValue = step.step ?? 50;
+    const hasValue = hasStoredValue(responses[step.responseKey]);
     const value = Math.min(max, Math.max(min, (responses[step.responseKey] as number) || min));
     const marks = [min, Math.round((min + max) / 3), Math.round((min + max) / 2), max];
     const setSurfaceValue = (rawValue: string) => {
+      if (!rawValue.trim()) {
+        setConfiguratorResponse(step.responseKey, '');
+        return;
+      }
       const nextValue = Number(rawValue);
       if (Number.isNaN(nextValue)) return;
       setConfiguratorResponse(step.responseKey, Math.min(max, Math.max(min, nextValue)));
@@ -1616,7 +1903,7 @@ export function ConfiguratorView() {
             transition={{ duration: 0.15 }}
             className="block text-4xl font-bold tabular-nums sm:text-5xl"
           >
-            {formatSurface(value)}
+            {hasValue ? formatSurface(value) : 'À saisir'}
           </motion.span>
         </div>
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px] sm:items-center">
@@ -1630,7 +1917,7 @@ export function ConfiguratorView() {
           />
           <div className="relative">
             <Input
-              value={value}
+              value={hasValue ? value : ''}
               onChange={event => setSurfaceValue(event.target.value)}
               type="number"
               inputMode="numeric"
@@ -1747,18 +2034,18 @@ export function ConfiguratorView() {
           Voir mes projets
           <ChevronRight className="ml-1 size-4" />
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => {
-            resetConfigurator();
-            navigate('home');
-          }}
-          className="h-12 w-full rounded-xl text-sm"
-          size="lg"
-        >
-          <RotateCcw className="mr-1 size-4" />
-          Nouveau projet
-        </Button>
+        <ConfirmActionDialog
+          title="Démarrer un nouveau projet ?"
+          description="La demande actuelle est déjà enregistrée. Cette action réinitialise le formulaire pour préparer un autre dossier."
+          confirmLabel="Nouveau projet"
+          onConfirm={handleNewProject}
+          trigger={(
+            <Button variant="outline" className="h-12 w-full rounded-xl text-sm" size="lg">
+              <RotateCcw className="mr-1 size-4" />
+              Nouveau projet
+            </Button>
+          )}
+        />
       </div>
     </div>
   );
@@ -1785,22 +2072,23 @@ export function ConfiguratorView() {
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur-md">
         <div className="flex h-14 items-center gap-3 px-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-10 rounded-xl"
-            onClick={() => {
-              if (isFirstStep) {
-                resetConfigurator();
-                useAppStore.getState().goBack();
-              } else {
-                goBack();
-              }
-            }}
-            aria-label="Retour"
-          >
-            <ArrowLeft className="size-5" />
-          </Button>
+          {isFirstStep ? (
+            <ConfirmActionDialog
+              title="Quitter le formulaire ?"
+              description="Les informations non soumises de ce formulaire seront retirées de l’écran. Vous pourrez recommencer un dossier ensuite."
+              confirmLabel="Quitter"
+              onConfirm={handleCloseConfigurator}
+              trigger={(
+                <Button variant="ghost" size="icon" className="size-10 rounded-xl" aria-label="Retour">
+                  <ArrowLeft className="size-5" />
+                </Button>
+              )}
+            />
+          ) : (
+            <Button variant="ghost" size="icon" className="size-10 rounded-xl" onClick={goBack} aria-label="Retour">
+              <ArrowLeft className="size-5" />
+            </Button>
+          )}
 
           <h1 className="truncate text-sm font-bold">Configurer mon projet</h1>
 
@@ -1810,18 +2098,17 @@ export function ConfiguratorView() {
                 {Math.min(currentIdx + 1, progressSteps.length)} / {progressSteps.length}
               </Badge>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-10 rounded-xl"
-              onClick={() => {
-                resetConfigurator();
-                useAppStore.getState().goBack();
-              }}
-              aria-label="Fermer"
-            >
-              <X className="size-4" />
-            </Button>
+            <ConfirmActionDialog
+              title="Fermer le formulaire ?"
+              description="Vous allez quitter la configuration du projet. Les données non soumises ne seront pas envoyées à l’équipe Buildify."
+              confirmLabel="Fermer"
+              onConfirm={handleCloseConfigurator}
+              trigger={(
+                <Button variant="ghost" size="icon" className="size-10 rounded-xl" aria-label="Fermer">
+                  <X className="size-4" />
+                </Button>
+              )}
+            />
           </div>
         </div>
 
@@ -1865,6 +2152,11 @@ export function ConfiguratorView() {
                     {activeStep.type === 'slider' && renderSlider(activeStep)}
                     {activeStep.type === 'textarea' && renderTextarea(activeStep)}
                     {activeStep.type === 'summary' && renderSummary()}
+                    {requirementMessage && (
+                      <div role="alert" className="mt-4 rounded-xl border border-foreground/20 bg-muted/50 px-4 py-3 text-xs font-medium leading-5 text-foreground">
+                        {requirementMessage}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -1882,7 +2174,7 @@ export function ConfiguratorView() {
                           Vue desktop dédiée au suivi du remplissage, avant transmission à l’équipe BTP.
                         </p>
                       </div>
-                      <FileText className="size-5 text-muted-foreground" />
+                      <NotebookTabs className="size-5 text-muted-foreground" />
                     </div>
 
                     <div className="mt-5 space-y-2">
@@ -1934,7 +2226,7 @@ export function ConfiguratorView() {
 
             <div className="flex-1" />
 
-            {activeStep.skippable && !isSummary && (
+            {activeStep.skippable && !activeStep.required && !isSummary && (
               <Button variant="ghost" onClick={handleSkip} className="h-12 shrink-0 rounded-xl px-3 text-xs text-muted-foreground sm:text-sm">
                 {activeStep.skipLabel || 'Passer'}
               </Button>

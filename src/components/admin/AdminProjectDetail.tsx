@@ -5,7 +5,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   ClipboardCheck,
-  FileText,
+  FolderSearch,
   Landmark,
   MessageSquareText,
   ReceiptText,
@@ -58,6 +58,38 @@ function financingReadinessLabel(readiness?: string) {
   return 'À confirmer';
 }
 
+function amountOrTodo(value: number | undefined) {
+  return value !== undefined ? FORMAT_XOF(value) : 'À compléter';
+}
+
+function percentOrTodo(value: number | undefined) {
+  return value !== undefined ? `${value}%` : 'À calculer';
+}
+
+const BANK_STAGE_LABELS: Record<string, string> = {
+  'not-started': 'Pas démarré',
+  simulation: 'Simulation reçue',
+  'documents-requested': 'Pièces demandées',
+  'under-review': 'En étude',
+  'pre-approved': 'Préaccord',
+  'funds-available': 'Fonds disponibles',
+};
+
+const FINANCING_DOCUMENT_LABELS: Record<string, string> = {
+  id: 'Identité',
+  'income-proof': 'Revenus',
+  'bank-statements': 'Relevés',
+  'land-document': 'Terrain',
+  'company-documents': 'Entreprise',
+  'quote-or-plans': 'Plans/devis',
+  'none-yet': 'Aucun',
+};
+
+function labelFrom(labels: Record<string, string>, value?: string) {
+  if (!value) return 'À compléter';
+  return labels[value] || value;
+}
+
 export function AdminProjectDetail() {
   const {
     goBack,
@@ -83,7 +115,7 @@ export function AdminProjectDetail() {
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <Card className="w-full max-w-lg border-dashed">
           <CardContent className="p-8 text-center">
-            <FileText className="mx-auto size-10 text-muted-foreground" />
+            <FolderSearch className="mx-auto size-10 text-muted-foreground" />
             <h1 className="mt-4 text-lg font-semibold">Dossier non synchronisé</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Ce dossier n’existe pas dans le workflow persistant de ce navigateur.
@@ -277,17 +309,45 @@ export function AdminProjectDetail() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg border p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Revenu</p>
-                    <p className="mt-1 text-xs font-semibold">{financing?.monthlyIncome ? FORMAT_XOF(financing.monthlyIncome) : 'À compléter'}</p>
+                    <p className="mt-1 text-xs font-semibold">{amountOrTodo(financing?.monthlyIncome)}</p>
                   </div>
                   <div className="rounded-lg border p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Apport</p>
-                    <p className="mt-1 text-xs font-semibold">{financing?.ownContribution ? FORMAT_XOF(financing.ownContribution) : 'À compléter'}</p>
+                    <p className="mt-1 text-xs font-semibold">{amountOrTodo(financing?.ownContribution)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mensualité</p>
+                    <p className="mt-1 text-xs font-semibold">{amountOrTodo(financing?.monthlyPaymentCapacity)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ratio projeté</p>
+                    <p className="mt-1 text-xs font-semibold">{percentOrTodo(financing?.projectedDebtRatioPercent)}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Prêt demandé</p>
+                    <p className="mt-1 text-xs font-semibold">{amountOrTodo(financing?.requestedLoanAmount)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Accord banque</p>
+                    <p className="mt-1 text-xs font-semibold">{labelFrom(BANK_STAGE_LABELS, financing?.bankAgreementStage)}</p>
                   </div>
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Banque</p>
                   <p className="mt-1 text-sm font-semibold">{financing?.bankName || 'À contacter'}</p>
                   {financing?.bankContact && <p className="mt-1 text-xs text-muted-foreground">{financing.bankContact}</p>}
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pièces déclarées</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {(financing?.documentReadiness?.length ? financing.documentReadiness : ['none-yet']).map(item => (
+                      <Badge key={item} variant="outline" className="text-[10px]">
+                        {labelFrom(FINANCING_DOCUMENT_LABELS, item)}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant={financing?.notaryContract ? 'default' : 'outline'} className="gap-1">
@@ -333,7 +393,7 @@ export function AdminProjectDetail() {
                 ) : (
                   (project.documents ?? []).map(document => (
                     <div key={document.id} className="flex items-center gap-3 rounded-lg border p-3">
-                      <FileText className="size-4 text-muted-foreground" />
+                      <FolderSearch className="size-4 text-muted-foreground" />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{document.name}</p>
                         <p className="text-xs text-muted-foreground">{document.date}</p>

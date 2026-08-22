@@ -235,7 +235,7 @@ export function DesktopDashboardShell({
             <div className="rounded-lg border bg-background p-3">
               <p className="text-xs font-semibold">Compte</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Email recommandé. Téléphone accepté avec indicatif pays, sans connexion OTP.
+                Email recommandé. Téléphone accepté avec indicatif pays et mot de passe.
               </p>
             </div>
           </div>

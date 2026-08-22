@@ -3,7 +3,8 @@
 import { motion } from 'framer-motion';
 import {
   TrendingUp, Clock, AlertTriangle, ArrowUpRight, Users, FolderKanban,
-  HardHat, DollarSign, CalendarDays, ChevronRight, BarChart3, Activity
+  HardHat, DollarSign, CalendarDays, ChevronRight, BarChart3, Activity,
+  ClipboardList, PackagePlus
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,17 +49,13 @@ const recentActivity = [
 ];
 
 const stats = [
-  { label: 'Nouvelles demandes', value: '12', icon: FileText, change: '+3 cette semaine' },
+  { label: 'Nouvelles demandes', value: '12', icon: ClipboardList, change: '+3 cette semaine' },
   { label: 'Projets actifs', value: '8', icon: FolderKanban, change: '2 en urgence' },
   { label: 'Chantiers en cours', value: '5', icon: HardHat, change: '1 retard' },
   { label: 'CA du mois', value: FORMAT_SHORT_XOF(76000000), icon: DollarSign, change: '+18%' },
   { label: 'Taux conversion', value: '67%', icon: TrendingUp, change: '+5% vs mois dernier' },
   { label: 'Rendez-vous', value: '4', icon: CalendarDays, change: 'Cette semaine' },
 ];
-
-function FileText(props: React.SVGProps<SVGSVGElement>) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>;
-}
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
@@ -186,11 +183,11 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2">
               <Button variant="outline" className="h-auto py-3 flex-col gap-1" onClick={() => setAdminTab('requests')}>
-                <FileText className="w-5 h-5" />
+                <ClipboardList className="w-5 h-5" />
                 <span className="text-xs">Nouvelle demande</span>
               </Button>
               <Button variant="outline" className="h-auto py-3 flex-col gap-1" onClick={() => setAdminTab('catalog')}>
-                <Package className="w-5 h-5" />
+                <PackagePlus className="w-5 h-5" />
                 <span className="text-xs">Ajouter modèle</span>
               </Button>
               <Button variant="outline" className="h-auto py-3 flex-col gap-1" onClick={() => setAdminTab('clients')}>
@@ -224,8 +221,4 @@ export function AdminDashboard() {
       </div>
     </motion.div>
   );
-}
-
-function Package(props: React.SVGProps<SVGSVGElement>) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/></svg>;
 }

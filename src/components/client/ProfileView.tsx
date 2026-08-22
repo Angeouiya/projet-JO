@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Heart, FileText, Settings, HelpCircle, LogOut, Shield,
+  Heart, FolderArchive, Settings, HelpCircle, LogOut, Shield,
   ChevronRight, Bell, User, Mail, Phone, PenLine, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,12 +14,13 @@ import { Label } from '@/components/ui/label';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { useAppStore } from '@/stores/app-store';
 
 const MENU_ITEMS = [
   { icon: Bell, label: 'Notifications', view: 'notifications' as const, showArrow: true },
   { icon: Heart, label: 'Mes favoris', view: 'favorites' as const, showArrow: true },
-  { icon: FileText, label: 'Mes documents', view: 'projects' as const, showArrow: true },
+  { icon: FolderArchive, label: 'Mes documents', view: 'projects' as const, showArrow: true },
   { icon: Settings, label: 'Paramètres', view: 'projects' as const, showArrow: true },
   { icon: HelpCircle, label: 'Aide', view: 'projects' as const, showArrow: true },
 ];
@@ -56,7 +57,7 @@ export function ProfileView() {
   };
 
   return (
-    <main className="min-h-screen bg-background pb-8">
+    <main className="min-h-screen bg-background pb-28">
       {/* Header */}
       <div className="px-4 pt-6 pb-2">
         <motion.h1
@@ -176,17 +177,21 @@ export function ProfileView() {
 
           <Separator />
 
-          <motion.button
-            custom={MENU_ITEMS.length}
-            variants={menuVariants}
-            initial="hidden"
-            animate="visible"
-            className="w-full flex items-center gap-3 p-4 hover:bg-accent/50 transition-colors text-left"
-            onClick={logout}
-          >
-            <LogOut className="size-5 text-muted-foreground" />
-            <span className="text-sm font-medium flex-1">Déconnexion</span>
-          </motion.button>
+          <ConfirmActionDialog
+            title="Se déconnecter ?"
+            description="Votre session Buildify sera fermée sur cet appareil. Vous pourrez vous reconnecter avec votre e-mail ou numéro de téléphone et votre mot de passe."
+            confirmLabel="Se déconnecter"
+            onConfirm={logout}
+            trigger={(
+              <button
+                type="button"
+                className="w-full flex items-center gap-3 p-4 hover:bg-accent/50 transition-colors text-left"
+              >
+                <LogOut className="size-5 text-muted-foreground" />
+                <span className="text-sm font-medium flex-1">Déconnexion</span>
+              </button>
+            )}
+          />
         </Card>
       </div>
 
