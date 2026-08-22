@@ -3,7 +3,10 @@ import { PrismaClient } from '@prisma/client'
 
 function resolveDatabaseUrl() {
   const current = process.env.DATABASE_URL
-  if (current && !current.includes('/home/z/my-project/')) return current
+  if (current?.startsWith('postgres://') || current?.startsWith('postgresql://')) {
+    process.env.EXTERNAL_DATABASE_URL ??= current
+  }
+  if (current?.startsWith('file:') && !current.includes('/home/z/my-project/')) return current
 
   const dbPath = path.join(process.cwd(), 'db', 'custom.db').replace(/\\/g, '/')
   return `file:${dbPath}`

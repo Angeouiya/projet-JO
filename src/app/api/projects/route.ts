@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { normalizeEmail, normalizeText, parseJsonField, serverError, validationError } from '@/lib/api-utils';
+import { createStoredProject, hasExternalProjectStore, listStoredProjects } from '@/lib/project-store';
 
 const projectQuerySchema = z.object({
   userId: z.string().trim().min(1).optional(),
@@ -56,12 +57,24 @@ function isReadonlyDatabaseError(error: unknown) {
   return error instanceof Error && error.message.toLowerCase().includes('readonly database');
 }
 
+function isUniqueConstraintError(error: unknown) {
+  return typeof error === 'object'
+    && error !== null
+    && 'code' in error
+    && (error as { code?: unknown }).code === '23505';
+}
+
 export async function GET(request: Request) {
   const parsed = projectQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   if (!parsed.success) return validationError(parsed.error);
 
   try {
     const { userId, status, page, limit } = parsed.data;
+    if (hasExternalProjectStore()) {
+      const { projects, total } = await listStoredProjects({ userId, status, page, limit });
+      return NextResponse.json({ projects, total, page, limit, store: 'external' });
+    }
+
     const where: Prisma.ProjectWhereInput = {};
     if (userId) where.userId = userId;
     if (status) where.status = status;
@@ -119,6 +132,30 @@ export async function POST(request: Request) {
     const city = normalizeText(body.city) || normalizeText(String(incomingFormData.city ?? ''));
     const refNumber = body.referenceNumber || String(incomingFormData.referenceNumber ?? '') || projectReference();
     const clientName = normalizeText(body.clientName) || 'Client Buildify';
+    const resolvedCategoryIdFromPayload = body.categoryId || body.categorySlug || null;
+
+    if (hasExternalProjectStore()) {
+      const project = await createStoredProject({
+        id: crypto.randomUUID(),
+        referenceNumber: refNumber,
+        userId: userId || undefined,
+        clientName,
+        clientEmail,
+        clientPhone,
+        categoryId: resolvedCategoryIdFromPayload || undefined,
+        modelId: body.modelId || undefined,
+        title: body.title,
+        description: body.description,
+        formData: incomingFormData,
+        status: 'submitted',
+        city,
+        budgetMin: body.budgetMin,
+        budgetMax: body.budgetMax,
+        country,
+      });
+
+      return NextResponse.json({ project, store: 'external' }, { status: 201 });
+    }
 
     const result = await db.$transaction(async tx => {
       const user = userId
@@ -202,7 +239,7 @@ export async function POST(request: Request) {
         message: 'Le dossier peut être conservé localement, mais la persistance serveur nécessite une base de données externe writable.',
       }, { status: 503 });
     }
-    if (isPrismaKnownError(error) && error.code === 'P2002') {
+    if ((isPrismaKnownError(error) && error.code === 'P2002') || isUniqueConstraintError(error)) {
       return NextResponse.json({ error: 'Un dossier avec cette référence existe déjà.' }, { status: 409 });
     }
     console.error('Project create error:', error);
