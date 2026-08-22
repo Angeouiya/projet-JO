@@ -10,7 +10,7 @@ import { useAppStore } from '@/stores/app-store';
 import { FORMAT_SHORT_XOF } from '@/types';
 import type { CatalogModelData } from '@/types';
 
-const MOCK_FAVORITE_MODELS: (CatalogModelData & { image: string })[] = [
+const CATALOG_FAVORITE_MODELS: (CatalogModelData & { image: string })[] = [
   {
     id: '1', name: 'Villa Aurore', slug: 'villa-aurore', categoryId: 'villa',
     categoryName: 'Villa basse', mainImage: '/images/villa-1.png', images: ['/images/villa-1.png'],
@@ -43,8 +43,7 @@ const MOCK_FAVORITE_MODELS: (CatalogModelData & { image: string })[] = [
 export function FavoritesView() {
   const { goBack, navigate, userFavorites, toggleFavorite } = useAppStore();
 
-  // Filter mock models to only show those in favorites
-  const favoriteModels = MOCK_FAVORITE_MODELS.filter(m => userFavorites.includes(m.id));
+  const favoriteModels = CATALOG_FAVORITE_MODELS.filter(model => userFavorites.includes(model.id));
 
   return (
     <main className="min-h-screen bg-background pb-8">

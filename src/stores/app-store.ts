@@ -76,6 +76,7 @@ interface AppState {
   dismissAuth: () => void;
   setAuthResumeAction: (action: AuthResumeAction | null) => void;
   clearAuthResumeAction: () => void;
+  updateUserProfile: (profile: { name?: string; email?: string; phone?: string }) => void;
 
   // Actions - UI
   toggleMobileMenu: () => void;
@@ -271,6 +272,37 @@ export const useAppStore = create<AppState>()(
       dismissAuth: () => set({ showAuthModal: false, authResumeAction: null }),
       setAuthResumeAction: (action) => set({ authResumeAction: action }),
       clearAuthResumeAction: () => set({ authResumeAction: null }),
+      updateUserProfile: (profile) => set(s => {
+        if (!s.user) return {};
+
+        const previous = s.user;
+        const nextUser: AppUser = {
+          ...previous,
+          name: profile.name?.trim() || previous.name,
+          email: profile.email !== undefined ? profile.email.trim() || undefined : previous.email,
+          phone: profile.phone !== undefined ? profile.phone.trim() || undefined : previous.phone,
+        };
+        const now = new Date().toISOString();
+
+        return {
+          user: nextUser,
+          userProjects: s.userProjects.map(project => {
+            const belongsToUser = project.userId === previous.id
+              || project.clientEmail === previous.email
+              || project.clientPhone === previous.phone
+              || (!project.userId && !project.clientEmail && !project.clientPhone);
+            if (!belongsToUser) return project;
+
+            return {
+              ...project,
+              clientName: nextUser.name,
+              clientEmail: nextUser.email,
+              clientPhone: nextUser.phone,
+              updatedAt: now,
+            };
+          }),
+        };
+      }),
 
       // Actions - UI
       toggleMobileMenu: () => set(s => ({ isMobileMenuOpen: !s.isMobileMenuOpen })),

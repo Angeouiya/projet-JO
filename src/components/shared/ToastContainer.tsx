@@ -14,15 +14,15 @@ export function ToastContainer() {
   const { toasts, removeToast } = useAppStore();
 
   return (
-    <div className="fixed top-4 right-4 z-[60] space-y-2 pointer-events-none">
+    <div className="pointer-events-none fixed left-3 right-3 top-4 z-[60] space-y-2 sm:left-auto sm:right-4">
       <AnimatePresence>
         {toasts.map(toast => (
           <motion.div
             key={toast.id}
-            initial={{ opacity: 0, x: 50, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 50, scale: 0.95 }}
-            className="pointer-events-auto bg-card border border-border rounded-xl shadow-lg p-3 pr-10 relative min-w-[260px] max-w-sm"
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            className="pointer-events-auto relative w-full max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-card p-3 pr-10 shadow-lg sm:min-w-[260px] sm:max-w-sm"
           >
             <div className="flex items-start gap-2.5">
               {(() => { const Icon = ICONS[toast.type]; return Icon ? <Icon className="w-4 h-4 mt-0.5 shrink-0" /> : null; })()}

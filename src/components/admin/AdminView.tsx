@@ -148,7 +148,7 @@ const ADMIN_VIEW_TO_TAB: Record<string, string> = {
 };
 
 function navBadge(itemId: string, workflowRequests: number, projectCount: number, unreadCount: number, missingInfoCount: number, quoteCount: number) {
-  if (itemId === 'requests') return Math.max(workflowRequests, 12);
+  if (itemId === 'requests') return workflowRequests || undefined;
   if (itemId === 'projects') return projectCount || undefined;
   if (itemId === 'notifications') return unreadCount || undefined;
   if (itemId === 'messages') return missingInfoCount || undefined;
@@ -325,6 +325,7 @@ export function AdminView() {
   const renderNavButton = (item: AdminNavItem, mobile = false) => {
     const Icon = item.icon;
     const active = adminTab === item.id && currentView !== 'admin-project-detail';
+    const collapsed = adminSidebarCollapsed && !mobile;
 
     return (
       <button
@@ -336,7 +337,7 @@ export function AdminView() {
         }}
         title={item.label}
         className={`relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
-          adminSidebarCollapsed ? 'justify-center' : ''
+          collapsed ? 'justify-center' : ''
         } ${
           active
             ? 'bg-foreground font-medium text-background'
@@ -344,9 +345,9 @@ export function AdminView() {
         }`}
       >
         <Icon className="size-5 shrink-0" />
-        {!adminSidebarCollapsed && <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>}
+        {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>}
         {item.badge !== undefined && (
-          adminSidebarCollapsed ? (
+          collapsed ? (
             <span className="absolute right-2 top-2 size-2 rounded-full bg-foreground" />
           ) : (
             <span className={`rounded-full px-1.5 py-0.5 text-xs ${
@@ -383,7 +384,7 @@ export function AdminView() {
   );
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen w-full overflow-hidden bg-background">
       <aside className={`hidden ${sidebarWidth} lg:fixed lg:inset-y-0 lg:flex lg:flex-col border-r border-border bg-card transition-[width] duration-300`}>
         <div className={`flex items-center gap-3 border-b border-border py-5 ${adminSidebarCollapsed ? 'justify-center px-3' : 'px-5'}`}>
           {adminSidebarCollapsed ? <BrandMark size="md" /> : <BrandLogo size="md" subtitle="Administration" className="min-w-0 flex-1" />}
@@ -403,7 +404,7 @@ export function AdminView() {
         <div className="border-t border-border p-4">
           <button
             type="button"
-            onClick={() => navigate('profile')}
+            onClick={() => openAdminTab('settings')}
             title={user?.name || 'Admin'}
             className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted ${
               adminSidebarCollapsed ? 'justify-center' : ''
@@ -474,7 +475,7 @@ export function AdminView() {
         )}
       </AnimatePresence>
 
-      <div className={`flex min-h-0 flex-1 flex-col ${contentPadding} transition-[padding] duration-300`}>
+      <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${contentPadding} transition-[padding] duration-300`}>
         <header className="sticky top-0 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur lg:px-8">
           <div className="flex items-center gap-3">
             <button
@@ -537,7 +538,7 @@ export function AdminView() {
               <Bell className="size-5" />
               {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] text-background">{unreadCount}</span>}
             </button>
-            <button type="button" onClick={() => navigate('profile')} className="hidden rounded-lg p-2 hover:bg-muted sm:inline-flex" aria-label="Profil">
+            <button type="button" onClick={() => openAdminTab('settings')} className="hidden rounded-lg p-2 hover:bg-muted sm:inline-flex" aria-label="Profil admin">
               <User className="size-5" />
             </button>
             <ConfirmActionDialog
@@ -554,11 +555,11 @@ export function AdminView() {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 scrollbar-thin lg:p-8">
+        <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 scrollbar-thin lg:p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={`${currentView}-${adminTab}`}
-              initial={{ opacity: 0, y: 8 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}

@@ -1,18 +1,26 @@
+import { Prisma } from '@prisma/client';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { db } from '@/lib/db';
+import { parseJsonField, serverError, validationError } from '@/lib/api-utils';
+
+const modelQuerySchema = z.object({
+  category: z.string().trim().min(1).optional(),
+  standing: z.string().trim().min(1).optional(),
+  city: z.string().trim().min(1).optional(),
+  featured: z.enum(['true', 'false']).optional(),
+  search: z.string().trim().min(1).max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(60).default(20),
+});
 
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const standing = searchParams.get('standing');
-    const city = searchParams.get('city');
-    const featured = searchParams.get('featured');
-    const search = searchParams.get('search');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+  const parsed = modelQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+  if (!parsed.success) return validationError(parsed.error);
 
-    const where: any = { isPublished: true };
+  try {
+    const { category, standing, featured, search, page, limit } = parsed.data;
+    const where: Prisma.CatalogModelWhereInput = { isPublished: true };
     if (category) where.categoryId = category;
     if (standing) where.standing = standing;
     if (featured === 'true') where.isFeatured = true;
@@ -35,14 +43,14 @@ export async function GET(request: Request) {
     ]);
 
     return NextResponse.json({
-      models: models.map(m => ({
-        ...m,
-        images: JSON.parse(m.images),
-        plans: JSON.parse(m.plans),
-        equipment: JSON.parse(m.equipment),
-        features: JSON.parse(m.features),
-        variants: JSON.parse(m.variants),
-        categoryName: m.category?.name,
+      models: models.map(model => ({
+        ...model,
+        images: parseJsonField<string[]>(model.images, []),
+        plans: parseJsonField<string[]>(model.plans, []),
+        equipment: parseJsonField<string[]>(model.equipment, []),
+        features: parseJsonField<string[]>(model.features, []),
+        variants: parseJsonField<Record<string, unknown>[]>(model.variants, []),
+        categoryName: model.category?.name,
       })),
       total,
       page,
@@ -50,6 +58,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Models API error:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return serverError();
   }
 }

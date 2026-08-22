@@ -1,11 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Download, FileSearch, FolderOpen, Search } from 'lucide-react';
+import { Download, Eye, FileSearch, FolderOpen, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import { FORMAT_XOF } from '@/types';
 import type { NotificationData, ProjectData } from '@/types';
 
@@ -20,7 +23,7 @@ type OperationRow = {
   city?: string;
   tags: string[];
   projectId?: string;
-  source: 'workflow' | 'demo';
+  source: 'workflow' | 'reference';
 };
 
 type ModuleCopy = {
@@ -167,7 +170,7 @@ const MODULE_COPY: Record<string, ModuleCopy> = {
   },
 };
 
-const DEMO_ROWS: Record<string, OperationRow[]> = {
+const REFERENCE_ROWS: Record<string, OperationRow[]> = {
   prospects: [
     row('prospect-1', 'Programme locatif R+', 'PRP-2026-014', 'Akwaba Invest', 'À qualifier', '2026-08-20', 240000000, 'Plateau', ['R+', 'Investisseur']),
     row('prospect-2', 'Lot finition villa', 'PRP-2026-013', 'Famille Kouassi', 'Relance', '2026-08-19', 18000000, 'Bingerville', ['Second œuvre']),
@@ -208,7 +211,7 @@ function row(
   city?: string,
   tags: string[] = [],
   projectId?: string,
-  source: OperationRow['source'] = 'demo'
+  source: OperationRow['source'] = 'reference'
 ): OperationRow {
   return { id, title, reference, owner, status, date, amount, city, tags, projectId, source };
 }
@@ -487,12 +490,13 @@ export function AdminOperationsView({
 }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [localSearch, setLocalSearch] = useState('');
+  const [selectedRow, setSelectedRow] = useState<OperationRow | null>(null);
   const copy = MODULE_COPY[tab] ?? MODULE_COPY.prospects;
 
   const rows = useMemo(() => {
     const workflow = workflowRows(tab, projects, notifications);
-    const demo = DEMO_ROWS[tab] ?? [];
-    return [...workflow, ...demo];
+    const references = REFERENCE_ROWS[tab] ?? [];
+    return [...workflow, ...references];
   }, [tab, projects, notifications]);
 
   const query = [searchQuery, localSearch].filter(Boolean).join(' ');
@@ -590,7 +594,7 @@ export function AdminOperationsView({
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs text-muted-foreground">{item.reference}</span>
                     <Badge variant={item.source === 'workflow' ? 'default' : 'secondary'} className="text-[10px]">
-                      {item.source === 'workflow' ? 'Workflow' : 'Démo'}
+                      {item.source === 'workflow' ? 'Workflow' : 'Référence'}
                     </Badge>
                   </div>
                   <p className="mt-1 truncate text-sm font-semibold">{item.title}</p>
@@ -613,7 +617,10 @@ export function AdminOperationsView({
                       Ouvrir
                     </Button>
                   ) : (
-                    <span className="text-xs text-muted-foreground">Consultable</span>
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => setSelectedRow(item)}>
+                      <Eye className="size-4" />
+                      Consulter
+                    </Button>
                   )}
                 </div>
               </div>
@@ -621,6 +628,39 @@ export function AdminOperationsView({
           </div>
         </div>
       )}
+
+      <Dialog open={!!selectedRow} onOpenChange={open => !open && setSelectedRow(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{selectedRow?.title}</DialogTitle>
+            <DialogDescription>{copy.title} · {selectedRow?.reference}</DialogDescription>
+          </DialogHeader>
+          {selectedRow && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Responsable</p>
+                  <p className="mt-1 font-medium">{selectedRow.owner}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Statut</p>
+                  <p className="mt-1 font-medium">{selectedRow.status}</p>
+                </div>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Volume</p>
+                <p className="mt-1 font-semibold">{amountLabel(selectedRow, tab)}</p>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedRow.tags.map(tag => <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>)}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setSelectedRow(null)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

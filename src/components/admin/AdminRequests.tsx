@@ -4,10 +4,11 @@ import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, List, LayoutGrid,
-  ChevronRight, Eye, ArrowRight, Clock, MapPin, User as UserIcon
+  ChevronRight, Clock, MapPin, User as UserIcon, ClipboardList
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS } from '@/types';
@@ -38,16 +39,7 @@ type AdminRequestRow = {
   group: string;
   budget: number;
   urgent: boolean;
-  source: 'workflow' | 'demo';
 };
-
-const mockRequests = [
-  { id: 'demo-1', ref: 'DMD-2024-0089', client: 'Kouamé A.', type: 'Villa basse', city: 'Cocody', date: '2024-01-15', status: 'Demande soumise', statusKey: 'submitted', group: 'Nouvelles', budget: 80000000, urgent: true, source: 'demo' as const },
-  { id: 'demo-2', ref: 'DMD-2024-0088', client: 'Société Akwaba', type: 'Immeuble R+', city: 'Plateau', date: '2024-01-14', status: 'Étude en cours', statusKey: 'studying', group: 'Vérification', budget: 350000000, urgent: false, source: 'demo' as const },
-  { id: 'demo-3', ref: 'DMD-2024-0087', client: 'Diallo M.', type: 'Duplex', city: 'Riviera', date: '2024-01-14', status: 'En attente', statusKey: 'awaiting_validation', group: 'À compléter', budget: 55000000, urgent: false, source: 'demo' as const },
-  { id: 'demo-4', ref: 'DMD-2024-0086', client: 'Promo Côte', type: 'Cité résidentielle', city: 'Bingerville', date: '2024-01-13', status: 'Demande soumise', statusKey: 'submitted', group: 'Nouvelles', budget: 1200000000, urgent: true, source: 'demo' as const },
-  { id: 'demo-5', ref: 'DMD-2024-0085', client: 'Traoré K.', type: 'Rénovation', city: 'Marcory', date: '2024-01-13', status: 'Accepté', statusKey: 'accepted', group: 'Acceptées', budget: 25000000, urgent: false, source: 'demo' as const },
-] satisfies AdminRequestRow[];
 
 function groupFromStatus(status: string) {
   if (status === 'submitted') return 'Nouvelles';
@@ -73,7 +65,6 @@ function requestFromProject(project: ProjectData): AdminRequestRow {
     group: groupFromStatus(project.status),
     budget: project.budgetMax || project.budgetMin || 0,
     urgent: project.status === 'info_required' || project.status === 'submitted',
-    source: 'workflow',
   };
 }
 
@@ -84,9 +75,7 @@ export function AdminRequests() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const requests = useMemo(() => {
-    const workflow = userProjects.map(requestFromProject);
-    const refs = new Set(workflow.map(request => request.ref));
-    return [...workflow, ...mockRequests.filter(request => !refs.has(request.ref))];
+    return userProjects.map(requestFromProject);
   }, [userProjects]);
 
   const filtered = requests.filter(r => {
@@ -130,7 +119,24 @@ export function AdminRequests() {
       </div>
 
       <AnimatePresence mode="wait">
-        {viewMode === 'list' ? (
+        {filtered.length === 0 ? (
+          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center px-6 py-12 text-center">
+                <div className="flex size-12 items-center justify-center rounded-xl bg-muted">
+                  <ClipboardList className="size-6" />
+                </div>
+                <h2 className="mt-4 text-base font-semibold">Aucune demande réelle</h2>
+                <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+                  Les dossiers soumis par les clients apparaîtront ici avec leurs statuts, pièces et actions de suivi.
+                </p>
+                <Button className="mt-5 h-11 rounded-lg" onClick={() => navigate('create')}>
+                  Créer un dossier
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : viewMode === 'list' ? (
           <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
             {filtered.map(r => (
               <Card key={r.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('admin-project-detail', { id: r.id })}>

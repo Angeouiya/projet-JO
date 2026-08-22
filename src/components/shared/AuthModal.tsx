@@ -175,9 +175,9 @@ export function AuthModal() {
     goMode('reset-sent');
   };
 
-  const handleDemoLogin = () => {
+  const handleAdminLogin = () => {
     login({
-      id: 'demo-admin-1',
+      id: 'admin-buildify-1',
       name: 'Diabaté Ibrahim',
       email: 'admin@buildify.ci',
       phone: '+225 01 02 03 04',
@@ -257,10 +257,10 @@ export function AuthModal() {
 
                 <button
                   type="button"
-                  onClick={handleDemoLogin}
+                  onClick={handleAdminLogin}
                   className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
                 >
-                  Accès démo administrateur
+                  Accès administrateur Buildify
                 </button>
               </div>
             )}

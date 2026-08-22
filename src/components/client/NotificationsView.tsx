@@ -1,96 +1,15 @@
 'use client';
 
-import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, CheckCheck, Bell, ClipboardList, MessageSquare,
-  AlertCircle, CheckCircle2, Clock, FolderKanban, Receipt,
-  Camera, ChevronRight,
+  CheckCircle2, Clock, Receipt, Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
-import type { NotificationData } from '@/types';
-
-// ── Mock notifications ────────────────────────────────────
-
-const MOCK_NOTIFICATIONS: NotificationData[] = [
-  {
-    id: 'n1',
-    title: 'Devis disponible',
-    message: 'Le devis pour votre projet Duplex Horizon est prêt. Consultez-le et donnez votre accord.',
-    type: 'quote',
-    link: 'project-detail',
-    isRead: false,
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2h ago
-  },
-  {
-    id: 'n2',
-    title: 'Nouveau message',
-    message: 'Kouamé A. vous a envoyé un message concernant Villa Aurore.',
-    type: 'message',
-    link: 'project-detail',
-    isRead: false,
-    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5h ago
-  },
-  {
-    id: 'n3',
-    title: 'Rapport de chantier',
-    message: 'Le rapport hebdomadaire S02 de votre chantier Villa Aurore est disponible.',
-    type: 'report',
-    link: 'project-detail',
-    isRead: false,
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-  },
-  {
-    id: 'n4',
-    title: 'Photo de chantier',
-    message: 'Nouvelles photos du chantier Villa Émeraude ont été ajoutées.',
-    type: 'photo',
-    link: 'project-detail',
-    isRead: true,
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-  },
-  {
-    id: 'n5',
-    title: 'Facture émise',
-    message: 'La facture d\'acompte 30% pour Villa Aurore a été émise.',
-    type: 'invoice',
-    link: 'project-detail',
-    isRead: true,
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-  },
-  {
-    id: 'n6',
-    title: 'Mise à jour du projet',
-    message: 'Le statut de votre projet Villa Émeraude est passé à « En cours ».',
-    type: 'status',
-    link: 'project-detail',
-    isRead: true,
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-  },
-  {
-    id: 'n7',
-    title: 'Visite planifiée',
-    message: 'Une visite de votre terrain à Cocody est planifiée le vendredi à 10h.',
-    type: 'visit',
-    link: 'project-detail',
-    isRead: true,
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-  },
-  {
-    id: 'n8',
-    title: 'Bienvenue !',
-    message: 'Votre compte a été créé avec succès. Découvrez nos modèles et créez votre premier projet.',
-    type: 'info',
-    link: 'home',
-    isRead: true,
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
-  },
-];
-
-// ── Helpers ───────────────────────────────────────────────
+import type { NotificationData, ViewName } from '@/types';
 
 function getNotificationIcon(type: string) {
   switch (type) {
@@ -121,41 +40,23 @@ function timeAgo(dateStr: string): string {
   return `Il y a ${Math.floor(diffD / 30)} mois`;
 }
 
-// ── Component ─────────────────────────────────────────────
-
 export function NotificationsView() {
-  const { goBack, navigate, notifications: workflowNotifications, markNotificationRead, markAllNotificationsRead } = useAppStore();
-  const [readDemoIds, setReadDemoIds] = useState<Set<string>>(new Set());
-
-  const workflowIds = new Set(workflowNotifications.map(notification => notification.id));
-  const demoNotifications = MOCK_NOTIFICATIONS.map(notification => (
-    readDemoIds.has(notification.id) ? { ...notification, isRead: true } : notification
-  ));
-  const notifications = [
-    ...workflowNotifications,
-    ...demoNotifications.filter(notification => !workflowIds.has(notification.id)),
-  ];
+  const { goBack, navigate, notifications, markNotificationRead, markAllNotificationsRead } = useAppStore();
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const handleNotificationClick = (notification: NotificationData) => {
     markNotificationRead(notification.id);
-    if (MOCK_NOTIFICATIONS.some(item => item.id === notification.id)) {
-      setReadDemoIds(prev => new Set(prev).add(notification.id));
-    }
     if (notification.link) {
       let viewParams: Record<string, string> | undefined;
       if (notification.projectId) {
         viewParams = { id: notification.projectId };
-      } else if (notification.type === 'quote' || notification.type === 'message' || notification.type === 'report' || notification.type === 'photo' || notification.type === 'invoice' || notification.type === 'status' || notification.type === 'visit') {
-        viewParams = { id: 'prj-001' };
       }
-      navigate(notification.link as any, viewParams);
+      navigate(notification.link as ViewName, viewParams);
     }
   };
 
   const handleMarkAllRead = () => {
     markAllNotificationsRead();
-    setReadDemoIds(new Set(MOCK_NOTIFICATIONS.map(notification => notification.id)));
   };
 
   return (

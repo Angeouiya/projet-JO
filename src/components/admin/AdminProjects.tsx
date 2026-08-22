@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Search, ChevronRight, MapPin, Clock, User as UserIcon
+  Search, ChevronRight, MapPin, Clock, User as UserIcon, FolderKanban
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,16 +26,7 @@ type AdminProjectRow = {
   progress: number;
   budget: number;
   startDate: string | null;
-  source: 'workflow' | 'demo';
 };
-
-const mockProjects: AdminProjectRow[] = [
-  { id: 'demo-prj-1', ref: 'PRJ-2024-0042', title: 'Villa Kokora', client: 'Kouamé A.', type: 'Villa basse', city: 'Cocody', status: 'in_progress', progress: 45, budget: 85000000, startDate: '2024-01-10', source: 'demo' },
-  { id: 'demo-prj-2', ref: 'PRJ-2024-0041', title: 'Résidence Palmiers', client: 'Société Akwaba', type: 'Immeuble R+', city: 'Plateau', status: 'in_progress', progress: 30, budget: 350000000, startDate: '2024-01-05', source: 'demo' },
-  { id: 'demo-prj-3', ref: 'PRJ-2024-0040', title: 'Duplex Familial', client: 'Diallo M.', type: 'Duplex', city: 'Riviera', status: 'planning', progress: 10, budget: 55000000, startDate: '2024-01-15', source: 'demo' },
-  { id: 'demo-prj-4', ref: 'PRJ-2024-0039', title: 'Cité Riviera 3', client: 'Promo Côte', type: 'Cité résidentielle', city: 'Bingerville', status: 'in_progress', progress: 65, budget: 1200000000, startDate: '2023-09-01', source: 'demo' },
-  { id: 'demo-prj-5', ref: 'PRJ-2024-0038', title: 'Rénovation Marcory', client: 'Traoré K.', type: 'Rénovation', city: 'Marcory', status: 'delivered', progress: 100, budget: 25000000, startDate: '2023-11-01', source: 'demo' },
-];
 
 function rowFromProject(project: ProjectData): AdminProjectRow {
   return {
@@ -49,7 +40,6 @@ function rowFromProject(project: ProjectData): AdminProjectRow {
     progress: project.progress ?? 0,
     budget: project.budgetMax || project.budgetMin || 0,
     startDate: project.createdAt.slice(0, 10),
-    source: 'workflow',
   };
 }
 
@@ -70,9 +60,7 @@ export function AdminProjects() {
   const [search, setSearch] = useState('');
 
   const projects = useMemo(() => {
-    const workflow = userProjects.map(rowFromProject);
-    const refs = new Set(workflow.map(project => project.ref));
-    return [...workflow, ...mockProjects.filter(project => !refs.has(project.ref))];
+    return userProjects.map(rowFromProject);
   }, [userProjects]);
 
   const filtered = projects.filter(p => {
@@ -103,7 +91,22 @@ export function AdminProjects() {
       </div>
 
       <motion.div className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        {filtered.map(p => (
+        {filtered.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center px-6 py-12 text-center">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-muted">
+                <FolderKanban className="size-6" />
+              </div>
+              <h2 className="mt-4 text-base font-semibold">Aucun projet réel</h2>
+              <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+                Les projets créés depuis le configurateur ou soumis par les clients seront listés ici.
+              </p>
+              <Button className="mt-5 h-11 rounded-lg" onClick={() => navigate('create')}>
+                Nouveau dossier
+              </Button>
+            </CardContent>
+          </Card>
+        ) : filtered.map(p => (
           <Card key={p.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('admin-project-detail', { id: p.id })}>
             <CardContent className="p-4">
               <div className="flex items-start gap-4">

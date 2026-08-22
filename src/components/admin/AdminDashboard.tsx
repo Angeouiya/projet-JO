@@ -1,116 +1,191 @@
 'use client';
 
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  TrendingUp, Clock, AlertTriangle, ArrowUpRight, Users, FolderKanban,
-  HardHat, DollarSign, CalendarDays, ChevronRight, BarChart3, Activity,
-  ClipboardList, PackagePlus
+  ArrowUpRight,
+  BarChart3,
+  CalendarDays,
+  ClipboardList,
+  DollarSign,
+  FolderKanban,
+  HardHat,
+  PackagePlus,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppStore } from '@/stores/app-store';
 import { FORMAT_SHORT_XOF } from '@/types';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
+import type { ProjectActivityData, ProjectData } from '@/types';
 
-const revenueData = [
-  { month: 'Jan', montant: 45000000 },
-  { month: 'Fév', montant: 62000000 },
-  { month: 'Mar', montant: 58000000 },
-  { month: 'Avr', montant: 71000000 },
-  { month: 'Mai', montant: 89000000 },
-  { month: 'Jun', montant: 76000000 },
-];
+const CHART_COLORS = ['#111111', '#333333', '#555555', '#777777', '#999999', '#BBBBBB'];
+const ACTIVE_STATUSES = ['planning', 'in_progress', 'studying', 'estimating', 'quote_sent', 'proposal_validated'];
 
-const statusData = [
-  { name: 'En cours', value: 8, color: '#111111' },
-  { name: 'Étude', value: 5, color: '#444444' },
-  { name: 'Devis', value: 4, color: '#777777' },
-  { name: 'Terminés', value: 12, color: '#BBBBBB' },
-];
-
-const categoryData = [
-  { name: 'Villa', value: 15 },
-  { name: 'Duplex', value: 8 },
-  { name: 'Immeuble', value: 6 },
-  { name: 'Promo', value: 4 },
-  { name: 'VRD', value: 3 },
-];
-
-const recentActivity = [
-  { id: '1', text: 'Nouveau projet soumis — Villa Cocody', time: 'Il y a 12 min', type: 'new' },
-  { id: '2', text: 'Devis accepté — DUP-2024-0042', time: 'Il y a 1h', type: 'success' },
-  { id: '3', text: 'Rendez-vous planifié — Visite Plateau', time: 'Il y a 2h', type: 'event' },
-  { id: '4', text: 'Paiement reçu — 15 000 000 XOF', time: 'Il y a 3h', type: 'success' },
-  { id: '5', text: 'Rapport de chantier publié', time: 'Il y a 5h', type: 'info' },
-  { id: '6', text: 'Demande d\'info complémentaire', time: 'Il y a 6h', type: 'warning' },
-  { id: '7', text: 'Nouveau client inscrit', time: 'Il y a 8h', type: 'new' },
-  { id: '8', text: 'Chantier démarré — CITÉ RIVIERA', time: 'Hier', type: 'info' },
-];
-
-const stats = [
-  { label: 'Nouvelles demandes', value: '12', icon: ClipboardList, change: '+3 cette semaine' },
-  { label: 'Projets actifs', value: '8', icon: FolderKanban, change: '2 en urgence' },
-  { label: 'Chantiers en cours', value: '5', icon: HardHat, change: '1 retard' },
-  { label: 'CA du mois', value: FORMAT_SHORT_XOF(76000000), icon: DollarSign, change: '+18%' },
-  { label: 'Taux conversion', value: '67%', icon: TrendingUp, change: '+5% vs mois dernier' },
-  { label: 'Rendez-vous', value: '4', icon: CalendarDays, change: 'Cette semaine' },
-];
-
-const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const item = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } };
 
+function budgetOf(project: ProjectData) {
+  return project.budgetMax || project.budgetMin || project.financing?.estimatedBudget || 0;
+}
+
+function monthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(date: Date) {
+  return new Intl.DateTimeFormat('fr-FR', { month: 'short' }).format(date).replace('.', '');
+}
+
+function buildPortfolioData(projects: ProjectData[]) {
+  const now = new Date();
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+    return { key: monthKey(date), month: monthLabel(date), montant: 0 };
+  });
+
+  projects.forEach(project => {
+    const key = monthKey(new Date(project.createdAt));
+    const row = months.find(month => month.key === key);
+    if (row) row.montant += budgetOf(project);
+  });
+
+  return months;
+}
+
+function buildStatusData(projects: ProjectData[]) {
+  const rows = [
+    { name: 'Nouvelles', statuses: ['submitted', 'info_required'], color: '#111111' },
+    { name: 'Étude', statuses: ['studying', 'estimating', 'proposal_ready'], color: '#444444' },
+    { name: 'Devis', statuses: ['quote_sent', 'proposal_validated', 'accepted'], color: '#777777' },
+    { name: 'Chantier', statuses: ['planning', 'in_progress'], color: '#999999' },
+    { name: 'Livrés', statuses: ['delivered'], color: '#BBBBBB' },
+  ];
+
+  return rows.map(row => ({
+    name: row.name,
+    value: projects.filter(project => row.statuses.includes(project.status)).length,
+    color: row.color,
+  }));
+}
+
+function buildCategoryData(projects: ProjectData[]) {
+  const counts = new Map<string, number>();
+  projects.forEach(project => {
+    const name = project.categoryName || project.modelName || 'Projet';
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  });
+
+  return Array.from(counts.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+}
+
+function relativeTime(date: string) {
+  const diff = Date.now() - new Date(date).getTime();
+  const minutes = Math.max(0, Math.floor(diff / 60000));
+  if (minutes < 1) return 'Maintenant';
+  if (minutes < 60) return `Il y a ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Il y a ${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `Il y a ${days}j`;
+}
+
+function buildActivity(projects: ProjectData[]) {
+  return projects.flatMap(project => (
+    (project.activityLog ?? []).map((activity: ProjectActivityData) => ({
+      id: `${project.id}-${activity.id}`,
+      text: `${activity.label} - ${project.referenceNumber}`,
+      time: relativeTime(activity.createdAt),
+      type: activity.type,
+      createdAt: activity.createdAt,
+    }))
+  ))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 8);
+}
+
 export function AdminDashboard() {
-  const { setAdminTab, navigate } = useAppStore();
+  const { setAdminTab, userProjects } = useAppStore();
+
+  const dashboard = useMemo(() => {
+    const totalBudget = userProjects.reduce((sum, project) => sum + budgetOf(project), 0);
+    const submitted = userProjects.filter(project => ['submitted', 'info_required'].includes(project.status)).length;
+    const active = userProjects.filter(project => ACTIVE_STATUSES.includes(project.status)).length;
+    const sites = userProjects.filter(project => project.status === 'in_progress').length;
+    const validated = userProjects.filter(project => ['accepted', 'planning', 'in_progress', 'delivered'].includes(project.status)).length;
+    const conversion = userProjects.length ? Math.round((validated / userProjects.length) * 100) : 0;
+    const visits = userProjects.filter(project => project.status === 'visit_planned').length;
+
+    return {
+      portfolioData: buildPortfolioData(userProjects),
+      statusData: buildStatusData(userProjects),
+      categoryData: buildCategoryData(userProjects),
+      recentActivity: buildActivity(userProjects),
+      stats: [
+        { label: 'Nouvelles demandes', value: String(submitted), icon: ClipboardList, change: submitted ? 'À traiter' : 'Aucune attente' },
+        { label: 'Projets actifs', value: String(active), icon: FolderKanban, change: `${userProjects.length} dossier${userProjects.length > 1 ? 's' : ''} réel${userProjects.length > 1 ? 's' : ''}` },
+        { label: 'Chantiers en cours', value: String(sites), icon: HardHat, change: sites ? 'Suivi terrain actif' : 'Aucun chantier' },
+        { label: 'Portefeuille', value: FORMAT_SHORT_XOF(totalBudget), icon: DollarSign, change: 'Budget estimé' },
+        { label: 'Conversion', value: `${conversion}%`, icon: TrendingUp, change: validated ? 'Dossiers validés' : 'À construire' },
+        { label: 'Rendez-vous', value: String(visits), icon: CalendarDays, change: visits ? 'À préparer' : 'Aucun planifié' },
+      ],
+    };
+  }, [userProjects]);
+
+  const maxStatus = Math.max(1, ...dashboard.statusData.map(row => row.value));
+  const maxCategory = Math.max(1, ...dashboard.categoryData.map(row => row.value));
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+    <motion.div initial={false} animate={{ opacity: 1 }} className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Tableau de bord</h1>
-        <p className="text-muted-foreground text-sm mt-1">Vue d'ensemble de votre activité</p>
+        <p className="text-muted-foreground text-sm mt-1">Vue d’ensemble des dossiers réels enregistrés.</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        {stats.map((stat) => (
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+        {dashboard.stats.map((stat) => (
           <motion.div key={stat.label} variants={item}>
             <Card className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <stat.icon className="w-4 h-4 text-muted-foreground" />
-                  <ArrowUpRight className="w-3.5 h-3.5" />
+                <div className="mb-2 flex items-center justify-between">
+                  <stat.icon className="size-4 text-muted-foreground" />
+                  <ArrowUpRight className="size-3.5" />
                 </div>
                 <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-1 truncate">{stat.label}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{stat.change}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{stat.label}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{stat.change}</p>
               </CardContent>
             </Card>
           </motion.div>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Revenue Chart */}
+      <div className="grid gap-6 lg:grid-cols-3">
         <motion.div variants={item} className="lg:col-span-2">
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold">Chiffre d'affaires</CardTitle>
+                <CardTitle className="text-sm font-semibold">Portefeuille estimé</CardTitle>
                 <Badge variant="secondary">6 derniers mois</Badge>
               </div>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={revenueData}>
+                <BarChart data={dashboard.portfolioData}>
                   <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v / 1000000}M`} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} tickFormatter={(value) => `${Number(value) / 1000000}M`} />
                   <Tooltip
                     formatter={(value: number) => [`${new Intl.NumberFormat('fr-FR').format(value)} XOF`, 'Montant']}
                     contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontSize: '12px' }}
                   />
                   <Bar dataKey="montant" radius={[4, 4, 0, 0]}>
-                    {revenueData.map((_, idx) => (
-                      <Cell key={idx} fill={['#111', '#333', '#555', '#777', '#999', '#bbb'][idx]} />
+                    {dashboard.portfolioData.map((_, idx) => (
+                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -119,22 +194,21 @@ export function AdminDashboard() {
           </Card>
         </motion.div>
 
-        {/* Projects by Status */}
         <motion.div variants={item}>
           <Card className="h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">Projets par statut</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {statusData.map(s => (
-                <div key={s.name} className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium">{s.name}</span>
-                      <span className="text-xs font-bold">{s.value}</span>
+              {dashboard.statusData.map(row => (
+                <div key={row.name} className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-xs font-medium">{row.name}</span>
+                      <span className="text-xs font-bold">{row.value}</span>
                     </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${(s.value / 12) * 100}%`, backgroundColor: s.color }} />
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${(row.value / maxStatus) * 100}%`, backgroundColor: row.color }} />
                     </div>
                   </div>
                 </div>
@@ -144,59 +218,56 @@ export function AdminDashboard() {
         </motion.div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
+      <div className="grid gap-6 lg:grid-cols-2">
         <motion.div variants={item}>
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold">Activité récente</CardTitle>
-                <Button variant="ghost" size="sm" className="text-xs">Tout voir</Button>
+                <Button variant="ghost" size="sm" className="text-xs" onClick={() => setAdminTab('reports')}>Tout voir</Button>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {recentActivity.map(a => (
-                  <div key={a.id} className="flex items-start gap-3 px-6 py-3 hover:bg-muted/50 transition-colors">
-                    <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
-                      a.type === 'new' ? 'bg-foreground' :
-                      a.type === 'success' ? 'bg-foreground' :
-                      a.type === 'warning' ? 'bg-muted-foreground' :
-                      'bg-muted-foreground'
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm leading-tight">{a.text}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{a.time}</p>
+              {dashboard.recentActivity.length === 0 ? (
+                <p className="px-6 py-8 text-sm text-muted-foreground">Aucune activité réelle enregistrée pour le moment.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {dashboard.recentActivity.map(activity => (
+                    <div key={activity.id} className="flex items-start gap-3 px-6 py-3 hover:bg-muted/50 transition-colors">
+                      <div className="mt-0.5 size-2 shrink-0 rounded-full bg-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm leading-tight">{activity.text}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{activity.time}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Quick Actions + Category Breakdown */}
         <motion.div variants={item} className="space-y-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">Actions rapides</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2">
-              <Button variant="outline" className="h-auto py-3 flex-col gap-1" onClick={() => setAdminTab('requests')}>
-                <ClipboardList className="w-5 h-5" />
-                <span className="text-xs">Nouvelle demande</span>
+              <Button variant="outline" className="h-auto flex-col gap-1 py-3" onClick={() => setAdminTab('requests')}>
+                <ClipboardList className="size-5" />
+                <span className="text-xs">Demandes</span>
               </Button>
-              <Button variant="outline" className="h-auto py-3 flex-col gap-1" onClick={() => setAdminTab('catalog')}>
-                <PackagePlus className="w-5 h-5" />
-                <span className="text-xs">Ajouter modèle</span>
+              <Button variant="outline" className="h-auto flex-col gap-1 py-3" onClick={() => setAdminTab('catalog')}>
+                <PackagePlus className="size-5" />
+                <span className="text-xs">Catalogue</span>
               </Button>
-              <Button variant="outline" className="h-auto py-3 flex-col gap-1" onClick={() => setAdminTab('clients')}>
-                <Users className="w-5 h-5" />
-                <span className="text-xs">Voir clients</span>
+              <Button variant="outline" className="h-auto flex-col gap-1 py-3" onClick={() => setAdminTab('clients')}>
+                <Users className="size-5" />
+                <span className="text-xs">Clients</span>
               </Button>
-              <Button variant="outline" className="h-auto py-3 flex-col gap-1" onClick={() => setAdminTab('projects')}>
-                <BarChart3 className="w-5 h-5" />
-                <span className="text-xs">Rapports</span>
+              <Button variant="outline" className="h-auto flex-col gap-1 py-3" onClick={() => setAdminTab('projects')}>
+                <BarChart3 className="size-5" />
+                <span className="text-xs">Projets</span>
               </Button>
             </CardContent>
           </Card>
@@ -206,13 +277,15 @@ export function AdminDashboard() {
               <CardTitle className="text-sm font-semibold">Par catégorie</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2.5">
-              {categoryData.map(c => (
-                <div key={c.name} className="flex items-center gap-3">
-                  <span className="text-xs w-16 text-muted-foreground">{c.name}</span>
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-foreground rounded-full" style={{ width: `${(c.value / 15) * 100}%` }} />
+              {dashboard.categoryData.length === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">Aucune catégorie encore alimentée.</p>
+              ) : dashboard.categoryData.map(category => (
+                <div key={category.name} className="flex items-center gap-3">
+                  <span className="w-24 truncate text-xs text-muted-foreground">{category.name}</span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-foreground" style={{ width: `${(category.value / maxCategory) * 100}%` }} />
                   </div>
-                  <span className="text-xs font-medium w-6 text-right">{c.value}</span>
+                  <span className="w-6 text-right text-xs font-medium">{category.value}</span>
                 </div>
               ))}
             </CardContent>

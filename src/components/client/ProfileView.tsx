@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Heart, FolderArchive, Settings, HelpCircle, LogOut, Shield,
-  ChevronRight, Bell, User, Mail, Phone, PenLine, X,
+  Heart, FolderArchive, Settings, HelpCircle, LogOut,
+  ChevronRight, Bell, User, Mail, Phone, PenLine,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,11 +18,11 @@ import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { useAppStore } from '@/stores/app-store';
 
 const MENU_ITEMS = [
-  { icon: Bell, label: 'Notifications', view: 'notifications' as const, showArrow: true },
-  { icon: Heart, label: 'Mes favoris', view: 'favorites' as const, showArrow: true },
-  { icon: FolderArchive, label: 'Mes documents', view: 'projects' as const, showArrow: true },
-  { icon: Settings, label: 'Paramètres', view: 'projects' as const, showArrow: true },
-  { icon: HelpCircle, label: 'Aide', view: 'projects' as const, showArrow: true },
+  { icon: Bell, label: 'Notifications', action: 'notifications' as const, showArrow: true },
+  { icon: Heart, label: 'Mes favoris', action: 'favorites' as const, showArrow: true },
+  { icon: FolderArchive, label: 'Mes documents', action: 'projects' as const, showArrow: true },
+  { icon: Settings, label: 'Paramètres', action: 'settings' as const, showArrow: true },
+  { icon: HelpCircle, label: 'Aide', action: 'help' as const, showArrow: true },
 ];
 
 function getInitials(name: string): string {
@@ -35,7 +35,7 @@ function getInitials(name: string): string {
 }
 
 export function ProfileView() {
-  const { user, isAdmin, navigate, logout } = useAppStore();
+  const { user, navigate, logout, updateUserProfile, addToast } = useAppStore();
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
   const [editPhone, setEditPhone] = useState(user?.phone || '');
@@ -45,8 +45,33 @@ export function ProfileView() {
   const displayPhone = user?.phone || '+225 00 00 00 00';
   const initials = getInitials(displayName);
 
+  const openEditProfile = () => {
+    setEditName(user?.name || '');
+    setEditPhone(user?.phone || '');
+    setEditOpen(true);
+  };
+
   const handleSaveProfile = () => {
+    if (!editName.trim()) {
+      addToast('Le nom complet est obligatoire.', 'error');
+      return;
+    }
+
+    updateUserProfile({ name: editName, phone: editPhone });
     setEditOpen(false);
+    addToast('Profil client mis à jour.', 'success');
+  };
+
+  const handleMenuAction = (action: (typeof MENU_ITEMS)[number]['action']) => {
+    if (action === 'settings') {
+      openEditProfile();
+      return;
+    }
+    if (action === 'help') {
+      navigate('services');
+      return;
+    }
+    navigate(action);
   };
 
   const menuVariants = {
@@ -119,7 +144,7 @@ export function ProfileView() {
               <Button
                 variant="outline"
                 className="mt-5 gap-2 w-full"
-                onClick={() => setEditOpen(true)}
+                onClick={openEditProfile}
               >
                 <PenLine className="size-4" />
                 Modifier le profil
@@ -128,33 +153,6 @@ export function ProfileView() {
           </Card>
         </motion.div>
       </div>
-
-      {/* Admin button */}
-      {isAdmin && (
-        <div className="px-4 mt-4">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <Card
-              className="py-0 gap-0 cursor-pointer hover:bg-accent/50 transition-colors border-dashed"
-              onClick={() => navigate('admin')}
-            >
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="size-9 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0">
-                  <Shield className="size-4 text-background" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">Administration</p>
-                  <p className="text-[11px] text-muted-foreground">Accéder au panneau d'administration</p>
-                </div>
-                <ChevronRight className="size-4 text-muted-foreground" />
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-      )}
 
       {/* Menu items */}
       <div className="px-4 mt-6">
@@ -167,7 +165,7 @@ export function ProfileView() {
               initial="hidden"
               animate="visible"
               className="w-full flex items-center gap-3 p-4 hover:bg-accent/50 transition-colors text-left"
-              onClick={() => navigate(item.view)}
+              onClick={() => handleMenuAction(item.action)}
             >
               <item.icon className="size-5 text-muted-foreground" />
               <span className="text-sm font-medium flex-1">{item.label}</span>
