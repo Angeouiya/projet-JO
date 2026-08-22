@@ -19,15 +19,23 @@ import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/stores/app-store';
 
 type AdminCreateProjectDefaults = {
+  title?: string;
+  categoryName?: string;
   clientName?: string;
   clientEmail?: string;
   clientPhone?: string;
   city?: string;
+  budgetMin?: string;
+  budgetMax?: string;
+  description?: string;
 };
 
 type AdminCreateProjectDialogProps = {
-  trigger: ReactNode;
+  trigger?: ReactNode;
   defaults?: AdminCreateProjectDefaults;
+  onCreated?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const PROJECT_CATEGORIES = [
@@ -53,19 +61,30 @@ function numericValue(value: string) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-export function AdminCreateProjectDialog({ trigger, defaults }: AdminCreateProjectDialogProps) {
+export function AdminCreateProjectDialog({
+  trigger,
+  defaults,
+  onCreated,
+  open,
+  onOpenChange,
+}: AdminCreateProjectDialogProps) {
   const { createProjectRequest, navigate, addToast } = useAppStore();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const dialogOpen = open ?? internalOpen;
+  const setDialogOpen = (nextOpen: boolean) => {
+    if (open === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
   const [draft, setDraft] = useState({
-    title: '',
-    categoryName: PROJECT_CATEGORIES[0],
+    title: defaults?.title || '',
+    categoryName: defaults?.categoryName || PROJECT_CATEGORIES[0],
     clientName: defaults?.clientName || '',
     clientEmail: defaults?.clientEmail || '',
     clientPhone: defaults?.clientPhone || '',
     city: defaults?.city || '',
-    budgetMin: '',
-    budgetMax: '',
-    description: '',
+    budgetMin: defaults?.budgetMin || '',
+    budgetMax: defaults?.budgetMax || '',
+    description: defaults?.description || '',
   });
 
   const canCreate = useMemo(() => {
@@ -108,15 +127,18 @@ export function AdminCreateProjectDialog({ trigger, defaults }: AdminCreateProje
     });
 
     addToast('Dossier créé dans la plateforme admin.', 'success');
-    setOpen(false);
+    setDialogOpen(false);
+    onCreated?.();
     navigate('admin-project-detail', { id: project.id });
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -256,7 +278,7 @@ export function AdminCreateProjectDialog({ trigger, defaults }: AdminCreateProje
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+          <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
           <Button onClick={handleCreate} disabled={!canCreate}>Créer le dossier</Button>
         </DialogFooter>
       </DialogContent>

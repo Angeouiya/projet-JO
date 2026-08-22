@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Download, Eye, FileSearch, FolderOpen, Search } from 'lucide-react';
+import { CheckCircle2, Download, Eye, FileSearch, FolderOpen, FolderPlus, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { FORMAT_XOF } from '@/types';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { useAppStore } from '@/stores/app-store';
+import { AdminCreateProjectDialog } from './AdminCreateProjectDialog';
 import type { NotificationData, ProjectData } from '@/types';
 
 type OperationRow = {
@@ -25,6 +28,8 @@ type OperationRow = {
   projectId?: string;
   source: 'workflow' | 'reference';
 };
+
+type LinkedProjectDefaults = ReturnType<typeof projectDefaultsFromRow>;
 
 type ModuleCopy = {
   title: string;
@@ -475,6 +480,34 @@ function exportRows(tab: string, rows: OperationRow[]) {
   URL.revokeObjectURL(url);
 }
 
+function categoryFromRow(rowItem: OperationRow, tab: string) {
+  const text = [rowItem.title, rowItem.reference, tab, ...rowItem.tags].join(' ').toLowerCase();
+  if (text.includes('vrd')) return 'VRD';
+  if (text.includes('r+')) return 'Immeuble R+';
+  if (text.includes('finition')) return 'Finition';
+  if (text.includes('plomberie')) return 'Plomberie';
+  if (text.includes('second')) return 'Second oeuvre';
+  if (text.includes('gros')) return 'Gros oeuvre';
+  if (text.includes('étude') || text.includes('etude')) return 'Etude technique';
+  if (text.includes('lot')) return 'Lot de travaux';
+  return 'Maison basse';
+}
+
+function projectDefaultsFromRow(rowItem: OperationRow, tab: string) {
+  const amount = rowItem.amount ? String(rowItem.amount) : '';
+  return {
+    title: rowItem.title,
+    categoryName: categoryFromRow(rowItem, tab),
+    clientName: rowItem.owner === 'Plateforme' || rowItem.owner === 'Sécurité' || rowItem.owner === 'Direction'
+      ? ''
+      : rowItem.owner,
+    city: rowItem.city,
+    budgetMin: amount,
+    budgetMax: amount,
+    description: `${rowItem.reference} · ${rowItem.status}. Origine : module admin ${tab}.`,
+  };
+}
+
 export function AdminOperationsView({
   tab,
   searchQuery,
@@ -488,16 +521,26 @@ export function AdminOperationsView({
   notifications: NotificationData[];
   onOpenProject: (projectId: string) => void;
 }) {
+  const { addToast } = useAppStore();
   const [statusFilter, setStatusFilter] = useState('all');
   const [localSearch, setLocalSearch] = useState('');
   const [selectedRow, setSelectedRow] = useState<OperationRow | null>(null);
+  const [linkedProjectDefaults, setLinkedProjectDefaults] = useState<LinkedProjectDefaults | null>(null);
+  const [treatedRows, setTreatedRows] = useState<Record<string, boolean>>({});
   const copy = MODULE_COPY[tab] ?? MODULE_COPY.prospects;
 
   const rows = useMemo(() => {
     const workflow = workflowRows(tab, projects, notifications);
     const references = REFERENCE_ROWS[tab] ?? [];
-    return [...workflow, ...references];
-  }, [tab, projects, notifications]);
+    return [...workflow, ...references].map(item => {
+      if (!treatedRows[item.id]) return item;
+      return {
+        ...item,
+        status: 'Traité',
+        tags: item.tags.includes('Traité admin') ? item.tags : [...item.tags, 'Traité admin'],
+      };
+    });
+  }, [tab, projects, notifications, treatedRows]);
 
   const query = [searchQuery, localSearch].filter(Boolean).join(' ');
   const statuses = useMemo(() => ['all', ...Array.from(new Set(rows.map(item => item.status)))], [rows]);
@@ -508,6 +551,19 @@ export function AdminOperationsView({
 
   const totalAmount = filteredRows.reduce((sum, item) => sum + (item.amount ?? 0), 0);
   const workflowCount = filteredRows.filter(item => item.source === 'workflow').length;
+  const handleExportSelected = (rowItem: OperationRow) => {
+    exportRows(tab, [rowItem]);
+    addToast('Fiche admin exportée.', 'success');
+  };
+  const handleMarkTreated = (rowItem: OperationRow) => {
+    setTreatedRows(current => ({ ...current, [rowItem.id]: true }));
+    setSelectedRow(null);
+    addToast('Ligne marquée comme traitée dans ce module admin.', 'success');
+  };
+  const openLinkedProjectDialog = (rowItem: OperationRow) => {
+    setLinkedProjectDefaults(projectDefaultsFromRow(rowItem, tab));
+    setSelectedRow(null);
+  };
 
   return (
     <div className="space-y-5">
@@ -630,7 +686,7 @@ export function AdminOperationsView({
       )}
 
       <Dialog open={!!selectedRow} onOpenChange={open => !open && setSelectedRow(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>{selectedRow?.title}</DialogTitle>
             <DialogDescription>{copy.title} · {selectedRow?.reference}</DialogDescription>
@@ -654,13 +710,50 @@ export function AdminOperationsView({
               <div className="flex flex-wrap gap-1.5">
                 {selectedRow.tags.map(tag => <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>)}
               </div>
+              <div className="rounded-lg border bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
+                Cette fiche appartient à la plateforme admin. Elle peut être exportée, traitée ou convertie en dossier sans envoyer l’utilisateur vers l’espace client.
+              </div>
             </div>
           )}
-          <DialogFooter>
-            <Button onClick={() => setSelectedRow(null)}>Fermer</Button>
+          <DialogFooter className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {selectedRow && (
+              <>
+                <Button variant="outline" className="gap-2" onClick={() => handleExportSelected(selectedRow)}>
+                  <Download className="size-4" />
+                  Exporter fiche
+                </Button>
+                <ConfirmActionDialog
+                  title="Marquer cette ligne comme traitée ?"
+                  description={`La ligne ${selectedRow.reference} sera indiquée comme traitée dans ce module admin local. Les dossiers réels restent inchangés.`}
+                  confirmLabel="Marquer traité"
+                  onConfirm={() => handleMarkTreated(selectedRow)}
+                  trigger={(
+                    <Button variant="outline" className="gap-2" disabled={treatedRows[selectedRow.id]}>
+                      <CheckCircle2 className="size-4" />
+                      {treatedRows[selectedRow.id] ? 'Déjà traité' : 'Marquer traité'}
+                    </Button>
+                  )}
+                />
+                <Button className="gap-2 sm:col-span-2" onClick={() => openLinkedProjectDialog(selectedRow)}>
+                  <FolderPlus className="size-4" />
+                  Créer un dossier lié
+                </Button>
+              </>
+            )}
+            <Button variant="ghost" className="sm:col-span-2" onClick={() => setSelectedRow(null)}>Fermer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {linkedProjectDefaults && (
+        <AdminCreateProjectDialog
+          defaults={linkedProjectDefaults}
+          open={!!linkedProjectDefaults}
+          onOpenChange={open => {
+            if (!open) setLinkedProjectDefaults(null);
+          }}
+          onCreated={() => setLinkedProjectDefaults(null)}
+        />
+      )}
     </div>
   );
 }
