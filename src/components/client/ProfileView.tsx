@@ -16,6 +16,16 @@ import {
 } from '@/components/ui/dialog';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { useAppStore } from '@/stores/app-store';
+import {
+  COUNTRY_CODES,
+  countryValue,
+  countryValueFromPhone,
+  getCountry,
+  getDialCode,
+  isPhone,
+  localPhoneFromStored,
+  normalizePhone,
+} from '@/lib/country-codes';
 
 const MENU_ITEMS = [
   { icon: Bell, label: 'Notifications', action: 'notifications' as const, showArrow: true },
@@ -38,7 +48,8 @@ export function ProfileView() {
   const { user, navigate, logout, updateUserProfile, addToast } = useAppStore();
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
-  const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [editCountryDialCode, setEditCountryDialCode] = useState(countryValueFromPhone(user?.phone));
+  const [editPhone, setEditPhone] = useState(localPhoneFromStored(user?.phone, countryValueFromPhone(user?.phone)));
 
   const displayName = user?.name || 'Utilisateur';
   const displayEmail = user?.email || 'email@exemple.com';
@@ -46,8 +57,10 @@ export function ProfileView() {
   const initials = getInitials(displayName);
 
   const openEditProfile = () => {
+    const nextCountry = countryValueFromPhone(user?.phone);
     setEditName(user?.name || '');
-    setEditPhone(user?.phone || '');
+    setEditCountryDialCode(nextCountry);
+    setEditPhone(localPhoneFromStored(user?.phone, nextCountry));
     setEditOpen(true);
   };
 
@@ -57,7 +70,13 @@ export function ProfileView() {
       return;
     }
 
-    updateUserProfile({ name: editName, phone: editPhone });
+    const normalizedPhone = editPhone.trim() ? normalizePhone(editPhone, getDialCode(editCountryDialCode)) : '';
+    if (normalizedPhone && !isPhone(normalizedPhone)) {
+      addToast('Le numéro de téléphone doit être valide avec son indicatif pays.', 'error');
+      return;
+    }
+
+    updateUserProfile({ name: editName, phone: normalizedPhone });
     setEditOpen(false);
     addToast('Profil client mis à jour.', 'success');
   };
@@ -219,12 +238,32 @@ export function ProfileView() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-phone">Téléphone</Label>
-              <Input
-                id="edit-phone"
-                value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
-                placeholder="+225 XX XX XX XX"
-              />
+              <div className="grid grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)] gap-2">
+                <select
+                  id="edit-phone-country"
+                  value={editCountryDialCode}
+                  onChange={event => setEditCountryDialCode(event.target.value)}
+                  className="h-10 min-w-0 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  aria-label="Pays du numéro"
+                >
+                  {COUNTRY_CODES.map(country => (
+                    <option key={`${country.code}-${country.dial}`} value={countryValue(country)}>
+                      {country.code} {country.dial}
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  id="edit-phone"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder={getCountry(editCountryDialCode).example}
+                  type="tel"
+                  autoComplete="tel"
+                />
+              </div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Côte d'Ivoire : +225 par défaut. Pour un autre pays, choisissez l’indicatif puis saisissez le numéro local.
+              </p>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">

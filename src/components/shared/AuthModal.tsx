@@ -18,43 +18,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/stores/app-store';
+import { COUNTRY_CODES, countryValue, getCountry, getDialCode, isEmail, isPhone, normalizePhone } from '@/lib/country-codes';
 import { BrandLogo } from './BrandLogo';
 
 type AuthMode = 'choice' | 'login' | 'register' | 'forgot' | 'reset-sent' | 'admin-login';
-
-const COUNTRY_CODES = [
-  { code: 'CI', name: "Côte d'Ivoire", dial: '+225', example: '07 00 00 00 00' },
-  { code: 'BF', name: 'Burkina Faso', dial: '+226', example: '70 00 00 00' },
-  { code: 'ML', name: 'Mali', dial: '+223', example: '70 00 00 00' },
-  { code: 'SN', name: 'Sénégal', dial: '+221', example: '77 000 00 00' },
-  { code: 'GN', name: 'Guinée', dial: '+224', example: '620 00 00 00' },
-  { code: 'TG', name: 'Togo', dial: '+228', example: '90 00 00 00' },
-  { code: 'BJ', name: 'Bénin', dial: '+229', example: '01 00 00 00 00' },
-  { code: 'GH', name: 'Ghana', dial: '+233', example: '24 000 0000' },
-  { code: 'CM', name: 'Cameroun', dial: '+237', example: '6 00 00 00 00' },
-  { code: 'NG', name: 'Nigeria', dial: '+234', example: '80 0000 0000' },
-  { code: 'MA', name: 'Maroc', dial: '+212', example: '6 00 00 00 00' },
-  { code: 'FR', name: 'France', dial: '+33', example: '6 00 00 00 00' },
-  { code: 'BE', name: 'Belgique', dial: '+32', example: '470 00 00 00' },
-  { code: 'CA', name: 'Canada', dial: '+1', example: '514 000 0000' },
-  { code: 'US', name: 'États-Unis', dial: '+1', example: '202 000 0000' },
-];
-
-const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-const isPhone = (value: string) => /^\+?\d[\d\s().-]{7,}$/.test(value.trim());
-const countryValue = (country: (typeof COUNTRY_CODES)[number]) => `${country.code}:${country.dial}`;
-const getCountry = (value: string) => {
-  const [code, dial] = value.split(':');
-  return COUNTRY_CODES.find(country => country.code === code && country.dial === dial) || COUNTRY_CODES[0];
-};
-const getDialCode = (value: string) => getCountry(value).dial;
-
-function normalizePhone(value: string, dialCode: string): string {
-  const phone = value.trim();
-  if (!phone) return '';
-  if (phone.startsWith('+')) return phone;
-  return `${dialCode} ${phone}`;
-}
 
 function passwordError(password: string): string | null {
   if (password.length < 8) return 'Le mot de passe doit contenir au moins 8 caractères.';

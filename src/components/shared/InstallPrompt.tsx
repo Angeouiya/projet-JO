@@ -11,7 +11,7 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 export function InstallPrompt() {
-  const { showInstallPrompt, showAuthModal, setInstallPrompt } = useAppStore();
+  const { showInstallPrompt, showAuthModal, isAdmin, currentView, setInstallPrompt } = useAppStore();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -56,7 +56,12 @@ export function InstallPrompt() {
     setShowFallback(true);
   };
 
-  const shouldShow = !showAuthModal && !dismissed && !isStandalone && (showInstallPrompt || isMobile);
+  const shouldShow = !isAdmin
+    && !currentView.startsWith('admin')
+    && !showAuthModal
+    && !dismissed
+    && !isStandalone
+    && (showInstallPrompt || isMobile);
 
   if (!shouldShow) return null;
 

@@ -479,21 +479,34 @@ export function AdminView() {
 
       <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${contentPadding} transition-[padding] duration-300`}>
         <header className="sticky top-0 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur lg:px-8">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="rounded-lg p-2 hover:bg-muted lg:hidden"
-              aria-label="Ouvrir le menu"
-            >
-              <Menu className="size-5" />
-            </button>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex min-w-0 items-center gap-3 lg:min-w-[210px]">
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                className="rounded-lg p-2 hover:bg-muted lg:hidden"
+                aria-label="Ouvrir le menu"
+              >
+                <Menu className="size-5" />
+              </button>
 
-            <div className="hidden min-w-[180px] lg:block">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Administration / {activeItem.group}
-              </p>
-              <h1 className="truncate text-base font-bold">{currentView === 'admin-project-detail' ? 'Dossier' : activeItem.label}</h1>
+              <div className="min-w-0 flex-1">
+                <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:block">
+                  Administration / {activeItem.group}
+                </p>
+                <h1 className="truncate text-base font-bold">{currentView === 'admin-project-detail' ? 'Dossier' : activeItem.label}</h1>
+              </div>
+
+              <div className="ml-auto flex items-center gap-1 lg:hidden">
+                <button type="button" onClick={() => openAdminTab('messages')} className="relative rounded-lg p-2 hover:bg-muted" aria-label="Messages">
+                  <MessageSquare className="size-5" />
+                  {missingInfoCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] text-background">{missingInfoCount}</span>}
+                </button>
+                <button type="button" onClick={() => openAdminTab('notifications')} className="relative rounded-lg p-2 hover:bg-muted" aria-label="Notifications">
+                  <Bell className="size-5" />
+                  {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] text-background">{unreadCount}</span>}
+                </button>
+              </div>
             </div>
 
             <div className="relative min-w-0 flex-1">
@@ -532,15 +545,15 @@ export function AdminView() {
               <ClipboardList className="size-4" />
               Nouveau dossier
             </Button>
-            <button type="button" onClick={() => openAdminTab('messages')} className="relative rounded-lg p-2 hover:bg-muted" aria-label="Messages">
+            <button type="button" onClick={() => openAdminTab('messages')} className="relative hidden rounded-lg p-2 hover:bg-muted lg:inline-flex" aria-label="Messages">
               <MessageSquare className="size-5" />
               {missingInfoCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] text-background">{missingInfoCount}</span>}
             </button>
-            <button type="button" onClick={() => openAdminTab('notifications')} className="relative rounded-lg p-2 hover:bg-muted" aria-label="Notifications">
+            <button type="button" onClick={() => openAdminTab('notifications')} className="relative hidden rounded-lg p-2 hover:bg-muted lg:inline-flex" aria-label="Notifications">
               <Bell className="size-5" />
               {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] text-background">{unreadCount}</span>}
             </button>
-            <button type="button" onClick={() => openAdminTab('settings')} className="hidden rounded-lg p-2 hover:bg-muted sm:inline-flex" aria-label="Profil admin">
+            <button type="button" onClick={() => openAdminTab('settings')} className="hidden rounded-lg p-2 hover:bg-muted lg:inline-flex" aria-label="Profil admin">
               <User className="size-5" />
             </button>
             <ConfirmActionDialog
@@ -549,7 +562,7 @@ export function AdminView() {
               confirmLabel="Se déconnecter"
               onConfirm={confirmLogout}
               trigger={(
-                <button type="button" className="hidden rounded-lg p-2 hover:bg-muted sm:inline-flex" aria-label="Déconnexion">
+                <button type="button" className="hidden rounded-lg p-2 hover:bg-muted lg:inline-flex" aria-label="Déconnexion">
                   <LogOut className="size-5" />
                 </button>
               )}
