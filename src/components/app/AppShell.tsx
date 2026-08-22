@@ -110,6 +110,17 @@ function useStoreHydration() {
   return hasHydrated;
 }
 
+function useClientReady() {
+  const [clientReady, setClientReady] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setClientReady(true), 120);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return clientReady;
+}
+
 function usePlatformEntry(platform: PlatformEntry, routedView: ViewName, hasHydrated: boolean) {
   const { currentView, isAuthenticated, isAdmin, showAuthModal, navigate, requireAuth } = useAppStore();
 
@@ -131,10 +142,12 @@ function usePlatformEntry(platform: PlatformEntry, routedView: ViewName, hasHydr
 
 function LockedAccessView({
   view,
+  platform,
   adminOnly = false,
   clientOnly = false,
 }: {
   view: ViewName;
+  platform: PlatformEntry;
   adminOnly?: boolean;
   clientOnly?: boolean;
 }) {
@@ -166,7 +179,7 @@ function LockedAccessView({
                 Se connecter
               </Button>
             )}
-            {clientOnly && (
+            {clientOnly && platform !== 'client' && (
               <Button className="h-11 rounded-lg" onClick={() => navigate('admin')}>
                 Ouvrir la plateforme admin
               </Button>
@@ -181,19 +194,19 @@ function LockedAccessView({
   );
 }
 
-function GuardedViewRenderer({ view }: { view: ViewName }) {
+function GuardedViewRenderer({ view, platform }: { view: ViewName; platform: PlatformEntry }) {
   const { isAuthenticated, isAdmin } = useAppStore();
 
   if (ADMIN_VIEWS.includes(view) && !isAdmin) {
-    return <LockedAccessView view={view} adminOnly />;
+    return <LockedAccessView view={view} platform={platform} adminOnly />;
   }
 
   if (PRIVATE_VIEWS.includes(view) && !isAuthenticated) {
-    return <LockedAccessView view={view} />;
+    return <LockedAccessView view={view} platform={platform} />;
   }
 
   if (PRIVATE_VIEWS.includes(view) && isAdmin) {
-    return <LockedAccessView view={view} clientOnly />;
+    return <LockedAccessView view={view} platform={platform} clientOnly />;
   }
 
   return <ViewRenderer view={view} />;
@@ -202,6 +215,7 @@ function GuardedViewRenderer({ view }: { view: ViewName }) {
 export function AppShell({ platform = 'public' }: { platform?: PlatformEntry }) {
   const { currentView, isAuthenticated, isAdmin } = useAppStore();
   const hasHydrated = useStoreHydration();
+  const clientReady = useClientReady();
   const routedView = useMemo(() => resolvePlatformView(platform, currentView), [currentView, platform]);
   const isDesktop = useDesktopViewport();
   const isFullscreen = FULLSCREEN_VIEWS.includes(routedView);
@@ -210,17 +224,17 @@ export function AppShell({ platform = 'public' }: { platform?: PlatformEntry }) 
     && !isAdmin
     && (isAuthenticated || !PUBLIC_VIEWS.includes(routedView));
 
-  usePlatformEntry(platform, routedView, hasHydrated);
+  usePlatformEntry(platform, routedView, hasHydrated && clientReady);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {isFullscreen ? (
         <main className="flex-1">
-          <GuardedViewRenderer view={routedView} />
+          <GuardedViewRenderer view={routedView} platform={platform} />
         </main>
       ) : showDesktopClientShell ? (
         <DesktopDashboardShell currentView={routedView}>
-          <GuardedViewRenderer view={routedView} />
+          <GuardedViewRenderer view={routedView} platform={platform} />
         </DesktopDashboardShell>
       ) : (
         <>
@@ -228,14 +242,14 @@ export function AppShell({ platform = 'public' }: { platform?: PlatformEntry }) 
 
           <main className={`flex-1 ${isDesktop || isAdmin ? '' : 'pb-20'}`}>
             <div key={routedView}>
-              <GuardedViewRenderer view={routedView} />
+              <GuardedViewRenderer view={routedView} platform={platform} />
             </div>
           </main>
 
           {!isDesktop && !isAdmin && <BottomNav />}
         </>
       )}
-      <AuthModal />
+      <AuthModal platform={platform} />
       <ToastContainer />
       <InstallPrompt />
       <PwaBootstrap />

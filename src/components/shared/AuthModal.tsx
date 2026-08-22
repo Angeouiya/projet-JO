@@ -22,6 +22,7 @@ import { COUNTRY_CODES, countryValue, getCountry, getDialCode, isEmail, isPhone,
 import { BrandLogo } from './BrandLogo';
 
 type AuthMode = 'choice' | 'login' | 'register' | 'forgot' | 'reset-sent' | 'admin-login';
+type AuthPlatform = 'public' | 'client' | 'admin';
 
 function passwordError(password: string): string | null {
   if (password.length < 8) return 'Le mot de passe doit contenir au moins 8 caractères.';
@@ -30,9 +31,11 @@ function passwordError(password: string): string | null {
   return null;
 }
 
-export function AuthModal() {
+export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) {
   const { showAuthModal, dismissAuth, login } = useAppStore();
-  const [mode, setMode] = useState<AuthMode>('choice');
+  const isAdminPlatform = platform === 'admin';
+  const [mode, setMode] = useState<AuthMode>(() => isAdminPlatform ? 'admin-login' : 'choice');
+  const displayMode: AuthMode = isAdminPlatform ? 'admin-login' : mode === 'admin-login' ? 'choice' : mode;
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -57,6 +60,7 @@ export function AuthModal() {
   };
 
   const goMode = (nextMode: AuthMode) => {
+    if (isAdminPlatform && nextMode !== 'admin-login') return;
     setError('');
     setMode(nextMode);
   };
@@ -177,7 +181,7 @@ export function AuthModal() {
           onClick={event => event.stopPropagation()}
         >
           <div className="sticky top-0 bg-card z-10 flex items-center justify-between px-6 py-4 border-b border-border">
-            {mode !== 'choice' ? (
+            {displayMode !== 'choice' && !isAdminPlatform ? (
               <button type="button" onClick={() => goMode('choice')} className="p-1 hover:bg-muted rounded-lg" aria-label="Retour">
                 <ArrowLeft className="w-5 h-5" />
               </button>
@@ -191,7 +195,7 @@ export function AuthModal() {
           </div>
 
           <div className="p-6">
-            {mode !== 'forgot' && mode !== 'reset-sent' && mode !== 'admin-login' && (
+            {displayMode !== 'forgot' && displayMode !== 'reset-sent' && displayMode !== 'admin-login' && (
               <div className="mb-4 rounded-xl border bg-muted/40 px-4 py-3 text-xs leading-5 text-muted-foreground">
                 Indicatif Côte d'Ivoire : <span className="font-semibold text-foreground">+225</span>. Vous pouvez aussi choisir un autre pays pour vous connecter par téléphone.
               </div>
@@ -203,7 +207,7 @@ export function AuthModal() {
               </div>
             )}
 
-            {mode === 'choice' && (
+            {displayMode === 'choice' && (
               <div className="space-y-6">
                 <div className="text-center">
                   <h3 className="text-lg font-bold">Bienvenue</h3>
@@ -238,20 +242,11 @@ export function AuthModal() {
                       </Button>
                     </div>
                   </div>
-
-                  <div className="rounded-xl border border-foreground/15 bg-muted/30 p-3">
-                    <p className="text-sm font-semibold">Plateforme admin distincte</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Réservée au pilotage Buildify : demandes, clients, devis, finance, documents et opérations.</p>
-                    <Button variant="outline" className="mt-3 w-full justify-start gap-3 h-11" onClick={() => goMode('admin-login')}>
-                      <ShieldCheck className="w-4 h-4" />
-                      Connexion administrateur
-                    </Button>
-                  </div>
                 </div>
               </div>
             )}
 
-            {mode === 'admin-login' && (
+            {displayMode === 'admin-login' && (
               <form
                 className="space-y-4"
                 onSubmit={event => {
@@ -296,7 +291,7 @@ export function AuthModal() {
               </form>
             )}
 
-            {mode === 'login' && (
+            {displayMode === 'login' && (
               <form
                 className="space-y-4"
                 onSubmit={event => {
@@ -374,7 +369,7 @@ export function AuthModal() {
               </form>
             )}
 
-            {mode === 'forgot' && (
+            {displayMode === 'forgot' && (
               <form
                 className="space-y-4"
                 onSubmit={event => {
@@ -405,7 +400,7 @@ export function AuthModal() {
               </form>
             )}
 
-            {mode === 'reset-sent' && (
+            {displayMode === 'reset-sent' && (
               <div className="space-y-5 text-center">
                 <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary/10">
                   <ShieldCheck className="size-8 text-primary" />
@@ -422,7 +417,7 @@ export function AuthModal() {
               </div>
             )}
 
-            {mode === 'register' && (
+            {displayMode === 'register' && (
               <form
                 className="space-y-4"
                 onSubmit={event => {
