@@ -1992,10 +1992,16 @@ export function ConfiguratorView() {
         const visibleFieldOptionsBase = selectedVisibleOption && !filteredFieldOptions.some(option => option.value === selectedVisibleOption.value)
           ? [selectedVisibleOption, ...filteredFieldOptions]
           : filteredFieldOptions;
-        const visibleFieldOptions = customFieldLabel.length >= 2 && !customFieldExists
+        const customFieldAlreadyVisible = Boolean(customFieldValue)
+          && visibleFieldOptionsBase.some(option => option.value === customFieldValue);
+        const visibleFieldOptions = customFieldLabel.length >= 2 && !customFieldExists && !customFieldAlreadyVisible
           ? [...visibleFieldOptionsBase, { value: customFieldValue, label: `Utiliser “${customFieldLabel}”` }]
           : visibleFieldOptionsBase;
         const showFieldSearch = fieldOptions.length >= 5;
+        const fieldOptionsPreview = showFieldSearch && !fieldSearchValue.trim()
+          ? visibleFieldOptions.slice(0, 8)
+          : visibleFieldOptions;
+        const hiddenFieldOptionsCount = Math.max(0, visibleFieldOptions.length - fieldOptionsPreview.length);
         return (
           <div key={field.key} className={field.type === 'textarea' ? 'space-y-2 sm:col-span-2' : 'space-y-2'}>
             <Label className="text-xs font-semibold">
@@ -2003,31 +2009,60 @@ export function ConfiguratorView() {
               {field.required && <span className="ml-1 text-destructive">*</span>}
             </Label>
             {field.type === 'select' ? (
-              <div className="space-y-2">
-                {showFieldSearch && (
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={getSearchValue(fieldSearchKey)}
-                      onChange={event => setSearchValue(fieldSearchKey, event.target.value)}
-                      placeholder="Saisir pour filtrer ou ajouter"
-                      className="h-10 rounded-xl pl-9 text-sm"
-                    />
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={getSearchValue(fieldSearchKey)}
+                    onChange={event => setSearchValue(fieldSearchKey, event.target.value)}
+                    placeholder={showFieldSearch ? 'Rechercher ou saisir une valeur' : 'Saisir pour ajouter un autre choix'}
+                    className="h-11 rounded-xl pl-9 text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {fieldOptionsPreview.map(option => {
+                    const selected = value === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setConfiguratorResponse(field.key, option.value)}
+                        className={`flex min-h-[54px] items-start justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs leading-4 transition-colors ${
+                          selected
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-border bg-background hover:border-foreground/40 hover:bg-muted/40'
+                        }`}
+                      >
+                        <span className="min-w-0 break-words font-semibold">{option.label}</span>
+                        {selected && <CheckCircle2 className="mt-0.5 size-4 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {fieldOptionsPreview.length === 0 && (
+                  <div className="rounded-xl border border-dashed px-3 py-3 text-xs leading-5 text-muted-foreground">
+                    Aucun choix trouvé. Saisissez au moins deux caractères pour créer une valeur personnalisée.
                   </div>
                 )}
-                <div className="relative">
-                  <select
-                    value={value}
-                    onChange={event => setConfiguratorResponse(field.key, event.target.value)}
-                    className="h-12 w-full appearance-none rounded-xl border border-border bg-background px-4 pr-10 text-sm outline-none transition-colors focus:border-foreground"
+
+                {hiddenFieldOptionsCount > 0 && (
+                  <p className="text-[11px] leading-5 text-muted-foreground">
+                    {hiddenFieldOptionsCount} autre{hiddenFieldOptionsCount > 1 ? 's' : ''} choix disponible{hiddenFieldOptionsCount > 1 ? 's' : ''}. Saisissez quelques lettres pour filtrer.
+                  </p>
+                )}
+
+                {value && (
+                  <button
+                    type="button"
+                    onClick={() => setConfiguratorResponse(field.key, '')}
+                    className="text-[11px] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                   >
-                    <option value="">Choisissez</option>
-                    {visibleFieldOptions.map(option => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                  <ChevronRight className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 rotate-90 text-muted-foreground" />
-                </div>
+                    Effacer ce choix
+                  </button>
+                )}
               </div>
             ) : field.type === 'textarea' ? (
               <Textarea
