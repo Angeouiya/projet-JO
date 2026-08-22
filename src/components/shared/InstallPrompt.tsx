@@ -10,6 +10,8 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
+const INSTALL_PROMPT_VIEWS = new Set(['home', 'dashboard', 'explore', 'realizations', 'services']);
+
 export function InstallPrompt() {
   const { showInstallPrompt, showAuthModal, isAdmin, currentView, setInstallPrompt } = useAppStore();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -58,6 +60,7 @@ export function InstallPrompt() {
 
   const shouldShow = !isAdmin
     && !currentView.startsWith('admin')
+    && INSTALL_PROMPT_VIEWS.has(currentView)
     && !showAuthModal
     && !dismissed
     && !isStandalone

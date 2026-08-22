@@ -136,6 +136,12 @@ export interface ProjectVisualProposalData {
   duration: string;
   confidence: string;
   deliverable: string;
+  strengths?: string[];
+  decisionCriteria?: { label: string; value: string }[];
+  technicalScope?: string[];
+  riskControls?: string[];
+  nextSteps?: string[];
+  clientCommitment?: string;
   validatedAt: string;
   validatedBy?: string;
 }

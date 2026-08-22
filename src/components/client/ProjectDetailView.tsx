@@ -53,16 +53,7 @@ type ProjectDetailData = {
   photos: { id: string; caption: string; date: string }[];
 };
 
-type VisualProposal = {
-  id: string;
-  title: string;
-  category: string;
-  image: string;
-  description: string;
-  estimate: string;
-  duration: string;
-  confidence: string;
-  deliverable: string;
+type VisualProposal = Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy' | 'strengths'> & {
   strengths: string[];
 };
 
@@ -385,9 +376,81 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#39;');
 }
 
+function proposalDecisionCriteria(proposal: VisualProposal, data: ProjectDetailData) {
+  return proposal.decisionCriteria ?? [
+    { label: 'Budget à cadrer', value: proposal.estimate },
+    { label: 'Délai cible', value: proposal.duration },
+    { label: 'Usage principal', value: data.categoryName },
+    { label: 'Niveau de décision', value: proposal.confidence },
+  ];
+}
+
+function proposalTechnicalScope(proposal: VisualProposal, data: ProjectDetailData) {
+  return proposal.technicalScope ?? [
+    `Ouvrage : ${data.categoryName}`,
+    `Localisation : ${data.city}`,
+    `Base livrable : ${proposal.deliverable}`,
+    'Chiffrage final après validation des surfaces, documents et hypothèses techniques.',
+  ];
+}
+
+function proposalRiskControls(proposal: VisualProposal, data: ProjectDetailData) {
+  return proposal.riskControls ?? [
+    data.terrainStatus || 'Situation terrain à confirmer',
+    'Contrôle des surfaces et des limites de prestation avant devis définitif',
+    'Validation des documents disponibles avant engagement contractuel',
+  ];
+}
+
+function proposalNextSteps(proposal: VisualProposal) {
+  return proposal.nextSteps ?? [
+    'Confirmer cette proposition comme base de travail',
+    'Compléter les documents et informations financières manquantes',
+    'Recevoir le chiffrage détaillé, puis arbitrer devis, contrat et planning',
+  ];
+}
+
+function proposalClientCommitment(proposal: VisualProposal, data: ProjectDetailData) {
+  return proposal.clientCommitment
+    ?? `La validation retient "${proposal.title}" comme orientation visuelle et technique du dossier ${data.referenceNumber}. Elle ne remplace pas le devis définitif, le contrat, les études réglementaires ni les validations terrain.`;
+}
+
+function buildStoredVisualProposal(
+  proposal: VisualProposal,
+  data: ProjectDetailData
+): Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'> {
+  return {
+    ...proposal,
+    decisionCriteria: proposalDecisionCriteria(proposal, data),
+    technicalScope: proposalTechnicalScope(proposal, data),
+    riskControls: proposalRiskControls(proposal, data),
+    nextSteps: proposalNextSteps(proposal),
+    clientCommitment: proposalClientCommitment(proposal, data),
+  };
+}
+
+function renderList(items: string[]) {
+  return items.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+}
+
+function renderCriteria(criteria: { label: string; value: string }[]) {
+  return criteria
+    .map(item => `
+      <div class="box">
+        <div class="label">${escapeHtml(item.label)}</div>
+        <div class="value">${escapeHtml(item.value)}</div>
+      </div>
+    `)
+    .join('');
+}
+
 function buildProposalHtml(proposal: VisualProposal, data: ProjectDetailData) {
   const imageUrl = new URL(proposal.image, window.location.origin).href;
-  const strengths = proposal.strengths.map(strength => `<li>${escapeHtml(strength)}</li>`).join('');
+  const criteria = proposalDecisionCriteria(proposal, data);
+  const scope = proposalTechnicalScope(proposal, data);
+  const risks = proposalRiskControls(proposal, data);
+  const nextSteps = proposalNextSteps(proposal);
+  const commitment = proposalClientCommitment(proposal, data);
 
   return `<!doctype html>
 <html lang="fr">
@@ -402,14 +465,16 @@ function buildProposalHtml(proposal: VisualProposal, data: ProjectDetailData) {
     .brand { font-size: 24px; font-weight: 800; }
     .ref { text-align: right; font-size: 12px; line-height: 1.6; color: #555; }
     h1 { margin: 28px 0 12px; font-size: 32px; line-height: 1.15; }
-    .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0; }
+    .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 24px 0; }
     .box { border: 1px solid #ddd; border-radius: 8px; padding: 14px; }
     .label { font-size: 10px; text-transform: uppercase; color: #666; letter-spacing: .08em; font-weight: 700; }
     .value { margin-top: 8px; font-size: 14px; font-weight: 700; }
     img { width: 100%; border-radius: 10px; margin: 20px 0; }
     p { line-height: 1.65; color: #333; }
     ul { margin: 10px 0 0; padding-left: 20px; line-height: 1.7; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
     .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+    @media (max-width: 720px) { .sheet { padding: 22px; } .top, .split { display: block; } .ref { margin-top: 12px; text-align: left; } .meta { grid-template-columns: 1fr; } }
     @media print { .sheet { padding: 24px; } }
   </style>
 </head>
@@ -430,21 +495,94 @@ function buildProposalHtml(proposal: VisualProposal, data: ProjectDetailData) {
     <p>${escapeHtml(proposal.description)}</p>
     <img src="${imageUrl}" alt="${escapeHtml(proposal.title)}" />
     <section class="meta">
-      <div class="box"><div class="label">Catégorie</div><div class="value">${escapeHtml(proposal.category)}</div></div>
-      <div class="box"><div class="label">Budget indicatif</div><div class="value">${escapeHtml(proposal.estimate)}</div></div>
-      <div class="box"><div class="label">Délai prévu</div><div class="value">${escapeHtml(proposal.duration)}</div></div>
+      ${renderCriteria(criteria)}
     </section>
     <section class="box">
       <div class="label">Livrable client</div>
       <div class="value">${escapeHtml(proposal.deliverable)}</div>
     </section>
-    <section class="box" style="margin-top: 12px;">
-      <div class="label">Points forts</div>
-      <ul>${strengths}</ul>
-    </section>
+    <div class="split">
+      <section class="box"><div class="label">Périmètre technique</div><ul>${renderList(scope)}</ul></section>
+      <section class="box"><div class="label">Points de vigilance</div><ul>${renderList(risks)}</ul></section>
+    </div>
+    <div class="split">
+      <section class="box"><div class="label">Points forts</div><ul>${renderList(proposal.strengths)}</ul></section>
+      <section class="box"><div class="label">Étapes suivantes</div><ul>${renderList(nextSteps)}</ul></section>
+    </div>
+    <section class="box" style="margin-top: 12px;"><div class="label">Ce que la validation signifie</div><p>${escapeHtml(commitment)}</p></section>
     <div class="footer">
       Cette fiche aide le client à comparer, télécharger et valider une proposition visuelle avant chiffrage, contrat et planning.
     </div>
+  </main>
+</body>
+</html>`;
+}
+
+function buildProposalPortfolioHtml(proposals: VisualProposal[], selectedProposal: VisualProposal, data: ProjectDetailData) {
+  const rows = proposals.map(proposal => `
+    <tr>
+      <td>${escapeHtml(proposal.title)}${proposal.id === selectedProposal.id ? ' <strong>(sélection consultée)</strong>' : ''}</td>
+      <td>${escapeHtml(proposal.category)}</td>
+      <td>${escapeHtml(proposal.estimate)}</td>
+      <td>${escapeHtml(proposal.duration)}</td>
+      <td>${escapeHtml(proposal.confidence)}</td>
+    </tr>
+  `).join('');
+
+  const proposalBlocks = proposals.map(proposal => {
+    const imageUrl = new URL(proposal.image, window.location.origin).href;
+    return `
+      <section class="proposal">
+        <img src="${imageUrl}" alt="${escapeHtml(proposal.title)}" />
+        <div>
+          <h2>${escapeHtml(proposal.title)}</h2>
+          <p>${escapeHtml(proposal.description)}</p>
+          <ul>${renderList(proposal.strengths)}</ul>
+        </div>
+      </section>
+    `;
+  }).join('');
+
+  return `<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dossier comparatif - ${escapeHtml(data.referenceNumber)}</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #111; margin: 0; background: #fff; }
+    main { max-width: 1040px; margin: 0 auto; padding: 40px; }
+    header { border-bottom: 2px solid #111; padding-bottom: 18px; }
+    .brand { font-size: 24px; font-weight: 800; }
+    h1 { font-size: 32px; margin: 24px 0 8px; }
+    p { color: #444; line-height: 1.6; }
+    table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: top; }
+    th { background: #f5f5f5; text-transform: uppercase; font-size: 10px; letter-spacing: .08em; }
+    .proposal { display: grid; grid-template-columns: 280px 1fr; gap: 18px; border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin-top: 14px; break-inside: avoid; }
+    img { width: 100%; border-radius: 8px; }
+    ul { line-height: 1.7; }
+    .note { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin-top: 18px; }
+    @media (max-width: 760px) { main { padding: 22px; } .proposal { display: block; } table { font-size: 12px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="brand">Buildify</div>
+      <div>Dossier comparatif des propositions visuelles</div>
+    </header>
+    <h1>${escapeHtml(data.title)}</h1>
+    <p>Dossier ${escapeHtml(data.referenceNumber)} · ${escapeHtml(data.categoryName)} · ${escapeHtml(data.city)}</p>
+    <table>
+      <thead><tr><th>Proposition</th><th>Catégorie</th><th>Budget indicatif</th><th>Délai</th><th>Lecture décisionnelle</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${proposalBlocks}
+    <section class="note">
+      <strong>Validation client</strong>
+      <p>${escapeHtml(proposalClientCommitment(selectedProposal, data))}</p>
+    </section>
   </main>
 </body>
 </html>`;
@@ -456,6 +594,16 @@ function downloadProposalSheet(proposal: VisualProposal, data: ProjectDetailData
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = `${proposal.id}-fiche-buildify.html`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadProposalPortfolio(proposals: VisualProposal[], selectedProposal: VisualProposal, data: ProjectDetailData) {
+  const blob = new Blob([buildProposalPortfolioHtml(proposals, selectedProposal, data)], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${data.referenceNumber}-comparatif-propositions-buildify.html`;
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -1073,7 +1221,7 @@ function ProposalsTab({
     if (!selectedProposal) return;
     window.localStorage.setItem(storageKey, selectedProposal.id);
     setLocalValidatedId(selectedProposal.id);
-    onValidate?.(selectedProposal);
+    onValidate?.(buildStoredVisualProposal(selectedProposal, data));
     addToast('Proposition visuelle validée et rattachée au dossier.', 'success');
   };
 
@@ -1085,6 +1233,12 @@ function ProposalsTab({
       </div>
     );
   }
+
+  const selectedCriteria = proposalDecisionCriteria(selectedProposal, data);
+  const selectedScope = proposalTechnicalScope(selectedProposal, data);
+  const selectedRisks = proposalRiskControls(selectedProposal, data);
+  const selectedNextSteps = proposalNextSteps(selectedProposal);
+  const selectedCommitment = proposalClientCommitment(selectedProposal, data);
 
   return (
     <div className="space-y-4">
@@ -1113,19 +1267,39 @@ function ProposalsTab({
           </div>
         </div>
         <CardContent className="p-4 sm:p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-lg border bg-muted/30 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Budget indicatif</p>
-              <p className="mt-1 text-sm font-semibold">{selectedProposal.estimate}</p>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {selectedCriteria.map(item => (
+              <div key={item.label} className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                <p className="mt-1 text-sm font-semibold">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Périmètre technique</p>
+              <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                {selectedScope.map(item => <li key={item}>• {item}</li>)}
+              </ul>
             </div>
-            <div className="rounded-lg border bg-muted/30 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Délai prévu</p>
-              <p className="mt-1 text-sm font-semibold">{selectedProposal.duration}</p>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Points de vigilance</p>
+              <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                {selectedRisks.map(item => <li key={item}>• {item}</li>)}
+              </ul>
             </div>
-            <div className="rounded-lg border bg-muted/30 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Livrable client</p>
-              <p className="mt-1 text-sm font-semibold">{selectedProposal.deliverable}</p>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Après validation</p>
+              <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                {selectedNextSteps.map(item => <li key={item}>• {item}</li>)}
+              </ul>
             </div>
+          </div>
+
+          <div className="mt-4 rounded-lg border bg-muted/35 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ce que la validation signifie</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">{selectedCommitment}</p>
           </div>
 
           <div className="mt-4 flex flex-col sm:flex-row gap-2">
@@ -1142,6 +1316,14 @@ function ProposalsTab({
             >
               <Receipt className="size-4" />
               Télécharger la fiche
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto gap-2"
+              onClick={() => downloadProposalPortfolio(proposals, selectedProposal, data)}
+            >
+              <FolderArchive className="size-4" />
+              Dossier comparatif
             </Button>
             <ConfirmActionDialog
               title="Valider cette proposition visuelle ?"
@@ -1180,7 +1362,63 @@ function ProposalsTab({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <Card className="py-0 gap-0">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold">Comparatif rapide</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Comparez les variantes avant de télécharger ou valider.</p>
+            </div>
+            <Badge variant="outline">{proposals.length} propositions</Badge>
+          </div>
+          <div className="mt-4 space-y-2 md:hidden">
+            {proposals.map(proposal => (
+              <button
+                key={proposal.id}
+                type="button"
+                onClick={() => setSelectedId(proposal.id)}
+                className={`w-full rounded-lg border p-3 text-left ${
+                  proposal.id === selectedProposal.id ? 'border-foreground bg-muted/35' : 'bg-background'
+                }`}
+              >
+                <p className="text-sm font-semibold leading-tight">{proposal.title}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground">{proposal.estimate}</span>
+                  <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground">{proposal.duration}</span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{proposal.confidence}</p>
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 hidden overflow-x-auto md:block">
+            <div className="min-w-[620px] rounded-lg border">
+              <div className="grid grid-cols-[1.4fr_0.9fr_0.9fr_0.9fr] border-b bg-muted/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span>Proposition</span>
+                <span>Budget</span>
+                <span>Délai</span>
+                <span>Décision</span>
+              </div>
+              {proposals.map(proposal => (
+                <button
+                  key={proposal.id}
+                  type="button"
+                  onClick={() => setSelectedId(proposal.id)}
+                  className={`grid w-full grid-cols-[1.4fr_0.9fr_0.9fr_0.9fr] gap-3 border-b px-3 py-3 text-left text-xs last:border-b-0 ${
+                    proposal.id === selectedProposal.id ? 'bg-muted/40' : 'hover:bg-muted/25'
+                  }`}
+                >
+                  <span className="font-semibold">{proposal.title}</span>
+                  <span className="text-muted-foreground">{proposal.estimate}</span>
+                  <span className="text-muted-foreground">{proposal.duration}</span>
+                  <span className="text-muted-foreground">{proposal.confidence}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {proposals.map((proposal) => {
           const isSelected = proposal.id === selectedProposal.id;
           const isValidated = proposal.id === validatedId;
@@ -1225,7 +1463,7 @@ function ProposalsTab({
                 <CardContent className="p-3">
                   <p className="text-xs text-muted-foreground">{proposal.category}</p>
                   <h4 className="mt-1 text-sm font-semibold leading-tight">{proposal.title}</h4>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
+                  <div className="mt-3 hidden flex-wrap gap-1.5 sm:flex">
                     {proposal.strengths.map((strength) => (
                       <span
                         key={strength}

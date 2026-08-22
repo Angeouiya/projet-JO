@@ -1,11 +1,13 @@
 'use client';
 
+import NextImage from 'next/image';
 import { useMemo, useState } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
   ClipboardCheck,
   FolderSearch,
+  Image as ImageIcon,
   Landmark,
   MessageSquareText,
   ReceiptText,
@@ -372,12 +374,60 @@ export function AdminProjectDetail() {
 
           <Card className="py-0 gap-0">
             <CardContent className="p-4">
-              <h2 className="text-sm font-semibold">Proposition visuelle retenue</h2>
+              <div className="flex items-center gap-2">
+                <ImageIcon className="size-4 text-muted-foreground" />
+                <h2 className="text-sm font-semibold">Proposition visuelle retenue</h2>
+              </div>
               {visualProposal ? (
-                <div className="mt-3 rounded-lg border p-3">
-                  <p className="text-sm font-semibold">{visualProposal.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{visualProposal.category} · {new Date(visualProposal.validatedAt).toLocaleString('fr-FR')}</p>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{visualProposal.deliverable}</p>
+                <div className="mt-3 overflow-hidden rounded-lg border">
+                  <div className="relative aspect-[16/10] bg-muted">
+                    <NextImage
+                      src={visualProposal.image}
+                      alt={visualProposal.title}
+                      fill
+                      className="object-cover"
+                      sizes="(min-width: 1024px) 360px, 100vw"
+                    />
+                  </div>
+                  <div className="space-y-3 p-3">
+                    <div>
+                      <p className="text-sm font-semibold">{visualProposal.title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {visualProposal.category} · {new Date(visualProposal.validatedAt).toLocaleString('fr-FR')}
+                      </p>
+                    </div>
+                    <p className="text-xs leading-5 text-muted-foreground">{visualProposal.deliverable}</p>
+                    {(visualProposal.decisionCriteria ?? []).length > 0 && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {(visualProposal.decisionCriteria ?? []).slice(0, 4).map(item => (
+                          <div key={item.label} className="rounded-lg border bg-muted/30 p-2">
+                            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                            <p className="mt-1 text-xs font-semibold">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {(visualProposal.strengths ?? []).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {(visualProposal.strengths ?? []).map(strength => (
+                          <Badge key={strength} variant="outline" className="text-[10px]">{strength}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    {visualProposal.clientCommitment && (
+                      <p className="rounded-lg border bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
+                        {visualProposal.clientCommitment}
+                      </p>
+                    )}
+                    {(visualProposal.nextSteps ?? []).length > 0 && (
+                      <div className="rounded-lg border p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Suite admin</p>
+                        <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                          {(visualProposal.nextSteps ?? []).map(step => <li key={step}>• {step}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <p className="mt-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
