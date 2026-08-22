@@ -43,6 +43,21 @@ export interface AppUser {
   representativeRelation?: string;
 }
 
+export interface TeamMemberData {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  email: string;
+  phone?: string;
+  photoUrl: string;
+  bio: string;
+  publicVisible: boolean;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CatalogModelData {
   id: string;
   name: string;

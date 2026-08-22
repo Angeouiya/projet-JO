@@ -15,14 +15,17 @@ import type {
   ProjectFinancingData,
   ProjectVisualProposalData,
   NotificationData,
+  TeamMemberData,
 } from '@/types';
 import {
   isNotificationForRole,
   unreadNotificationsForRole,
 } from '@/lib/notification-audience';
+import { DEFAULT_TEAM_MEMBERS } from '@/data/team';
 
 type ProjectRequestInput = Partial<ProjectData> & Pick<ProjectData, 'referenceNumber'>;
 type AuthResumeAction = 'submit-configurator';
+type TeamMemberInput = Omit<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'> & Partial<Pick<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'>>;
 
 interface AppState {
   // Navigation
@@ -55,6 +58,7 @@ interface AppState {
   userFavorites: string[];
   notifications: NotificationData[];
   unreadNotificationCount: number;
+  teamMembers: TeamMemberData[];
 
   // Filters
   filters: FilterState;
@@ -121,6 +125,9 @@ interface AppState {
   addNotification: (notification: Omit<NotificationData, 'id' | 'createdAt' | 'isRead'> & Partial<Pick<NotificationData, 'id' | 'createdAt' | 'isRead'>>) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  addTeamMember: (member: TeamMemberInput) => TeamMemberData;
+  updateTeamMember: (memberId: string, patch: Partial<Omit<TeamMemberData, 'id' | 'createdAt'>>) => void;
+  removeTeamMember: (memberId: string) => void;
 
   // Actions - Filters
   setFilters: (filters: Partial<FilterState>) => void;
@@ -197,6 +204,7 @@ export const useAppStore = create<AppState>()(
       userFavorites: [],
       notifications: [],
       unreadNotificationCount: 0,
+      teamMembers: DEFAULT_TEAM_MEMBERS,
 
       // Filters
       filters: defaultFilters,
@@ -876,6 +884,25 @@ export const useAppStore = create<AppState>()(
         ));
         return { notifications, unreadNotificationCount: unreadCount(notifications, s.isAdmin) };
       }),
+      addTeamMember: (member) => {
+        const now = new Date().toISOString();
+        const nextMember: TeamMemberData = {
+          ...member,
+          id: member.id || uniqueId('team'),
+          createdAt: member.createdAt || now,
+          updatedAt: member.updatedAt || now,
+        };
+        set(s => ({ teamMembers: [nextMember, ...s.teamMembers.filter(item => item.id !== nextMember.id)] }));
+        return nextMember;
+      },
+      updateTeamMember: (memberId, patch) => set(s => ({
+        teamMembers: s.teamMembers.map(member => (
+          member.id === memberId
+            ? { ...member, ...patch, updatedAt: new Date().toISOString() }
+            : member
+        )),
+      })),
+      removeTeamMember: (memberId) => set(s => ({ teamMembers: s.teamMembers.filter(member => member.id !== memberId) })),
 
       // Actions - Filters
       setFilters: (filters) => set(s => ({ filters: { ...s.filters, ...filters } })),
@@ -912,6 +939,7 @@ export const useAppStore = create<AppState>()(
         userFavorites: state.userFavorites,
         notifications: state.notifications,
         unreadNotificationCount: state.unreadNotificationCount,
+        teamMembers: state.teamMembers,
         adminSidebarCollapsed: state.adminSidebarCollapsed,
         configurator: state.configurator,
         authResumeAction: state.authResumeAction,

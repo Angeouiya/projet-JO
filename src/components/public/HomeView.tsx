@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { motion, useInView, type Variants } from 'framer-motion';
 import {
   Home, Building2, Building, Landmark, MapPin,
@@ -15,6 +15,7 @@ import { useAppStore } from '@/stores/app-store';
 import { BrandLogo } from '@/components/shared/BrandLogo';
 import { FORMAT_SHORT_XOF } from '@/types';
 import type { CatalogModelData } from '@/types';
+import { DEPARTMENT_LABELS, ROLE_LABELS } from '@/data/team';
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 30 },
@@ -129,6 +130,11 @@ function AnimatedSection({ children, className }: { children: React.ReactNode; c
 
 export function HomeView() {
   const navigate = useAppStore(s => s.navigate);
+  const teamMembers = useAppStore(s => s.teamMembers);
+  const publicTeam = useMemo(
+    () => teamMembers.filter(member => member.active && member.publicVisible).slice(0, 6),
+    [teamMembers]
+  );
 
   return (
     <main className="min-h-screen bg-background">
@@ -390,6 +396,56 @@ export function HomeView() {
           ))}
         </div>
       </AnimatedSection>
+
+      {/* Équipe */}
+      {publicTeam.length > 0 && (
+        <AnimatedSection className="py-16 md:py-24 bg-muted/40">
+          <div className="px-6 md:px-12 lg:px-20">
+            <motion.div variants={fadeUp} className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold tracking-tight">L’équipe Buildify</h2>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                  Des profils terrain, techniques et financiers pour cadrer chaque décision avant d’engager le client.
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" className="hidden md:flex" onClick={() => navigate('services')}>
+                Nos expertises <ChevronRight className="size-4" />
+              </Button>
+            </motion.div>
+          </div>
+          <div className="mt-8 grid grid-cols-2 gap-3 px-6 md:grid-cols-3 md:gap-4 md:px-12 lg:grid-cols-6 lg:px-20">
+            {publicTeam.map((member) => (
+              <motion.article
+                key={member.id}
+                variants={fadeUp}
+                className="min-w-0 overflow-hidden rounded-xl border bg-card"
+              >
+                <div className="aspect-[4/5] overflow-hidden bg-muted">
+                  <img
+                    src={member.photoUrl}
+                    alt={member.name}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    className="h-full w-full object-cover grayscale transition-transform duration-500 hover:scale-105"
+                  />
+                </div>
+                <div className="p-3 md:p-4">
+                  <p className="truncate text-sm font-semibold">{member.name}</p>
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    {ROLE_LABELS[member.role] || member.role}
+                  </p>
+                  <Badge variant="outline" className="mt-3 max-w-full truncate px-2 py-1 text-[10px]">
+                    {DEPARTMENT_LABELS[member.department] || member.department}
+                  </Badge>
+                  <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
+                    {member.bio}
+                  </p>
+                </div>
+              </motion.article>
+            ))}
+          </div>
+        </AnimatedSection>
+      )}
 
       {/* CTA Final */}
       <AnimatedSection className="py-16 md:py-24">

@@ -318,6 +318,7 @@ export function AdminView() {
       case 'projects': return <AdminProjects />;
       case 'clients': return <AdminClients />;
       case 'catalog': return <AdminCatalog />;
+      case 'teams': return <AdminSettings defaultTab="team" />;
       case 'settings': return <AdminSettings />;
       default:
         return (
