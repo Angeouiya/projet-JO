@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Search, Plus, Eye, Pencil, Trash2, EyeOff, Eye as EyeOn, Grid3X3, List, Gem, PackageCheck,
+  Search, Plus, Eye, Pencil, Trash2, EyeOff, Eye as EyeOn, Grid3X3, List, Gem, PackageCheck, Copy,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -148,6 +148,22 @@ export function AdminCatalog() {
     addToast(nextStatus === 'published' ? 'Modèle publié.' : 'Modèle repassé en brouillon.', 'success');
   };
 
+  const duplicateModel = (model: CatalogAdminModel) => {
+    const copy: CatalogAdminModel = {
+      ...model,
+      id: `catalog-copy-${Date.now()}`,
+      name: `${model.name} copie`,
+      status: 'draft',
+      views: 0,
+      selections: 0,
+    };
+    setModels(prev => [copy, ...prev]);
+    setSelectedId(copy.id);
+    setEditingModel(copy);
+    setDraft(defaultDraft(copy));
+    addToast('Copie créée en brouillon. Ajustez-la avant publication.', 'success');
+  };
+
   const deleteModel = (model: CatalogAdminModel) => {
     setModels(prev => prev.filter(item => item.id !== model.id));
     if (selectedId === model.id) setSelectedId('');
@@ -229,6 +245,10 @@ export function AdminCatalog() {
               <Button size="sm" variant="outline" className="gap-2" onClick={() => toggleVisibility(selectedModel)}>
                 {selectedModel.status === 'published' ? <EyeOff className="size-4" /> : <EyeOn className="size-4" />}
                 {selectedModel.status === 'published' ? 'Dépublier' : 'Publier'}
+              </Button>
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => duplicateModel(selectedModel)}>
+                <Copy className="size-4" />
+                Dupliquer
               </Button>
               <ConfirmActionDialog
                 title="Supprimer ce modèle ?"

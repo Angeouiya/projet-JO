@@ -42,8 +42,10 @@ function timeAgo(dateStr: string): string {
 }
 
 export function NotificationsView() {
-  const { goBack, navigate, notifications, markNotificationRead, markAllNotificationsRead } = useAppStore();
-  const visibleNotifications = filterNotificationsForRole(notifications, false);
+  const { currentView, goBack, navigate, notifications, markNotificationRead, markAllNotificationsRead } = useAppStore();
+  const isMessagesView = currentView === 'messages';
+  const visibleNotifications = filterNotificationsForRole(notifications, false)
+    .filter(notification => !isMessagesView || notification.type === 'message' || notification.link === 'messages');
   const unreadCount = visibleNotifications.filter(n => !n.isRead).length;
 
   const handleNotificationClick = (notification: NotificationData) => {
@@ -58,6 +60,10 @@ export function NotificationsView() {
   };
 
   const handleMarkAllRead = () => {
+    if (isMessagesView) {
+      visibleNotifications.forEach(notification => markNotificationRead(notification.id));
+      return;
+    }
     markAllNotificationsRead();
   };
 
@@ -69,7 +75,7 @@ export function NotificationsView() {
           <Button variant="ghost" size="icon" className="size-9" onClick={goBack}>
             <ArrowLeft className="size-5" />
           </Button>
-          <h1 className="font-bold text-lg flex-1">Notifications</h1>
+          <h1 className="font-bold text-lg flex-1">{isMessagesView ? 'Messages' : 'Notifications'}</h1>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
@@ -96,10 +102,12 @@ export function NotificationsView() {
               <Bell className="size-7 text-muted-foreground/40" />
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
-              Aucune notification.
+              {isMessagesView ? 'Aucun message.' : 'Aucune notification.'}
             </p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              Vos alertes et mises à jour apparaîtront ici.
+              {isMessagesView
+                ? 'Les échanges avec Buildify apparaîtront ici.'
+                : 'Vos alertes et mises à jour apparaîtront ici.'}
             </p>
           </motion.div>
         ) : (
