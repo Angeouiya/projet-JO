@@ -23,6 +23,7 @@ const projectCreateSchema = z.object({
   clientName: z.string().trim().min(2).max(120).optional(),
   clientEmail: z.string().trim().email().optional(),
   clientPhone: z.string().trim().min(6).max(32).optional(),
+  country: z.string().trim().min(1).max(120).optional(),
   city: z.string().trim().min(1).max(120).optional(),
   referenceNumber: z.string().trim().min(4).max(40).optional(),
   formData: z.record(z.string(), z.unknown()).optional(),
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
 
     if (!userId && !clientEmail && !clientPhone) return projectContactError();
 
+    const country = normalizeText(body.country) || normalizeText(String(incomingFormData.country ?? '')) || "Côte d'Ivoire";
     const city = normalizeText(body.city) || normalizeText(String(incomingFormData.city ?? ''));
     const refNumber = body.referenceNumber || String(incomingFormData.referenceNumber ?? '') || projectReference();
     const clientName = normalizeText(body.clientName) || 'Client Buildify';
@@ -181,7 +183,7 @@ export async function POST(request: Request) {
           city,
           budgetMin: body.budgetMin ?? null,
           budgetMax: body.budgetMax ?? null,
-          country: "Côte d'Ivoire",
+          country,
         },
       });
     });

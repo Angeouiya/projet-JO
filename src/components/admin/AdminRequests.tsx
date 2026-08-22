@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS } from '@/types';
+import { formatProjectLocation } from '@/lib/project-format';
 import type { ProjectData } from '@/types';
 
 const STATUS_LIST = ['Nouvelles', 'Vérification', 'À compléter', 'Devis', 'Acceptées', 'Refusées'];
@@ -58,7 +59,7 @@ function requestFromProject(project: ProjectData): AdminRequestRow {
     ref: project.referenceNumber,
     client: project.clientName || 'Client Buildify',
     type: project.categoryName || project.modelName || 'Projet BTP',
-    city: project.city || 'Non défini',
+    city: formatProjectLocation(project, 'Non défini'),
     date: project.createdAt.slice(0, 10),
     status,
     statusKey: project.status,

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useAppStore } from '@/stores/app-store';
+import { formatProjectLocation } from '@/lib/project-format';
 import type { ProjectData } from '@/types';
 
 const TABS = ['Tous', 'En cours', 'Terminés', 'Suspendus', 'Brouillons'];
@@ -35,7 +36,7 @@ function rowFromProject(project: ProjectData): AdminProjectRow {
     title: project.title || project.modelName || 'Projet BTP',
     client: project.clientName || 'Client Buildify',
     type: project.categoryName || project.modelName || 'Projet',
-    city: project.city || 'Non défini',
+    city: formatProjectLocation(project, 'Non défini'),
     status: project.status,
     progress: project.progress ?? 0,
     budget: project.budgetMax || project.budgetMin || 0,

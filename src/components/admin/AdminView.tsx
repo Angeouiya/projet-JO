@@ -50,6 +50,7 @@ import { AdminRequests } from './AdminRequests';
 import { AdminSettings } from './AdminSettings';
 import { BrandLogo, BrandMark } from '@/components/shared/BrandLogo';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { formatProjectLocation } from '@/lib/project-format';
 
 type AdminNavItem = {
   id: string;
@@ -223,13 +224,14 @@ export function AdminView() {
         project.title,
         project.clientName,
         project.city,
+        project.country,
         project.categoryName,
       ].some(value => value?.toLowerCase().includes(query)))
       .map(project => ({
         id: `project-${project.id}`,
         type: 'Projet',
         title: project.title || project.referenceNumber,
-        subtitle: `${project.referenceNumber} · ${project.clientName || 'Client'} · ${project.city || 'Ville à préciser'}`,
+        subtitle: `${project.referenceNumber} · ${project.clientName || 'Client'} · ${formatProjectLocation(project, 'Ville à préciser')}`,
         projectId: project.id,
       }));
 

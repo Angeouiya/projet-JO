@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { formatProjectLocation } from '@/lib/project-format';
 import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectVisualProposalData } from '@/types';
 
 // ── Mock data ──────────────────────────────────────────────
@@ -311,7 +312,7 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
     status: project.status,
     categoryName: project.categoryName || 'Projet BTP',
     modelName: project.modelName || project.categoryName || 'À définir',
-    city: project.city || 'Non défini',
+    city: formatProjectLocation(project, 'Non défini'),
     budgetMin: project.budgetMin || project.budgetMax || 0,
     budgetMax: project.budgetMax || project.budgetMin || 0,
     progress: project.progress ?? 0,

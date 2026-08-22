@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_SHORT_XOF } from '@/types';
+import { formatProjectLocation } from '@/lib/project-format';
 import type { ProjectData } from '@/types';
 
 const MOCK_PROJECTS: ProjectData[] = [
@@ -181,7 +182,7 @@ function ProjectCard({ project, onClick }: { project: ProjectData; onClick: () =
         <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <MapPin className="size-3" />
-            {project.city || 'Non defini'}
+            {formatProjectLocation(project, 'Non défini')}
           </span>
           {project.budgetMin != null && project.budgetMax != null && (
             <span className="flex items-center gap-1">

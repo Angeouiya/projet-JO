@@ -187,12 +187,52 @@ const CATEGORY_SLUG_BY_TYPE: Record<string, string> = {
   autre: 'autre',
 };
 
-const CITY_OPTIONS: ChoiceOption[] = [
-  ...Array.from(new Set(CITIES_CI))
-    .sort((a, b) => a.localeCompare(b, 'fr'))
-    .map(city => ({ value: city, label: city })),
-  { value: 'Autre ville', label: 'Autre ville', icon: LandPlot },
+const COUNTRY_OPTIONS: ChoiceOption[] = [
+  { value: "Côte d'Ivoire", label: "Côte d'Ivoire", description: 'Abidjan, Bouaké, Yamoussoukro, San-Pédro...' },
+  { value: 'Burkina Faso', label: 'Burkina Faso', description: 'Ouagadougou, Bobo-Dioulasso, Koudougou...' },
+  { value: 'Mali', label: 'Mali', description: 'Bamako, Sikasso, Ségou, Kayes...' },
+  { value: 'Sénégal', label: 'Sénégal', description: 'Dakar, Thiès, Saint-Louis, Touba...' },
+  { value: 'Guinée', label: 'Guinée', description: 'Conakry, Kankan, Kindia, Labé...' },
+  { value: 'Togo', label: 'Togo', description: 'Lomé, Sokodé, Kara, Atakpamé...' },
+  { value: 'Bénin', label: 'Bénin', description: 'Cotonou, Porto-Novo, Parakou, Abomey-Calavi...' },
+  { value: 'Ghana', label: 'Ghana', description: 'Accra, Kumasi, Tamale, Takoradi...' },
+  { value: 'Cameroun', label: 'Cameroun', description: 'Douala, Yaoundé, Bafoussam, Garoua...' },
+  { value: 'Nigeria', label: 'Nigeria', description: 'Lagos, Abuja, Kano, Ibadan...' },
+  { value: 'Maroc', label: 'Maroc', description: 'Casablanca, Rabat, Marrakech, Tanger...' },
+  { value: 'France', label: 'France', description: 'Paris, Lyon, Marseille, Bordeaux...' },
+  { value: 'Belgique', label: 'Belgique', description: 'Bruxelles, Anvers, Liège, Charleroi...' },
+  { value: 'Canada', label: 'Canada', description: 'Montréal, Toronto, Ottawa, Québec...' },
+  { value: 'États-Unis', label: 'États-Unis', description: 'New York, Washington, Houston, Atlanta...' },
+  { value: 'Autre pays', label: 'Autre pays', description: 'Saisie libre du pays et de la ville' },
 ];
+
+const CITY_OPTIONS_BY_COUNTRY: Record<string, string[]> = {
+  "Côte d'Ivoire": CITIES_CI,
+  'Burkina Faso': ['Ouagadougou', 'Bobo-Dioulasso', 'Koudougou', 'Ouahigouya', 'Banfora', 'Kaya', 'Fada N’Gourma', 'Tenkodogo', 'Dédougou', 'Gaoua', 'Dori', 'Ziniaré'],
+  Mali: ['Bamako', 'Sikasso', 'Ségou', 'Mopti', 'Kayes', 'Koutiala', 'Gao', 'Tombouctou', 'Kati', 'San', 'Bougouni', 'Koulikoro'],
+  Sénégal: ['Dakar', 'Thiès', 'Touba', 'Rufisque', 'Saint-Louis', 'Kaolack', 'Ziguinchor', 'Mbour', 'Diourbel', 'Louga', 'Tambacounda', 'Kolda'],
+  Guinée: ['Conakry', 'Kankan', 'Kindia', 'Labé', 'Nzérékoré', 'Mamou', 'Boké', 'Faranah', 'Siguiri', 'Kissidougou', 'Macenta', 'Coyah'],
+  Togo: ['Lomé', 'Sokodé', 'Kara', 'Atakpamé', 'Kpalimé', 'Tsévié', 'Aného', 'Mango', 'Dapaong', 'Bassar', 'Notsé', 'Tchamba'],
+  Bénin: ['Cotonou', 'Porto-Novo', 'Parakou', 'Abomey-Calavi', 'Djougou', 'Bohicon', 'Natitingou', 'Ouidah', 'Lokossa', 'Abomey', 'Kandi', 'Malanville'],
+  Ghana: ['Accra', 'Kumasi', 'Tamale', 'Takoradi', 'Tema', 'Cape Coast', 'Sekondi', 'Sunyani', 'Ho', 'Koforidua', 'Wa', 'Bolgatanga'],
+  Cameroun: ['Douala', 'Yaoundé', 'Bafoussam', 'Garoua', 'Bamenda', 'Maroua', 'Ngaoundéré', 'Bertoua', 'Ebolowa', 'Kribi', 'Limbé', 'Dschang'],
+  Nigeria: ['Lagos', 'Abuja', 'Kano', 'Ibadan', 'Port Harcourt', 'Benin City', 'Kaduna', 'Enugu', 'Abeokuta', 'Ilorin', 'Jos', 'Calabar'],
+  Maroc: ['Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger', 'Agadir', 'Meknès', 'Oujda', 'Tétouan', 'Kénitra', 'Salé', 'El Jadida'],
+  France: ['Paris', 'Marseille', 'Lyon', 'Toulouse', 'Nice', 'Nantes', 'Montpellier', 'Strasbourg', 'Bordeaux', 'Lille', 'Rennes', 'Grenoble'],
+  Belgique: ['Bruxelles', 'Anvers', 'Gand', 'Charleroi', 'Liège', 'Bruges', 'Namur', 'Mons', 'Louvain', 'Malines', 'Ostende', 'Tournai'],
+  Canada: ['Montréal', 'Toronto', 'Vancouver', 'Ottawa', 'Québec', 'Calgary', 'Edmonton', 'Winnipeg', 'Hamilton', 'Laval', 'Gatineau', 'Halifax'],
+  'États-Unis': ['New York', 'Washington', 'Houston', 'Atlanta', 'Los Angeles', 'Chicago', 'Dallas', 'Miami', 'Philadelphia', 'Phoenix', 'Boston', 'Seattle'],
+};
+
+function buildCityOptions(country?: string): ChoiceOption[] {
+  const baseCities = CITY_OPTIONS_BY_COUNTRY[country || "Côte d'Ivoire"] || [];
+  return [
+    ...Array.from(new Set(baseCities))
+      .sort((a, b) => a.localeCompare(b, 'fr'))
+      .map(city => ({ value: city, label: city })),
+    { value: 'Autre ville', label: 'Autre ville', icon: LandPlot },
+  ];
+}
 
 const TERRAIN_OPTIONS: ChoiceOption[] = [
   { value: 'owned', label: 'Terrain disponible', icon: CheckSquare, description: 'Titre, ACD ou attribution disponible' },
@@ -519,12 +559,23 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
 
   steps.push(
     {
+      id: 'country',
+      title: 'Pays du projet',
+      subtitle: 'Choisissez le pays avant la ville',
+      responseKey: 'country',
+      type: 'choice-single',
+      options: COUNTRY_OPTIONS,
+      required: true,
+      requiredMessage: 'Choisissez le pays du projet avant de continuer.',
+      insight: 'Buildify garde la Côte d’Ivoire comme base, mais le dossier peut être cadré pour plusieurs pays.',
+    },
+    {
       id: 'city',
       title: 'Ville du projet',
       subtitle: 'Sélectionnez la ville ou la commune concernée',
       responseKey: 'city',
       type: 'select',
-      options: CITY_OPTIONS,
+      options: buildCityOptions(String(responses.country || "Côte d'Ivoire")),
       required: true,
     },
     {
@@ -570,7 +621,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       });
     }
 
-    if (terrainStatus === 'searching' && responses.city === 'Abidjan') {
+    if (terrainStatus === 'searching' && responses.country === "Côte d'Ivoire" && responses.city === 'Abidjan') {
       steps.push({
         id: 'zones',
         title: 'Zones recherchées',
@@ -1101,10 +1152,20 @@ function getSubmittedCity(responses: Record<string, unknown>): string | undefine
   return city;
 }
 
+function getSubmittedCountry(responses: Record<string, unknown>): string {
+  const country = String(responses.country || '').trim();
+  if (!country) return "Côte d'Ivoire";
+  if (country === 'Autre pays') {
+    return String(responses.otherCountry || '').trim() || country;
+  }
+  return country;
+}
+
 function buildAutoDescription(responses: Record<string, unknown>): string {
   const type = getLabel(PROJECT_TYPES, String(responses.projectType || 'autre'));
+  const country = getSubmittedCountry(responses);
   const cityName = getSubmittedCity(responses);
-  const city = cityName ? ` à ${cityName}` : '';
+  const city = cityName ? ` à ${cityName}, ${country}` : ` en ${country}`;
   const lots = [
     ...(Array.isArray(responses.workLots) ? responses.workLots : []),
     ...(Array.isArray(responses.vrdLots) ? responses.vrdLots : []),
@@ -1251,6 +1312,10 @@ function stepRequirementMessage(step: StepDef | undefined, responses: Record<str
     return step.requiredMessage || `Renseignez “${step.title}” avant de continuer.`;
   }
 
+  if (step.id === 'country' && responses.country === 'Autre pays' && !hasStoredValue(responses.otherCountry)) {
+    return 'Précisez le pays avant de continuer.';
+  }
+
   if (step.id === 'city' && responses.city === 'Autre ville' && !hasStoredValue(responses.otherCity)) {
     return 'Précisez la ville avant de continuer.';
   }
@@ -1374,6 +1439,7 @@ export function ConfiguratorView() {
       const localBudgetMax = budgetMax ?? undefined;
       const financing = buildProjectFinancing(responses, localBudgetMin, localBudgetMax);
       const city = getSubmittedCity(responses);
+      const country = getSubmittedCountry(responses);
       const declaredDocuments = Array.isArray(responses.documents) ? responses.documents as string[] : [];
       setReferenceNumber(ref);
 
@@ -1387,11 +1453,14 @@ export function ConfiguratorView() {
         modelId: configurator.modelId,
         title: `${getLabel(PROJECT_TYPES, projectTypeValue)}${city ? ` - ${city}` : ''}`,
         description: (responses.description as string | undefined) || buildAutoDescription(responses),
+        country,
         city: city || null,
         budgetMin: localBudgetMin,
         budgetMax: localBudgetMax,
         formData: {
           ...responses,
+          country,
+          city,
           financing,
           referenceNumber: ref,
           formVersion: 'advanced-construction-v2',
@@ -1405,7 +1474,7 @@ export function ConfiguratorView() {
         clientName: user?.name,
         clientEmail: user?.email,
         clientPhone: user?.phone,
-        country: "Côte d'Ivoire",
+        country,
         categoryId: CATEGORY_SLUG_BY_TYPE[projectTypeValue] || projectTypeValue,
         categoryName: getLabel(PROJECT_TYPES, projectTypeValue),
         modelId: configurator.modelId,
@@ -1450,6 +1519,7 @@ export function ConfiguratorView() {
       const localBudgetMax = budgetMax ?? undefined;
       const financing = buildProjectFinancing(responses, localBudgetMin, localBudgetMax);
       const city = getSubmittedCity(responses);
+      const country = getSubmittedCountry(responses);
       createProjectRequest({
         id: `local-${ref}`,
         referenceNumber: ref,
@@ -1457,7 +1527,7 @@ export function ConfiguratorView() {
         clientName: user?.name,
         clientEmail: user?.email,
         clientPhone: user?.phone,
-        country: "Côte d'Ivoire",
+        country,
         categoryId: CATEGORY_SLUG_BY_TYPE[projectTypeValue] || projectTypeValue,
         categoryName: getLabel(PROJECT_TYPES, projectTypeValue),
         modelId: configurator.modelId,
@@ -1470,6 +1540,8 @@ export function ConfiguratorView() {
         status: 'submitted',
         formData: {
           ...responses,
+          country,
+          city,
           financing,
           referenceNumber: ref,
           formVersion: 'advanced-construction-v2',
@@ -1529,6 +1601,13 @@ export function ConfiguratorView() {
     const filteredOptions = getFilteredOptions(step.id, options);
     const searchValue = getSearchValue(step.id);
     const showSearch = options.length >= 5;
+    const selectOption = (value: string) => {
+      setConfiguratorResponse(step.responseKey, value);
+      if (step.responseKey === 'country') {
+        setConfiguratorResponse('city', '');
+        setConfiguratorResponse('otherCity', '');
+      }
+    };
 
     return (
       <div className="space-y-3">
@@ -1552,7 +1631,7 @@ export function ConfiguratorView() {
                 key={option.value}
                 type="button"
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setConfiguratorResponse(step.responseKey, option.value)}
+                onClick={() => selectOption(option.value)}
                 className={`relative flex min-h-[112px] flex-col items-start gap-2 rounded-xl border p-3 text-left transition-colors sm:min-h-[94px] sm:flex-row sm:gap-3 sm:p-4 ${
                   isSelected
                     ? 'border-foreground bg-foreground text-background shadow-md'
@@ -1591,6 +1670,14 @@ export function ConfiguratorView() {
             </div>
           )}
         </div>
+        {step.responseKey === 'country' && selected === 'Autre pays' && (
+          <Input
+            value={(responses.otherCountry as string) || ''}
+            onChange={event => setConfiguratorResponse('otherCountry', event.target.value)}
+            placeholder="Précisez le pays"
+            className="h-12 rounded-xl"
+          />
+        )}
       </div>
     );
   };

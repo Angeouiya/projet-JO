@@ -22,6 +22,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
 import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
+import { formatProjectLocation } from '@/lib/project-format';
 
 const TEAM_LEADS = ['Awa Kouadio', 'Moussa Traoré', 'Ibrahim Diarra', 'Fatou Koné'];
 
@@ -133,6 +134,7 @@ export function AdminProjectDetail() {
   const quoteDisabled = !Number.isFinite(Number(quoteAmount)) || Number(quoteAmount) <= 0;
   const financing = project.financing || (project.formData?.financing as typeof project.financing);
   const visualProposal = project.visualProposal;
+  const locationLabel = formatProjectLocation(project);
 
   const handleAssign = () => {
     if (!leadName.trim()) return;
@@ -167,7 +169,7 @@ export function AdminProjectDetail() {
           </Button>
           <p className="text-xs font-mono text-muted-foreground">{project.referenceNumber}</p>
           <h1 className="mt-1 truncate text-2xl font-bold">{project.title || project.modelName || 'Dossier BTP'}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{project.clientName || 'Client Buildify'} · {project.city || 'Localisation à préciser'}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{project.clientName || 'Client Buildify'} · {locationLabel}</p>
         </div>
         <Badge className="w-fit">{statusLabel}</Badge>
       </div>
