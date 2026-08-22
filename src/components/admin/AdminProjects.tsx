@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useAppStore } from '@/stores/app-store';
 import { formatProjectLocation } from '@/lib/project-format';
+import { AdminCreateProjectDialog } from './AdminCreateProjectDialog';
 import type { ProjectData } from '@/types';
 
 const TABS = ['Tous', 'En cours', 'Terminés', 'Suspendus', 'Brouillons'];
@@ -102,9 +103,13 @@ export function AdminProjects() {
               <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
                 Les projets créés depuis le configurateur ou soumis par les clients seront listés ici.
               </p>
-              <Button className="mt-5 h-11 rounded-lg" onClick={() => navigate('create')}>
-                Nouveau dossier
-              </Button>
+              <AdminCreateProjectDialog
+                trigger={(
+                  <Button className="mt-5 h-11 rounded-lg">
+                    Nouveau dossier
+                  </Button>
+                )}
+              />
             </CardContent>
           </Card>
         ) : filtered.map(p => (

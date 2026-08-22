@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS } from '@/types';
 import { formatProjectLocation } from '@/lib/project-format';
+import { AdminCreateProjectDialog } from './AdminCreateProjectDialog';
 import type { ProjectData } from '@/types';
 
 const STATUS_LIST = ['Nouvelles', 'Vérification', 'À compléter', 'Devis', 'Acceptées', 'Refusées'];
@@ -131,9 +132,13 @@ export function AdminRequests() {
                 <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
                   Les dossiers soumis par les clients apparaîtront ici avec leurs statuts, pièces et actions de suivi.
                 </p>
-                <Button className="mt-5 h-11 rounded-lg" onClick={() => navigate('create')}>
-                  Créer un dossier
-                </Button>
+                <AdminCreateProjectDialog
+                  trigger={(
+                    <Button className="mt-5 h-11 rounded-lg">
+                      Créer un dossier
+                    </Button>
+                  )}
+                />
               </CardContent>
             </Card>
           </motion.div>

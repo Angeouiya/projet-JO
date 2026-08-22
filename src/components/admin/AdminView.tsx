@@ -42,6 +42,7 @@ import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { AdminCatalog } from './AdminCatalog';
 import { AdminClients } from './AdminClients';
+import { AdminCreateProjectDialog } from './AdminCreateProjectDialog';
 import { AdminDashboard } from './AdminDashboard';
 import { AdminOperationsView } from './AdminOperationsView';
 import { AdminProjectDetail } from './AdminProjectDetail';
@@ -541,10 +542,14 @@ export function AdminView() {
               <Download className="size-4" />
               Rapports
             </Button>
-            <Button className="hidden h-11 gap-2 xl:inline-flex" onClick={() => navigate('create')}>
-              <ClipboardList className="size-4" />
-              Nouveau dossier
-            </Button>
+            <AdminCreateProjectDialog
+              trigger={(
+                <Button className="hidden h-11 gap-2 xl:inline-flex">
+                  <ClipboardList className="size-4" />
+                  Nouveau dossier
+                </Button>
+              )}
+            />
             <button type="button" onClick={() => openAdminTab('messages')} className="relative hidden rounded-lg p-2 hover:bg-muted lg:inline-flex" aria-label="Messages">
               <MessageSquare className="size-5" />
               {missingInfoCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] text-background">{missingInfoCount}</span>}

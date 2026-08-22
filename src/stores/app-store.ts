@@ -325,6 +325,7 @@ export const useAppStore = create<AppState>()(
       createProjectRequest: (input) => {
         const now = new Date().toISOString();
         const user = get().user;
+        const createdByAdmin = get().isAdmin || user?.type === 'admin';
         const project: ProjectData = {
           id: input.id || uniqueId('prj'),
           referenceNumber: input.referenceNumber,
@@ -353,7 +354,11 @@ export const useAppStore = create<AppState>()(
           visualProposal: input.visualProposal,
           financing: input.financing,
           activityLog: [
-            activity('Demande client soumise', user?.name || 'Client', 'client'),
+            activity(
+              createdByAdmin ? 'Dossier créé dans la plateforme admin' : 'Demande client soumise',
+              user?.name || (createdByAdmin ? 'Administration' : 'Client'),
+              createdByAdmin ? 'admin' : 'client'
+            ),
             ...(input.activityLog ?? []),
           ],
           createdAt: input.createdAt || now,
@@ -365,10 +370,12 @@ export const useAppStore = create<AppState>()(
           const notifications = [
             {
               id: uniqueId('notif'),
-              title: 'Demande transmise',
-              message: `${project.referenceNumber} est maintenant visible dans l'administration.`,
+              title: createdByAdmin ? 'Dossier admin créé' : 'Demande transmise',
+              message: createdByAdmin
+                ? `${project.referenceNumber} a été créé depuis la plateforme admin.`
+                : `${project.referenceNumber} est maintenant visible dans l'administration.`,
               type: 'status',
-              link: 'project-detail',
+              link: createdByAdmin ? 'admin-project-detail' : 'project-detail',
               projectId: project.id,
               actionLabel: 'Ouvrir',
               isRead: false,
@@ -549,10 +556,20 @@ export const useAppStore = create<AppState>()(
       }),
       updateProjectQuoteStatus: (projectId, quoteId, status) => set(s => {
         const now = new Date().toISOString();
+        let projectRef = '';
+        let quoteLabel = 'Devis';
+        let quoteAmount = 0;
         const projects = s.userProjects.map(project => {
           if (project.id !== projectId) return project;
           const quotes = (project.quotes ?? []).map(quote => (
-            quote.id === quoteId ? { ...quote, status } : quote
+            quote.id === quoteId
+              ? (() => {
+                  projectRef = project.referenceNumber;
+                  quoteLabel = quote.label;
+                  quoteAmount = quote.amount;
+                  return { ...quote, status };
+                })()
+              : quote
           ));
 
           return {
@@ -566,8 +583,24 @@ export const useAppStore = create<AppState>()(
             updatedAt: now,
           };
         });
+        const notifications = [
+          {
+            id: uniqueId('notif'),
+            title: status === 'accepted' ? 'Devis accepté' : 'Devis refusé',
+            message: status === 'accepted'
+              ? `${quoteLabel} de ${new Intl.NumberFormat('fr-FR').format(quoteAmount)} XOF accepté pour ${projectRef || 'le dossier'}.`
+              : `${quoteLabel} a été refusé pour ${projectRef || 'le dossier'}. Reprendre le chiffrage ou clarifier le périmètre.`,
+            type: 'quote',
+            link: 'admin-project-detail',
+            projectId,
+            actionLabel: 'Ouvrir',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
 
-        return { userProjects: projects };
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications) };
       }),
       validateProjectVisualProposal: (projectId, proposal) => set(s => {
         const now = new Date().toISOString();

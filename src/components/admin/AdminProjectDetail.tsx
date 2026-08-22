@@ -25,6 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
 import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
 import { formatProjectLocation } from '@/lib/project-format';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 
 const TEAM_LEADS = ['Awa Kouadio', 'Moussa Traoré', 'Ibrahim Diarra', 'Fatou Koné'];
 
@@ -225,10 +226,18 @@ export function AdminProjectDetail() {
                   >
                     {TEAM_LEADS.map(lead => <option key={lead} value={lead}>{lead}</option>)}
                   </select>
-                  <Button className="mt-3 w-full gap-2" onClick={handleAssign}>
-                    <UserCheck className="size-4" />
-                    Affecter
-                  </Button>
+                  <ConfirmActionDialog
+                    title="Affecter ce responsable ?"
+                    description={`${leadName.trim() || 'Le responsable sélectionné'} deviendra le pilote admin du dossier ${project.referenceNumber}. Cette information restera dans la plateforme administration.`}
+                    confirmLabel="Affecter"
+                    onConfirm={handleAssign}
+                    trigger={(
+                      <Button className="mt-3 w-full gap-2" disabled={!leadName.trim()}>
+                        <UserCheck className="size-4" />
+                        Affecter
+                      </Button>
+                    )}
+                  />
                 </div>
 
                 <div className="rounded-lg border p-3">
@@ -243,10 +252,18 @@ export function AdminProjectDetail() {
                     onChange={(event) => setQuoteAmount(Number(event.target.value))}
                     className="mt-2"
                   />
-                  <Button className="mt-3 w-full gap-2" onClick={handleQuote} disabled={quoteDisabled}>
-                    <ReceiptText className="size-4" />
-                    Transmettre
-                  </Button>
+                  <ConfirmActionDialog
+                    title="Transmettre ce devis au client ?"
+                    description={`Le client verra un devis de ${FORMAT_XOF(Number(quoteAmount))} pour ${project.referenceNumber}. Il pourra l’accepter ou le refuser depuis sa plateforme client.`}
+                    confirmLabel="Transmettre"
+                    onConfirm={handleQuote}
+                    trigger={(
+                      <Button className="mt-3 w-full gap-2" disabled={quoteDisabled}>
+                        <ReceiptText className="size-4" />
+                        Transmettre
+                      </Button>
+                    )}
+                  />
                 </div>
               </div>
 
@@ -262,14 +279,30 @@ export function AdminProjectDetail() {
                 className="mt-2 min-h-24"
               />
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <Button className="gap-2" onClick={handleInfoRequest} disabled={!infoMessage.trim()}>
-                  <MessageSquareText className="size-4" />
-                  Demander au client
-                </Button>
-                <Button variant="outline" className="gap-2" onClick={handlePlanning}>
-                  <ClipboardCheck className="size-4" />
-                  Passer en planification
-                </Button>
+                <ConfirmActionDialog
+                  title="Envoyer cette demande au client ?"
+                  description={`Cette demande sera visible dans la plateforme client du dossier ${project.referenceNumber}. Le client devra compléter l’information avant la suite du traitement.`}
+                  confirmLabel="Envoyer"
+                  onConfirm={handleInfoRequest}
+                  trigger={(
+                    <Button className="gap-2" disabled={!infoMessage.trim()}>
+                      <MessageSquareText className="size-4" />
+                      Demander au client
+                    </Button>
+                  )}
+                />
+                <ConfirmActionDialog
+                  title="Passer le dossier en planification ?"
+                  description={`Le statut du dossier ${project.referenceNumber} changera en planification. Utilisez cette action lorsque le périmètre, le devis et les prochaines étapes sont suffisamment cadrés.`}
+                  confirmLabel="Planifier"
+                  onConfirm={handlePlanning}
+                  trigger={(
+                    <Button variant="outline" className="gap-2">
+                      <ClipboardCheck className="size-4" />
+                      Passer en planification
+                    </Button>
+                  )}
+                />
               </div>
             </CardContent>
           </Card>

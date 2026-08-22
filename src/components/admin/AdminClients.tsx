@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { useAppStore } from '@/stores/app-store';
 import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
+import { AdminCreateProjectDialog } from './AdminCreateProjectDialog';
 import type { ProjectData } from '@/types';
 
 type AdminClientRow = {
@@ -317,8 +318,20 @@ export function AdminClients() {
                               </div>
                               {relatedProjects.length === 0 ? (
                                 <div className="mt-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                                  Aucun dossier réel n’est rattaché à ce client. Créez un dossier client pour alimenter cette vue.
-                                  <Button className="mt-3 h-9 w-full rounded-lg" onClick={() => navigate('create')}>Créer un dossier</Button>
+                                  Aucun dossier réel n’est rattaché à ce client. Créez un dossier admin pour alimenter cette vue.
+                                  <AdminCreateProjectDialog
+                                    defaults={{
+                                      clientName: client.name,
+                                      clientEmail: client.email,
+                                      clientPhone: client.phone,
+                                      city: client.city,
+                                    }}
+                                    trigger={(
+                                      <Button className="mt-3 h-9 w-full rounded-lg">
+                                        Créer un dossier
+                                      </Button>
+                                    )}
+                                  />
                                 </div>
                               ) : (
                                 <div className="mt-3 space-y-2">

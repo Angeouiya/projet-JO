@@ -1687,24 +1687,32 @@ function DevisTab({
                 <p className="text-lg font-bold mt-3">{FORMAT_XOF(quote.amount)}</p>
 
                 {quote.status === 'pending' && (
-                  <div className="flex gap-2 mt-4">
-                    <Button
-                      size="sm"
-                      className="flex-1 gap-1.5 text-xs"
-                      onClick={() => handleAction(quote.id, 'accepted')}
-                    >
-                      <Check className="size-3.5" />
-                      Accepter
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 gap-1.5 text-xs"
-                      onClick={() => handleAction(quote.id, 'refused')}
-                    >
-                      <X className="size-3.5" />
-                      Refuser
-                    </Button>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <ConfirmActionDialog
+                      title="Accepter ce devis ?"
+                      description={`Vous confirmez avoir compris le montant de ${FORMAT_XOF(quote.amount)} pour ${quote.label}. Buildify pourra préparer le contrat, le planning et les prochaines étapes de paiement.`}
+                      confirmLabel="Accepter"
+                      onConfirm={() => handleAction(quote.id, 'accepted')}
+                      trigger={(
+                        <Button size="sm" className="w-full gap-1.5 text-xs">
+                          <Check className="size-3.5" />
+                          Accepter
+                        </Button>
+                      )}
+                    />
+                    <ConfirmActionDialog
+                      title="Refuser ce devis ?"
+                      description={`Vous refusez ${quote.label}. L’administration sera informée pour reprendre le chiffrage, clarifier le périmètre ou proposer un ajustement.`}
+                      confirmLabel="Refuser"
+                      confirmClassName="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onConfirm={() => handleAction(quote.id, 'refused')}
+                      trigger={(
+                        <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs">
+                          <X className="size-3.5" />
+                          Refuser
+                        </Button>
+                      )}
+                    />
                   </div>
                 )}
               </CardContent>
