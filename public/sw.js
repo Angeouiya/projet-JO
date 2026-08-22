@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bati-ci-shell-v1';
+const CACHE_NAME = 'buildify-shell-v2';
 const CORE_ASSETS = ['/', '/manifest.json', '/icons/buildify-logo.png'];
 
 self.addEventListener('install', event => {

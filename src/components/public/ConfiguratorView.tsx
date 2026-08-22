@@ -1000,11 +1000,14 @@ export function ConfiguratorView() {
     viewParams,
     user,
     isAuthenticated,
+    authResumeAction,
     setConfiguratorStep,
     setConfiguratorResponse,
     setConfiguratorData,
     resetConfigurator,
     requireAuth,
+    setAuthResumeAction,
+    clearAuthResumeAction,
     navigate,
     addToast,
     createProjectRequest,
@@ -1016,6 +1019,7 @@ export function ConfiguratorView() {
   const [referenceNumber, setReferenceNumber] = useState('');
   const [choiceSearch, setChoiceSearch] = useState<Record<string, string>>({});
   const isInitialized = useRef(false);
+  const resumeSubmitTriggered = useRef(false);
 
   const steps = useMemo(() => buildSteps(responses), [responses]);
   const currentIdx = useMemo(
@@ -1217,12 +1221,22 @@ export function ConfiguratorView() {
 
   const handleSummarySubmit = useCallback(() => {
     if (!isAuthenticated) {
+      setAuthResumeAction('submit-configurator');
       requireAuth('configurator');
       addToast('Connectez-vous avec e-mail/téléphone et mot de passe pour soumettre.', 'info');
       return;
     }
     handleSubmit();
-  }, [addToast, handleSubmit, isAuthenticated, requireAuth]);
+  }, [addToast, handleSubmit, isAuthenticated, requireAuth, setAuthResumeAction]);
+
+  useEffect(() => {
+    if (authResumeAction !== 'submit-configurator') return;
+    if (!isAuthenticated || activeStep?.type !== 'summary' || isSubmitting || resumeSubmitTriggered.current) return;
+    resumeSubmitTriggered.current = true;
+    clearAuthResumeAction();
+    addToast('Connexion confirmée : soumission reprise automatiquement.', 'success');
+    handleSubmit();
+  }, [activeStep?.type, addToast, authResumeAction, clearAuthResumeAction, handleSubmit, isAuthenticated, isSubmitting]);
 
   const handleFinalAction = useCallback(() => {
     resetConfigurator();

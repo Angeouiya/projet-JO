@@ -344,7 +344,7 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
   };
 }
 
-const PROPOSAL_STORAGE_PREFIX = 'bati-ci-validated-proposal';
+const PROPOSAL_STORAGE_PREFIX = 'buildify-validated-proposal';
 
 function getProposalStorageKey(referenceNumber: string) {
   return `${PROPOSAL_STORAGE_PREFIX}:${referenceNumber}`;

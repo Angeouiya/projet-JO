@@ -17,11 +17,11 @@ export function BrandMark({
   className?: string;
 }) {
   return (
-    <span className={cn('inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg', logoSizes[size], className)}>
+    <span className={cn('inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-transparent', logoSizes[size], className)}>
       <img
         src="/icons/buildify-logo.png"
         alt="Buildify"
-        className="h-full w-full object-contain"
+        className="block h-full w-full object-contain"
         draggable={false}
       />
     </span>

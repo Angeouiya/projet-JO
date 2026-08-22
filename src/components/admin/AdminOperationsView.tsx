@@ -467,7 +467,7 @@ function exportRows(tab: string, rows: OperationRow[]) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = `bati-ci-admin-${tab}.csv`;
+  anchor.download = `buildify-admin-${tab}.csv`;
   anchor.click();
   URL.revokeObjectURL(url);
 }

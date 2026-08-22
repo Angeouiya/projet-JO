@@ -278,8 +278,9 @@ export function AuthModal() {
                   <p className="text-sm text-muted-foreground mt-1">E-mail recommandé, téléphone accepté.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">E-mail ou téléphone</Label>
+                  <Label htmlFor="auth-login-identifier" className="text-xs">E-mail ou téléphone</Label>
                   <Input
+                    id="auth-login-identifier"
                     placeholder={`votre@email.ci ou ${getCountry(form.countryDialCode).example}`}
                     value={form.identifier}
                     onChange={event => set('identifier', event.target.value)}
@@ -288,8 +289,9 @@ export function AuthModal() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Pays du numéro</Label>
+                  <Label htmlFor="auth-login-country" className="text-xs">Pays du numéro</Label>
                   <select
+                    id="auth-login-country"
                     value={form.countryDialCode}
                     onChange={event => set('countryDialCode', event.target.value)}
                     className="h-12 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
@@ -303,9 +305,10 @@ export function AuthModal() {
                   <p className="text-[11px] text-muted-foreground">Si vous saisissez déjà un numéro avec +, l’indicatif saisi est conservé.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Mot de passe</Label>
+                  <Label htmlFor="auth-login-password" className="text-xs">Mot de passe</Label>
                   <div className="relative">
                     <Input
+                      id="auth-login-password"
                       placeholder="Votre mot de passe"
                       value={form.password}
                       onChange={event => set('password', event.target.value)}
@@ -353,8 +356,9 @@ export function AuthModal() {
                   <p className="text-sm text-muted-foreground mt-1">Le lien de réinitialisation est envoyé uniquement par e-mail.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Adresse e-mail</Label>
+                  <Label htmlFor="auth-reset-email" className="text-xs">Adresse e-mail</Label>
                   <Input
+                    id="auth-reset-email"
                     placeholder="votre@email.ci"
                     value={form.resetEmail}
                     onChange={event => set('resetEmail', event.target.value)}
@@ -400,15 +404,15 @@ export function AuthModal() {
                   <p className="text-sm text-muted-foreground mt-1">L'e-mail est recommandé pour récupérer le compte.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Nom complet</Label>
-                  <Input placeholder="Votre nom" value={form.name} onChange={event => set('name', event.target.value)} className="h-12" autoComplete="name" />
+                  <Label htmlFor="auth-register-name" className="text-xs">Nom complet</Label>
+                  <Input id="auth-register-name" placeholder="Votre nom" value={form.name} onChange={event => set('name', event.target.value)} className="h-12" autoComplete="name" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">E-mail recommandé</Label>
-                  <Input placeholder="votre@email.ci" value={form.email} onChange={event => set('email', event.target.value)} type="email" className="h-12" autoComplete="email" />
+                  <Label htmlFor="auth-register-email" className="text-xs">E-mail recommandé</Label>
+                  <Input id="auth-register-email" placeholder="votre@email.ci" value={form.email} onChange={event => set('email', event.target.value)} type="email" className="h-12" autoComplete="email" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Téléphone</Label>
+                  <Label htmlFor="auth-register-phone" className="text-xs">Téléphone</Label>
                   <div className="grid grid-cols-[minmax(118px,0.45fr)_minmax(0,1fr)] gap-2">
                     <select
                       value={form.countryDialCode}
@@ -422,16 +426,16 @@ export function AuthModal() {
                         </option>
                       ))}
                     </select>
-                    <Input placeholder={getCountry(form.countryDialCode).example} value={form.phone} onChange={event => set('phone', event.target.value)} type="tel" className="h-12" autoComplete="tel" />
+                    <Input id="auth-register-phone" placeholder={getCountry(form.countryDialCode).example} value={form.phone} onChange={event => set('phone', event.target.value)} type="tel" className="h-12" autoComplete="tel" />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Mot de passe</Label>
-                  <Input value={form.password} onChange={event => set('password', event.target.value)} type="password" className="h-12" autoComplete="new-password" />
+                  <Label htmlFor="auth-register-password" className="text-xs">Mot de passe</Label>
+                  <Input id="auth-register-password" value={form.password} onChange={event => set('password', event.target.value)} type="password" className="h-12" autoComplete="new-password" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Confirmer le mot de passe</Label>
-                  <Input value={form.confirmPassword} onChange={event => set('confirmPassword', event.target.value)} type="password" className="h-12" autoComplete="new-password" />
+                  <Label htmlFor="auth-register-confirm-password" className="text-xs">Confirmer le mot de passe</Label>
+                  <Input id="auth-register-confirm-password" value={form.confirmPassword} onChange={event => set('confirmPassword', event.target.value)} type="password" className="h-12" autoComplete="new-password" />
                 </div>
                 <Button className="w-full h-12" type="submit" disabled={!form.name || (!form.email && !form.phone) || !form.password || !form.confirmPassword || loading}>
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ArrowRight className="w-4 h-4 mr-2" />}

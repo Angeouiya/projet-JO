@@ -18,6 +18,7 @@ import type {
 } from '@/types';
 
 type ProjectRequestInput = Partial<ProjectData> & Pick<ProjectData, 'referenceNumber'>;
+type AuthResumeAction = 'submit-configurator';
 
 interface AppState {
   // Navigation
@@ -33,6 +34,7 @@ interface AppState {
   showAuthModal: boolean;
   authRedirectView: ViewName | null;
   authRedirectParams: Record<string, string>;
+  authResumeAction: AuthResumeAction | null;
 
   // UI State
   isMobileMenuOpen: boolean;
@@ -72,6 +74,8 @@ interface AppState {
   logout: () => void;
   requireAuth: (redirectView?: ViewName, params?: Record<string, string>) => void;
   dismissAuth: () => void;
+  setAuthResumeAction: (action: AuthResumeAction | null) => void;
+  clearAuthResumeAction: () => void;
 
   // Actions - UI
   toggleMobileMenu: () => void;
@@ -160,6 +164,7 @@ export const useAppStore = create<AppState>()(
       showAuthModal: false,
       authRedirectView: null,
       authRedirectParams: {},
+      authResumeAction: null,
 
       // UI State
       isMobileMenuOpen: false,
@@ -251,6 +256,9 @@ export const useAppStore = create<AppState>()(
           navigationStack: ['home'],
           viewParams: {},
           previousView: null,
+          authRedirectView: null,
+          authRedirectParams: {},
+          authResumeAction: null,
         });
       },
       requireAuth: (redirectView, params = {}) => {
@@ -260,7 +268,9 @@ export const useAppStore = create<AppState>()(
           authRedirectParams: params,
         });
       },
-      dismissAuth: () => set({ showAuthModal: false }),
+      dismissAuth: () => set({ showAuthModal: false, authResumeAction: null }),
+      setAuthResumeAction: (action) => set({ authResumeAction: action }),
+      clearAuthResumeAction: () => set({ authResumeAction: null }),
 
       // Actions - UI
       toggleMobileMenu: () => set(s => ({ isMobileMenuOpen: !s.isMobileMenuOpen })),
@@ -634,6 +644,7 @@ export const useAppStore = create<AppState>()(
         unreadNotificationCount: state.unreadNotificationCount,
         adminSidebarCollapsed: state.adminSidebarCollapsed,
         configurator: state.configurator,
+        authResumeAction: state.authResumeAction,
         draftId: state.draftId,
         filters: state.filters,
       }),
