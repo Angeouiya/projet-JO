@@ -52,6 +52,10 @@ function isPrismaKnownError(error: unknown): error is Prisma.PrismaClientKnownRe
   return typeof error === 'object' && error !== null && 'code' in error;
 }
 
+function isReadonlyDatabaseError(error: unknown) {
+  return error instanceof Error && error.message.toLowerCase().includes('readonly database');
+}
+
 export async function GET(request: Request) {
   const parsed = projectQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   if (!parsed.success) return validationError(parsed.error);
@@ -190,10 +194,18 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ project: result }, { status: 201 });
   } catch (error) {
-    console.error('Project create error:', error);
+    if (isReadonlyDatabaseError(error)) {
+      console.warn('Project create skipped: writable database is not configured for this runtime.');
+      return NextResponse.json({
+        error: 'Service base de données non configuré en écriture',
+        code: 'DATABASE_READONLY',
+        message: 'Le dossier peut être conservé localement, mais la persistance serveur nécessite une base de données externe writable.',
+      }, { status: 503 });
+    }
     if (isPrismaKnownError(error) && error.code === 'P2002') {
       return NextResponse.json({ error: 'Un dossier avec cette référence existe déjà.' }, { status: 409 });
     }
+    console.error('Project create error:', error);
     return serverError();
   }
 }

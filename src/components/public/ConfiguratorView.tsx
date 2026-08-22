@@ -1501,7 +1501,10 @@ export function ConfiguratorView() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Erreur serveur');
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null);
+        throw new Error(errorBody?.error || 'Erreur serveur');
+      }
       const created = await res.json().catch(() => null);
 
       createProjectRequest({
@@ -1511,7 +1514,7 @@ export function ConfiguratorView() {
 
       goNext();
       addToast('Demande soumise et visible dans l’administration.', 'success');
-    } catch {
+    } catch (error) {
       const ref = generateReference();
       const projectTypeValue = String(responses.projectType || 'autre');
       const [budgetMin, budgetMax] = getBudgetRange(responses.budget as string | undefined);
@@ -1552,7 +1555,8 @@ export function ConfiguratorView() {
       });
       setReferenceNumber(ref);
       goNext();
-      addToast('Service serveur non configuré ou indisponible : copie locale créée.', 'info');
+      const message = error instanceof Error ? error.message : 'Service serveur non configuré ou indisponible';
+      addToast(`${message} : copie locale créée.`, 'info');
     } finally {
       setIsSubmitting(false);
     }
