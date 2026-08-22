@@ -6,15 +6,20 @@ import {
   ArrowLeft,
   CheckCircle2,
   ClipboardCheck,
+  Clock3,
   FolderSearch,
+  Globe2,
   Image as ImageIcon,
   Landmark,
+  MessageCircle,
   MessageSquareText,
   ReceiptText,
   Send,
   ShieldCheck,
   UserCheck,
+  UserRoundCheck,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +29,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
 import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
+import type { ProjectData } from '@/types';
 import { formatProjectLocation } from '@/lib/project-format';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 
@@ -89,8 +95,100 @@ const FINANCING_DOCUMENT_LABELS: Record<string, string> = {
   'none-yet': 'Aucun',
 };
 
+const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {
+  'civil-servant': 'Fonctionnaire',
+  'private-salary': 'Salarié privé',
+  'diaspora-salary': 'Salarié diaspora',
+  entrepreneur: 'Entrepreneur',
+  'liberal-service': 'Profession libérale',
+  'mixed-income': 'Revenus mixtes',
+  'family-backed': 'Appui familial',
+  'to-confirm': 'À confirmer',
+};
+
+const INCOME_STABILITY_LABELS: Record<string, string> = {
+  'stable-12m': 'Stable 12 mois+',
+  'stable-6m': 'Stable 6 mois',
+  variable: 'Variable documenté',
+  seasonal: 'Saisonnier',
+  'new-income': 'Nouveau revenu',
+  'to-document': 'À documenter',
+};
+
+const FINANCIAL_RISK_LABELS: Record<string, string> = {
+  low: 'Risque maîtrisé',
+  moderate: 'Risque à structurer',
+  high: 'Risque élevé',
+  unknown: 'À analyser',
+};
+
 function labelFrom(labels: Record<string, string>, value?: string) {
   if (!value) return 'À compléter';
+  return labels[value] || value;
+}
+
+const CLIENT_PRESENCE_LABELS: Record<string, string> = {
+  local: 'Client sur place',
+  abroad: 'Client hors du pays',
+  'abroad-representative': 'Hors pays avec mandataire',
+  'representative-only': 'Mandataire uniquement',
+  'to-confirm': 'À organiser',
+};
+
+const TIME_ZONE_LABELS: Record<string, string> = {
+  'Africa/Abidjan': 'Côte d’Ivoire / GMT',
+  'Europe/Paris': 'France / Europe centrale',
+  'Europe/Brussels': 'Belgique',
+  'Europe/London': 'Royaume-Uni',
+  'America/Toronto': 'Canada Est',
+  'America/New_York': 'États-Unis Est',
+  'America/Chicago': 'États-Unis Centre',
+  'America/Los_Angeles': 'États-Unis Ouest',
+  'Africa/Dakar': 'Sénégal / GMT',
+  'Africa/Ouagadougou': 'Burkina Faso / GMT',
+};
+
+const CONTACT_CHANNEL_LABELS: Record<string, string> = {
+  whatsapp: 'WhatsApp',
+  email: 'E-mail',
+  phone: 'Appel téléphonique',
+  video: 'Visio',
+};
+
+const CONTACT_WINDOW_LABELS: Record<string, string> = {
+  'morning-ci': 'Matin heure Côte d’Ivoire',
+  'afternoon-ci': 'Après-midi heure Côte d’Ivoire',
+  'evening-ci': 'Soir heure Côte d’Ivoire',
+  weekend: 'Week-end uniquement',
+  'to-plan': 'À planifier selon disponibilité',
+};
+
+const REMOTE_DECISION_LABELS: Record<string, string> = {
+  'written-approval': 'Validation écrite avant action',
+  'video-review': 'Réunion visio avant décision',
+  'representative-approval': 'Mandataire autorisé à valider sur place',
+  mixed: 'Validation mixte client + mandataire',
+};
+
+const REPRESENTATIVE_RELATION_LABELS: Record<string, string> = {
+  family: 'Famille',
+  'trusted-person': 'Personne de confiance',
+  company: 'Entreprise / associé',
+  none: 'Aucun mandataire',
+};
+
+function textValue(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const text = String(value).trim();
+  return text || undefined;
+}
+
+function projectText(project: ProjectData, key: string): string | undefined {
+  return textValue((project as unknown as Record<string, unknown>)[key]) || textValue(project.formData?.[key]);
+}
+
+function optionalLabel(labels: Record<string, string>, value?: string): string | undefined {
+  if (!value) return undefined;
   return labels[value] || value;
 }
 
@@ -139,6 +237,47 @@ export function AdminProjectDetail() {
   const visualProposal = project.visualProposal;
   const locationLabel = formatProjectLocation(project);
   const latestInfoResponse = project.missingInfoResponses?.[0];
+  const financingScore = financing?.affordabilityScore ?? 0;
+  const financeRisk = labelFrom(FINANCIAL_RISK_LABELS, financing?.financialRiskLevel);
+  const missingDocumentCount = (financing?.documentReadiness ?? []).includes('none-yet')
+    ? 4
+    : Math.max(0, 4 - (financing?.documentReadiness ?? []).filter(item => ['id', 'income-proof', 'bank-statements', 'quote-or-plans'].includes(item)).length);
+  const nextAdminAction = project.status === 'submitted'
+    ? 'Qualifier le dossier'
+    : project.status === 'info_required'
+      ? 'Relancer les informations'
+      : project.status === 'quote_sent'
+        ? 'Suivre la décision devis'
+        : project.status === 'planning'
+          ? 'Structurer le planning'
+          : project.status === 'in_progress'
+            ? 'Contrôler les jalons'
+            : 'Piloter le dossier';
+  const representativeRelation = optionalLabel(REPRESENTATIVE_RELATION_LABELS, projectText(project, 'representativeRelation'));
+  const coordinationItems = [
+    { icon: UserCheck, label: 'Présence', value: optionalLabel(CLIENT_PRESENCE_LABELS, projectText(project, 'clientPresence')) },
+    { icon: Globe2, label: 'Résidence', value: projectText(project, 'clientResidenceCountry') },
+    { icon: Clock3, label: 'Fuseau', value: optionalLabel(TIME_ZONE_LABELS, projectText(project, 'clientTimeZone')) },
+    { icon: MessageCircle, label: 'Canal', value: optionalLabel(CONTACT_CHANNEL_LABELS, projectText(project, 'clientPreferredContactChannel')) },
+    { icon: MessageSquareText, label: 'Créneau', value: optionalLabel(CONTACT_WINDOW_LABELS, projectText(project, 'clientContactWindow')) },
+    { icon: ShieldCheck, label: 'Validation', value: optionalLabel(REMOTE_DECISION_LABELS, projectText(project, 'remoteDecisionMode')) },
+    { icon: UserRoundCheck, label: 'Mandataire', value: projectText(project, 'representativeName') },
+    { icon: Send, label: 'Téléphone relais', value: projectText(project, 'representativePhone') },
+  ].filter((item): item is { icon: LucideIcon; label: string; value: string } => Boolean(item.value));
+  const pilotageItems = [
+    { icon: ClipboardCheck, label: 'Action prioritaire', value: nextAdminAction },
+    { icon: Landmark, label: 'Finance', value: financingScore ? `${financingScore}% - ${financeRisk}` : financeRisk },
+    { icon: ShieldCheck, label: 'Revenu', value: labelFrom(EMPLOYMENT_STATUS_LABELS, financing?.employmentStatus) },
+    { icon: Clock3, label: 'Stabilité', value: labelFrom(INCOME_STABILITY_LABELS, financing?.incomeStability) },
+  ];
+  const checklistItems = [
+    { label: 'Contact client', done: Boolean(project.clientEmail || project.clientPhone) },
+    { label: 'Coordination', done: Boolean(projectText(project, 'clientPresence')) },
+    { label: 'Profil financier', done: Boolean(financing?.employmentStatus && financing?.monthlyIncome !== undefined) },
+    { label: 'Pièces banque', done: missingDocumentCount === 0 },
+    { label: 'Garanties paiement', done: Boolean(financing?.notaryContract || financing?.escrowRequested || financing?.bankSupportRequested) },
+    { label: 'Proposition visuelle', done: Boolean(project.visualProposal) },
+  ];
 
   const handleAssign = () => {
     if (!leadName.trim()) return;
@@ -210,6 +349,50 @@ export function AdminProjectDetail() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
+          <Card className="py-0 gap-0 border-foreground/10">
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pilotage admin</p>
+                  <h2 className="mt-1 text-lg font-bold">{nextAdminAction}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{project.referenceNumber} · {statusLabel}</p>
+                </div>
+                <div className="min-w-48 rounded-lg border bg-muted/30 p-3">
+                  <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span>Score dossier</span>
+                    <span>{Math.max(project.progress, financingScore)}%</span>
+                  </div>
+                  <Progress value={Math.max(project.progress, financingScore)} className="mt-2 h-2" />
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-2 md:grid-cols-4">
+                {pilotageItems.map(item => (
+                  <div key={item.label} className="flex min-w-0 items-start gap-2 rounded-lg border p-3">
+                    <item.icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                      <p className="mt-1 text-sm font-semibold break-words">{item.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {checklistItems.map(item => (
+                  <div key={item.label} className="flex items-center gap-2 rounded-lg border px-3 py-2">
+                    {item.done ? (
+                      <CheckCircle2 className="size-4 shrink-0 text-foreground" />
+                    ) : (
+                      <Clock3 className="size-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="py-0 gap-0">
             <CardContent className="p-4">
               <h2 className="text-sm font-semibold">Actions dossier</h2>
@@ -330,6 +513,31 @@ export function AdminProjectDetail() {
         </div>
 
         <div className="space-y-4">
+          {coordinationItems.length > 0 && (
+            <Card className="py-0 gap-0">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-semibold">Coordination hors pays</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">{representativeRelation || 'Suivi direct client'}</p>
+                  </div>
+                  <Globe2 className="size-4 shrink-0 text-muted-foreground" />
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {coordinationItems.map(item => (
+                    <div key={item.label} className="flex min-w-0 items-start gap-2 rounded-lg border p-3">
+                      <item.icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                        <p className="mt-1 text-sm font-semibold break-words">{item.value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="py-0 gap-0">
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-3">
@@ -340,6 +548,17 @@ export function AdminProjectDetail() {
                 <Landmark className="size-4 text-muted-foreground" />
               </div>
               <div className="mt-3 grid gap-2">
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span>Score financement</span>
+                    <span>{financingScore || 0}%</span>
+                  </div>
+                  <Progress value={financingScore} className="mt-2 h-2" />
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <Badge variant="outline" className="text-[10px]">{financeRisk}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{labelFrom(EMPLOYMENT_STATUS_LABELS, financing?.employmentStatus)}</Badge>
+                  </div>
+                </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mode</p>
                   <p className="mt-1 text-sm font-semibold">{financingModeLabel(financing?.mode)}</p>
@@ -360,6 +579,16 @@ export function AdminProjectDetail() {
                   <div className="rounded-lg border p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ratio projeté</p>
                     <p className="mt-1 text-xs font-semibold">{percentOrTodo(financing?.projectedDebtRatioPercent)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Apport %</p>
+                    <p className="mt-1 text-xs font-semibold">{percentOrTodo(financing?.equityRatioPercent)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Réserve</p>
+                    <p className="mt-1 text-xs font-semibold">
+                      {financing?.cashReserveMonths !== undefined ? `${financing.cashReserveMonths} mois` : 'À calculer'}
+                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">

@@ -26,6 +26,15 @@ const projectCreateSchema = z.object({
   clientName: z.string().trim().min(2).max(120).optional(),
   clientEmail: z.string().trim().email().optional(),
   clientPhone: z.string().trim().min(6).max(32).optional(),
+  clientPresence: z.string().trim().min(1).max(120).optional(),
+  clientResidenceCountry: z.string().trim().min(1).max(120).optional(),
+  clientTimeZone: z.string().trim().min(1).max(120).optional(),
+  clientPreferredContactChannel: z.string().trim().min(1).max(120).optional(),
+  clientContactWindow: z.string().trim().min(1).max(160).optional(),
+  remoteDecisionMode: z.string().trim().min(1).max(160).optional(),
+  representativeName: z.string().trim().min(1).max(120).optional(),
+  representativePhone: z.string().trim().min(6).max(32).optional(),
+  representativeRelation: z.string().trim().min(1).max(120).optional(),
   country: z.string().trim().min(1).max(120).optional(),
   city: z.string().trim().min(1).max(120).optional(),
   referenceNumber: z.string().trim().min(4).max(40).optional(),
@@ -60,6 +69,13 @@ function projectContactError() {
     },
     { status: 400 }
   );
+}
+
+function formText(formData: Record<string, unknown>, key: string) {
+  const value = formData[key];
+  if (typeof value === 'string') return normalizeText(value);
+  if (value === undefined || value === null) return undefined;
+  return normalizeText(String(value));
 }
 
 function isPrismaKnownError(error: unknown): error is Prisma.PrismaClientKnownRequestError {
@@ -154,6 +170,15 @@ export async function POST(request: Request) {
     const refNumber = body.referenceNumber || String(incomingFormData.referenceNumber ?? '') || projectReference();
     const clientName = normalizeText(body.clientName) || 'Client Buildify';
     const resolvedCategoryIdFromPayload = body.categoryId || body.categorySlug || null;
+    const clientPresence = normalizeText(body.clientPresence) || formText(incomingFormData, 'clientPresence');
+    const clientResidenceCountry = normalizeText(body.clientResidenceCountry) || formText(incomingFormData, 'clientResidenceCountry');
+    const clientTimeZone = normalizeText(body.clientTimeZone) || formText(incomingFormData, 'clientTimeZone');
+    const clientPreferredContactChannel = normalizeText(body.clientPreferredContactChannel) || formText(incomingFormData, 'clientPreferredContactChannel');
+    const clientContactWindow = normalizeText(body.clientContactWindow) || formText(incomingFormData, 'clientContactWindow');
+    const remoteDecisionMode = normalizeText(body.remoteDecisionMode) || formText(incomingFormData, 'remoteDecisionMode');
+    const representativeName = normalizeText(body.representativeName) || formText(incomingFormData, 'representativeName');
+    const representativePhone = normalizeText(body.representativePhone) || formText(incomingFormData, 'representativePhone');
+    const representativeRelation = normalizeText(body.representativeRelation) || formText(incomingFormData, 'representativeRelation');
 
     if (hasExternalProjectStore()) {
       const project = await createStoredProject({
@@ -175,6 +200,15 @@ export async function POST(request: Request) {
         budgetMax: body.budgetMax,
         country,
         progress: body.progress ?? 5,
+        clientPresence,
+        clientResidenceCountry,
+        clientTimeZone,
+        clientPreferredContactChannel,
+        clientContactWindow,
+        remoteDecisionMode,
+        representativeName,
+        representativePhone,
+        representativeRelation,
         financing: body.financing as ProjectFinancingData | undefined,
         documents: body.documents as ProjectDocumentData[] | undefined,
       });

@@ -80,7 +80,17 @@ interface AppState {
   dismissAuth: () => void;
   setAuthResumeAction: (action: AuthResumeAction | null) => void;
   clearAuthResumeAction: () => void;
-  updateUserProfile: (profile: { name?: string; email?: string; phone?: string }) => void;
+  updateUserProfile: (profile: Partial<Pick<AppUser,
+    'name'
+    | 'email'
+    | 'phone'
+    | 'residenceCountry'
+    | 'timeZone'
+    | 'preferredContactChannel'
+    | 'representativeName'
+    | 'representativePhone'
+    | 'representativeRelation'
+  >>) => void;
 
   // Actions - UI
   toggleMobileMenu: () => void;
@@ -296,6 +306,12 @@ export const useAppStore = create<AppState>()(
           name: profile.name?.trim() || previous.name,
           email: profile.email !== undefined ? profile.email.trim() || undefined : previous.email,
           phone: profile.phone !== undefined ? profile.phone.trim() || undefined : previous.phone,
+          residenceCountry: profile.residenceCountry !== undefined ? profile.residenceCountry.trim() || undefined : previous.residenceCountry,
+          timeZone: profile.timeZone !== undefined ? profile.timeZone.trim() || undefined : previous.timeZone,
+          preferredContactChannel: profile.preferredContactChannel !== undefined ? profile.preferredContactChannel.trim() || undefined : previous.preferredContactChannel,
+          representativeName: profile.representativeName !== undefined ? profile.representativeName.trim() || undefined : previous.representativeName,
+          representativePhone: profile.representativePhone !== undefined ? profile.representativePhone.trim() || undefined : previous.representativePhone,
+          representativeRelation: profile.representativeRelation !== undefined ? profile.representativeRelation.trim() || undefined : previous.representativeRelation,
         };
         const now = new Date().toISOString();
 
@@ -313,6 +329,12 @@ export const useAppStore = create<AppState>()(
               clientName: nextUser.name,
               clientEmail: nextUser.email,
               clientPhone: nextUser.phone,
+              clientResidenceCountry: nextUser.residenceCountry,
+              clientTimeZone: nextUser.timeZone,
+              clientPreferredContactChannel: nextUser.preferredContactChannel,
+              representativeName: nextUser.representativeName,
+              representativePhone: nextUser.representativePhone,
+              representativeRelation: nextUser.representativeRelation,
               updatedAt: now,
             };
           }),
@@ -350,6 +372,15 @@ export const useAppStore = create<AppState>()(
           clientName: input.clientName || user?.name || 'Client Buildify',
           clientEmail: input.clientEmail || user?.email,
           clientPhone: input.clientPhone || user?.phone,
+          clientResidenceCountry: input.clientResidenceCountry || user?.residenceCountry,
+          clientTimeZone: input.clientTimeZone || user?.timeZone,
+          clientPreferredContactChannel: input.clientPreferredContactChannel || user?.preferredContactChannel,
+          clientContactWindow: input.clientContactWindow,
+          clientPresence: input.clientPresence,
+          remoteDecisionMode: input.remoteDecisionMode,
+          representativeName: input.representativeName || user?.representativeName,
+          representativePhone: input.representativePhone || user?.representativePhone,
+          representativeRelation: input.representativeRelation || user?.representativeRelation,
           country: input.country || "Côte d'Ivoire",
           categoryId: input.categoryId,
           categoryName: input.categoryName,

@@ -9,6 +9,7 @@ import {
   Send, MessageSquare, Check, X, Clock, Camera,
   ClipboardCheck, AlertCircle, Building2, Eye, Download,
   ShieldCheck, CheckCircle2, FolderArchive, ClipboardList, Home,
+  Globe2, Clock3, MessageCircle, UserRoundCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,15 @@ type ProjectDetailData = {
   quotes: { id: string; label: string; amount: number; status: 'pending' | 'accepted' | 'refused'; date: string; }[];
   visualProposal?: ProjectVisualProposalData;
   financing?: ProjectFinancingData;
+  clientPresence?: string;
+  clientResidenceCountry?: string;
+  clientTimeZone?: string;
+  clientPreferredContactChannel?: string;
+  clientContactWindow?: string;
+  remoteDecisionMode?: string;
+  representativeName?: string;
+  representativePhone?: string;
+  representativeRelation?: string;
   phases: { name: string; status: 'done' | 'in_progress' | 'pending'; progress: number }[];
   photos: { id: string; caption: string; date: string }[];
 };
@@ -71,6 +81,71 @@ function getQuoteStatusBadge(status: string) {
   if (status === 'accepted') return { label: 'Accepté', variant: 'outline' as const };
   if (status === 'refused') return { label: 'Refusé', variant: 'destructive' as const };
   return { label: 'En attente', variant: 'secondary' as const };
+}
+
+const CLIENT_PRESENCE_LABELS: Record<string, string> = {
+  local: 'Client sur place',
+  abroad: 'Client hors du pays',
+  'abroad-representative': 'Hors pays avec mandataire',
+  'representative-only': 'Mandataire uniquement',
+  'to-confirm': 'À organiser',
+};
+
+const TIME_ZONE_LABELS: Record<string, string> = {
+  'Africa/Abidjan': 'Côte d’Ivoire / GMT',
+  'Europe/Paris': 'France / Europe centrale',
+  'Europe/Brussels': 'Belgique',
+  'Europe/London': 'Royaume-Uni',
+  'America/Toronto': 'Canada Est',
+  'America/New_York': 'États-Unis Est',
+  'America/Chicago': 'États-Unis Centre',
+  'America/Los_Angeles': 'États-Unis Ouest',
+  'Africa/Dakar': 'Sénégal / GMT',
+  'Africa/Ouagadougou': 'Burkina Faso / GMT',
+};
+
+const CONTACT_CHANNEL_LABELS: Record<string, string> = {
+  whatsapp: 'WhatsApp',
+  email: 'E-mail',
+  phone: 'Appel téléphonique',
+  video: 'Visio',
+};
+
+const CONTACT_WINDOW_LABELS: Record<string, string> = {
+  'morning-ci': 'Matin heure Côte d’Ivoire',
+  'afternoon-ci': 'Après-midi heure Côte d’Ivoire',
+  'evening-ci': 'Soir heure Côte d’Ivoire',
+  weekend: 'Week-end uniquement',
+  'to-plan': 'À planifier selon disponibilité',
+};
+
+const REMOTE_DECISION_LABELS: Record<string, string> = {
+  'written-approval': 'Validation écrite avant action',
+  'video-review': 'Réunion visio avant décision',
+  'representative-approval': 'Mandataire autorisé à valider sur place',
+  mixed: 'Validation mixte client + mandataire',
+};
+
+const REPRESENTATIVE_RELATION_LABELS: Record<string, string> = {
+  family: 'Famille',
+  'trusted-person': 'Personne de confiance',
+  company: 'Entreprise / associé',
+  none: 'Aucun mandataire',
+};
+
+function textValue(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const text = String(value).trim();
+  return text || undefined;
+}
+
+function projectText(project: ProjectData, key: string): string | undefined {
+  return textValue((project as unknown as Record<string, unknown>)[key]) || textValue(project.formData?.[key]);
+}
+
+function labelFromMap(labels: Record<string, string>, value?: string): string | undefined {
+  if (!value) return undefined;
+  return labels[value] || value;
 }
 
 function getDocumentIcon(type: string, name = ''): LucideIcon {
@@ -143,6 +218,15 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
     })),
     visualProposal: project.visualProposal,
     financing: project.financing || (project.formData?.financing as ProjectFinancingData | undefined),
+    clientPresence: labelFromMap(CLIENT_PRESENCE_LABELS, projectText(project, 'clientPresence')),
+    clientResidenceCountry: projectText(project, 'clientResidenceCountry'),
+    clientTimeZone: labelFromMap(TIME_ZONE_LABELS, projectText(project, 'clientTimeZone')),
+    clientPreferredContactChannel: labelFromMap(CONTACT_CHANNEL_LABELS, projectText(project, 'clientPreferredContactChannel')),
+    clientContactWindow: labelFromMap(CONTACT_WINDOW_LABELS, projectText(project, 'clientContactWindow')),
+    remoteDecisionMode: labelFromMap(REMOTE_DECISION_LABELS, projectText(project, 'remoteDecisionMode')),
+    representativeName: projectText(project, 'representativeName'),
+    representativePhone: projectText(project, 'representativePhone'),
+    representativeRelation: labelFromMap(REPRESENTATIVE_RELATION_LABELS, projectText(project, 'representativeRelation')),
     phases: [
       { name: 'Demande reçue', status: 'done', progress: 100 },
       { name: 'Vérification', status: project.status === 'submitted' ? 'in_progress' : 'done', progress: project.status === 'submitted' ? 40 : 100 },
@@ -588,6 +672,10 @@ function buildDefaultFinancing(data: ProjectDetailData): ProjectFinancingData {
     documentReadiness: [],
     guarantees: ['notary-contract', 'milestone-payment'],
     commitments: [],
+    affordabilityScore: 42,
+    financialRiskLevel: 'moderate',
+    equityRatioPercent: undefined,
+    cashReserveMonths: undefined,
     notaryContract: true,
     escrowRequested: false,
     bankSupportRequested: true,
@@ -677,22 +765,166 @@ const FINANCING_COMMITMENT_LABELS: Record<string, string> = {
   'no-hidden-advance': 'Avances non sécurisées évitées',
 };
 
+const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {
+  'civil-servant': 'Fonctionnaire / agent public',
+  'private-salary': 'Salarié du privé',
+  'diaspora-salary': 'Salarié hors Côte d’Ivoire',
+  entrepreneur: 'Entrepreneur / commerçant',
+  'liberal-service': 'Profession libérale',
+  'mixed-income': 'Revenus mixtes',
+  'family-backed': 'Appui familial structuré',
+  'to-confirm': 'À confirmer',
+};
+
+const INCOME_STABILITY_LABELS: Record<string, string> = {
+  'stable-12m': 'Stable depuis 12 mois ou plus',
+  'stable-6m': 'Stable depuis 6 mois',
+  variable: 'Variable mais documenté',
+  seasonal: 'Saisonnier / par contrat',
+  'new-income': 'Nouveau revenu à consolider',
+  'to-document': 'À documenter',
+};
+
+const CO_BORROWER_LABELS: Record<string, string> = {
+  none: 'Aucun co-emprunteur',
+  spouse: 'Conjoint(e)',
+  family: 'Famille',
+  associate: 'Associé / partenaire',
+  company: 'Société porteuse',
+  'to-confirm': 'À confirmer',
+};
+
+const FINANCING_OWNER_LABELS: Record<string, string> = {
+  'single-client': 'Client seul',
+  couple: 'Couple / foyer',
+  family: 'Famille',
+  company: 'Entreprise',
+  'investor-group': 'Groupe d’investisseurs',
+};
+
+const FINANCIAL_RISK_LABELS: Record<NonNullable<ProjectFinancingData['financialRiskLevel']>, string> = {
+  low: 'Risque maîtrisé',
+  moderate: 'Risque à structurer',
+  high: 'Risque élevé',
+  unknown: 'À analyser',
+};
+
 // ── Sub-views ──────────────────────────────────────────────
 
-function ResumeTab({ data, onOpenProposals }: { data: ProjectDetailData; onOpenProposals?: () => void }) {
+function ResumeTab({
+  data,
+  onOpenProposals,
+  onOpenFinancing,
+  onOpenDocuments,
+  onOpenMessages,
+  onOpenSite,
+}: {
+  data: ProjectDetailData;
+  onOpenProposals?: () => void;
+  onOpenFinancing?: () => void;
+  onOpenDocuments?: () => void;
+  onOpenMessages?: () => void;
+  onOpenSite?: () => void;
+}) {
   const infoItems = [
     { icon: Building2, label: 'Type', value: data.categoryName },
     { icon: MapPin, label: 'Localisation', value: data.city },
     { icon: Layers, label: 'Modèle', value: data.modelName },
     { icon: Wallet, label: 'Budget estimé', value: `${FORMAT_XOF(data.budgetMin)} – ${FORMAT_XOF(data.budgetMax)}` },
     { icon: Calendar, label: 'Début prévu', value: data.startDate },
-    { icon: Calendar, label: 'Fin estimée', value: data.estimatedEnd },
+    { icon: Clock, label: 'Fin estimée', value: data.estimatedEnd },
+  ];
+  const coordinationItems = [
+    { icon: Users, label: 'Présence', value: data.clientPresence },
+    { icon: Globe2, label: 'Résidence', value: data.clientResidenceCountry },
+    { icon: Clock3, label: 'Fuseau', value: data.clientTimeZone },
+    { icon: MessageCircle, label: 'Contact', value: data.clientPreferredContactChannel },
+    { icon: Calendar, label: 'Créneau', value: data.clientContactWindow },
+    { icon: ShieldCheck, label: 'Validation', value: data.remoteDecisionMode },
+    { icon: UserRoundCheck, label: 'Mandataire', value: data.representativeName },
+    { icon: MessageSquare, label: 'Téléphone mandataire', value: data.representativePhone },
+  ].filter((item): item is { icon: LucideIcon; label: string; value: string } => Boolean(item.value));
+  const financing = data.financing ?? buildDefaultFinancing(data);
+  const score = financing.affordabilityScore ?? 0;
+  const riskLabel = FINANCIAL_RISK_LABELS[financing.financialRiskLevel ?? 'unknown'];
+  const nextAction = data.status === 'submitted'
+    ? 'Analyse initiale Buildify'
+    : data.status === 'info_required'
+      ? 'Réponse client attendue'
+      : data.status === 'quote_sent'
+        ? 'Décision sur devis'
+        : data.status === 'planning'
+          ? 'Planning chantier'
+          : data.status === 'in_progress'
+            ? 'Suivi chantier'
+            : 'Pilotage dossier';
+  const commandItems = [
+    { icon: ClipboardCheck, label: 'Étape prioritaire', value: nextAction },
+    { icon: Wallet, label: 'Score finance', value: score ? `${score}% - ${riskLabel}` : riskLabel },
+    { icon: FolderArchive, label: 'Pièces dossier', value: `${data.documents.length} pièce(s)` },
+    { icon: MessageSquare, label: 'Communication', value: data.messages.length ? `${data.messages.length} échange(s)` : 'Canal ouvert' },
   ];
   const proposals = buildVisualProposals(data);
   const proposalPreview = data.visualProposal ?? proposals[0];
 
   return (
     <div className="space-y-4">
+      <Card className="py-0 gap-0 border-foreground/10">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pilotage projet</p>
+              <h3 className="mt-1 text-lg font-bold leading-tight">{nextAction}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {data.referenceNumber} · {PROJECT_STATUS_LABELS[data.status] || data.status}
+              </p>
+            </div>
+            <div className="min-w-48 rounded-lg border bg-muted/30 p-3">
+              <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span>Complétude</span>
+                <span>{Math.max(data.progress, score || 0)}%</span>
+              </div>
+              <Progress value={Math.max(data.progress, score || 0)} className="mt-2 h-2" />
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {commandItems.map(item => (
+              <div key={item.label} className="flex min-w-0 items-start gap-2 rounded-lg border p-3">
+                <item.icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                  <p className="mt-1 text-sm font-semibold break-words">{item.value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-5">
+            <Button variant="outline" className="h-11 gap-2" onClick={onOpenFinancing}>
+              <Wallet className="size-4" />
+              Finance
+            </Button>
+            <Button variant="outline" className="h-11 gap-2" onClick={onOpenDocuments}>
+              <FolderArchive className="size-4" />
+              Pièces
+            </Button>
+            <Button variant="outline" className="h-11 gap-2" onClick={onOpenMessages}>
+              <MessageSquare className="size-4" />
+              Échanges
+            </Button>
+            <Button variant="outline" className="h-11 gap-2" onClick={onOpenProposals}>
+              <Eye className="size-4" />
+              Visuels
+            </Button>
+            <Button variant="outline" className="col-span-2 h-11 gap-2 lg:col-span-1" onClick={onOpenSite}>
+              <Camera className="size-4" />
+              Chantier
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Info grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {infoItems.map((item) => (
@@ -721,6 +953,32 @@ function ResumeTab({ data, onOpenProposals }: { data: ProjectDetailData; onOpenP
           </div>
         </CardContent>
       </Card>
+
+      {coordinationItems.length > 0 && (
+        <Card className="py-0 gap-0">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Coordination client</h4>
+              {data.representativeRelation && (
+                <Badge variant="outline" className="shrink-0 text-[10px]">
+                  {data.representativeRelation}
+                </Badge>
+              )}
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {coordinationItems.map(item => (
+                <div key={item.label} className="flex min-w-0 items-start gap-2 rounded-lg border p-3">
+                  <item.icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                    <p className="mt-1 text-sm font-medium break-words">{item.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {proposalPreview && (
         <Card className="py-0 gap-0 overflow-hidden border-foreground/10">
@@ -1285,6 +1543,16 @@ function FinancingTab({ data }: { data: ProjectDetailData }) {
     { label: 'Aide banque', active: financing.bankSupportRequested },
     { label: 'Aide terrain', active: financing.landSupportRequested },
   ];
+  const score = financing.affordabilityScore ?? 0;
+  const riskLabel = FINANCIAL_RISK_LABELS[financing.financialRiskLevel ?? 'unknown'];
+  const profileItems = [
+    { label: 'Situation', value: financingDetailLabel(financing.employmentStatus, EMPLOYMENT_STATUS_LABELS) },
+    { label: 'Devise revenus', value: financing.incomeCurrency || 'À compléter' },
+    { label: 'Stabilité', value: financingDetailLabel(financing.incomeStability, INCOME_STABILITY_LABELS) },
+    { label: 'Porteur', value: financingDetailLabel(financing.financingOwner, FINANCING_OWNER_LABELS) },
+    { label: 'Co-emprunteur', value: financingDetailLabel(financing.coBorrowerStatus, CO_BORROWER_LABELS) },
+    { label: 'Personnes à charge', value: financing.householdDependents !== undefined ? `${financing.householdDependents}` : 'À compléter' },
+  ];
 
   return (
     <div className="space-y-4">
@@ -1299,6 +1567,41 @@ function FinancingTab({ data }: { data: ProjectDetailData }) {
             <div className="rounded-lg border bg-muted/30 p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mode prévu</p>
               <p className="mt-1 text-sm font-semibold">{financingModeLabel(financing.mode)}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Score financement</p>
+                  <p className="mt-2 text-2xl font-bold tabular-nums">{score || '—'}{score ? '%' : ''}</p>
+                  <p className="mt-1 text-sm font-semibold">{riskLabel}</p>
+                </div>
+                <Wallet className="size-5 text-muted-foreground" />
+              </div>
+              <Progress value={score} className="mt-4 h-2" />
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-md border bg-background p-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Apport</p>
+                  <p className="mt-1 font-semibold">{percentOrTodo(financing.equityRatioPercent)}</p>
+                </div>
+                <div className="rounded-md border bg-background p-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Réserve</p>
+                  <p className="mt-1 font-semibold">
+                    {financing.cashReserveMonths !== undefined ? `${financing.cashReserveMonths} mois` : 'À calculer'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {profileItems.map(item => (
+                <div key={item.label} className="rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                  <p className="mt-1 text-sm font-semibold break-words">{item.value}</p>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1725,7 +2028,16 @@ export function ProjectDetailView() {
             exit={{ opacity: 0, x: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'resume' && <ResumeTab data={data} onOpenProposals={() => setActiveTab('propositions')} />}
+            {activeTab === 'resume' && (
+              <ResumeTab
+                data={data}
+                onOpenProposals={() => setActiveTab('propositions')}
+                onOpenFinancing={() => setActiveTab('financement')}
+                onOpenDocuments={() => setActiveTab('documents')}
+                onOpenMessages={() => setActiveTab('messages')}
+                onOpenSite={() => setActiveTab('chantier')}
+              />
+            )}
             {activeTab === 'propositions' && (
               <ProposalsTab
                 data={data}

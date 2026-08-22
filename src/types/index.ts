@@ -35,6 +35,12 @@ export interface AppUser {
   type: 'client' | 'admin' | 'employee';
   role: string;
   avatar?: string;
+  residenceCountry?: string;
+  timeZone?: string;
+  preferredContactChannel?: string;
+  representativeName?: string;
+  representativePhone?: string;
+  representativeRelation?: string;
 }
 
 export interface CatalogModelData {
@@ -85,6 +91,15 @@ export interface ProjectData {
   clientName?: string;
   clientEmail?: string;
   clientPhone?: string;
+  clientResidenceCountry?: string;
+  clientTimeZone?: string;
+  clientPreferredContactChannel?: string;
+  clientContactWindow?: string;
+  clientPresence?: string;
+  remoteDecisionMode?: string;
+  representativeName?: string;
+  representativePhone?: string;
+  representativeRelation?: string;
   country?: string;
   categoryId?: string;
   categoryName?: string;
@@ -167,6 +182,16 @@ export interface ProjectFinancingData {
   requestedLoanAmount?: number;
   desiredLoanDurationYears?: number;
   availableSavings?: number;
+  employmentStatus?: string;
+  incomeCurrency?: string;
+  incomeStability?: string;
+  householdDependents?: number;
+  coBorrowerStatus?: string;
+  financingOwner?: string;
+  affordabilityScore?: number;
+  financialRiskLevel?: 'low' | 'moderate' | 'high' | 'unknown';
+  equityRatioPercent?: number;
+  cashReserveMonths?: number;
   bankName?: string;
   bankContact?: string;
   bankAgreementStage?: string;

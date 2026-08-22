@@ -43,6 +43,7 @@ import {
   Flag,
   Gauge,
   Gem,
+  Globe,
   Hammer,
   Handshake,
   HelpCircle,
@@ -250,6 +251,56 @@ const SITE_ACCESS_OPTIONS: ChoiceOption[] = [
   { value: 'inconnu', label: 'À vérifier' },
 ];
 
+const CLIENT_PRESENCE_OPTIONS: ChoiceOption[] = [
+  { value: 'local', label: 'Je suis sur place', icon: MapPin, description: 'Je peux me déplacer facilement' },
+  { value: 'abroad', label: 'Je suis hors du pays', icon: Globe, description: 'Je pilote le projet à distance' },
+  { value: 'abroad-representative', label: 'Hors pays avec mandataire', icon: UserCheck, description: 'Une personne de confiance peut suivre sur place' },
+  { value: 'representative-only', label: 'Mandataire uniquement', icon: Users, description: 'Le représentant gère les visites et confirmations' },
+  { value: 'to-confirm', label: 'À organiser', icon: HelpCircle, description: 'Buildify doit m’aider à structurer le suivi' },
+];
+
+const TIME_ZONE_OPTIONS: ChoiceOption[] = [
+  { value: 'Africa/Abidjan', label: 'Côte d’Ivoire / GMT' },
+  { value: 'Europe/Paris', label: 'France / Europe centrale' },
+  { value: 'Europe/Brussels', label: 'Belgique' },
+  { value: 'Europe/London', label: 'Royaume-Uni' },
+  { value: 'America/Toronto', label: 'Canada Est' },
+  { value: 'America/New_York', label: 'États-Unis Est' },
+  { value: 'America/Chicago', label: 'États-Unis Centre' },
+  { value: 'America/Los_Angeles', label: 'États-Unis Ouest' },
+  { value: 'Africa/Dakar', label: 'Sénégal / GMT' },
+  { value: 'Africa/Ouagadougou', label: 'Burkina Faso / GMT' },
+];
+
+const CONTACT_CHANNEL_OPTIONS: ChoiceOption[] = [
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'email', label: 'E-mail' },
+  { value: 'phone', label: 'Appel téléphonique' },
+  { value: 'video', label: 'Visio' },
+];
+
+const CONTACT_WINDOW_OPTIONS: ChoiceOption[] = [
+  { value: 'morning-ci', label: 'Matin heure Côte d’Ivoire' },
+  { value: 'afternoon-ci', label: 'Après-midi heure Côte d’Ivoire' },
+  { value: 'evening-ci', label: 'Soir heure Côte d’Ivoire' },
+  { value: 'weekend', label: 'Week-end uniquement' },
+  { value: 'to-plan', label: 'À planifier selon disponibilité' },
+];
+
+const REPRESENTATIVE_RELATION_OPTIONS: ChoiceOption[] = [
+  { value: 'family', label: 'Famille' },
+  { value: 'trusted-person', label: 'Personne de confiance' },
+  { value: 'company', label: 'Entreprise / associé' },
+  { value: 'none', label: 'Aucun mandataire' },
+];
+
+const REMOTE_DECISION_OPTIONS: ChoiceOption[] = [
+  { value: 'written-approval', label: 'Validation écrite avant action' },
+  { value: 'video-review', label: 'Réunion visio avant décision' },
+  { value: 'representative-approval', label: 'Mandataire autorisé à valider sur place' },
+  { value: 'mixed', label: 'Validation mixte client + mandataire' },
+];
+
 const TOPOGRAPHY_OPTIONS: ChoiceOption[] = [
   { value: 'plat', label: 'Terrain plat' },
   { value: 'pente-legere', label: 'Pente légère' },
@@ -319,6 +370,52 @@ const FINANCING_PURPOSE_OPTIONS: ChoiceOption[] = [
   { value: 'vrd-infra', label: 'VRD / réseaux', icon: Network },
   { value: 'studies-permits', label: 'Études / permis', icon: DraftingCompass },
   { value: 'completion-finishes', label: 'Achèvement / finitions', icon: PaintBucket },
+];
+
+const EMPLOYMENT_STATUS_OPTIONS: ChoiceOption[] = [
+  { value: 'civil-servant', label: 'Fonctionnaire / agent public', icon: ShieldCheck },
+  { value: 'private-salary', label: 'Salarié du privé', icon: BriefcaseBusiness },
+  { value: 'diaspora-salary', label: 'Salarié hors Côte d’Ivoire', icon: Globe },
+  { value: 'entrepreneur', label: 'Entrepreneur / commerçant', icon: Warehouse },
+  { value: 'liberal-service', label: 'Profession libérale', icon: ToolCase },
+  { value: 'mixed-income', label: 'Revenus mixtes', icon: Layers },
+  { value: 'family-backed', label: 'Appui familial structuré', icon: Users },
+  { value: 'to-confirm', label: 'À confirmer', icon: HelpCircle },
+];
+
+const INCOME_CURRENCY_OPTIONS: ChoiceOption[] = [
+  { value: 'XOF', label: 'F CFA (XOF)', icon: Banknote },
+  { value: 'EUR', label: 'Euro (EUR)', icon: CircleDollarSign },
+  { value: 'USD', label: 'Dollar US (USD)', icon: BadgeDollarSign },
+  { value: 'CAD', label: 'Dollar canadien (CAD)', icon: Wallet },
+  { value: 'GBP', label: 'Livre sterling (GBP)', icon: Vault },
+  { value: 'other', label: 'Autre devise', icon: HelpCircle },
+];
+
+const INCOME_STABILITY_OPTIONS: ChoiceOption[] = [
+  { value: 'stable-12m', label: 'Stable depuis 12 mois ou plus', icon: BadgeCheck },
+  { value: 'stable-6m', label: 'Stable depuis 6 mois', icon: CalendarCheck },
+  { value: 'variable', label: 'Variable mais documenté', icon: Gauge },
+  { value: 'seasonal', label: 'Saisonnier / par contrat', icon: CalendarClock },
+  { value: 'new-income', label: 'Nouveau revenu à consolider', icon: Clock },
+  { value: 'to-document', label: 'À documenter', icon: NotebookTabs },
+];
+
+const CO_BORROWER_OPTIONS: ChoiceOption[] = [
+  { value: 'none', label: 'Aucun co-emprunteur', icon: UserCheck },
+  { value: 'spouse', label: 'Conjoint(e)', icon: Users },
+  { value: 'family', label: 'Famille', icon: Handshake },
+  { value: 'associate', label: 'Associé / partenaire', icon: BriefcaseBusiness },
+  { value: 'company', label: 'Société porteuse', icon: Warehouse },
+  { value: 'to-confirm', label: 'À confirmer', icon: HelpCircle },
+];
+
+const FINANCING_OWNER_OPTIONS: ChoiceOption[] = [
+  { value: 'single-client', label: 'Client seul', icon: UserCheck },
+  { value: 'couple', label: 'Couple / foyer', icon: Users },
+  { value: 'family', label: 'Famille', icon: Handshake },
+  { value: 'company', label: 'Entreprise', icon: BriefcaseBusiness },
+  { value: 'investor-group', label: 'Groupe d’investisseurs', icon: Building },
 ];
 
 const BANK_AGREEMENT_STAGE_OPTIONS: ChoiceOption[] = [
@@ -557,6 +654,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
   const projectType = responses.projectType as string | undefined;
   const family = getProjectFamily(projectType);
   const terrainStatus = responses.terrainStatus as string | undefined;
+  const clientPresence = responses.clientPresence as string | undefined;
   const steps: StepDef[] = [
     {
       id: 'project-type',
@@ -607,6 +705,40 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       required: true,
     }
   );
+
+  steps.push({
+    id: 'client-presence',
+    title: 'Client sur place ou à distance',
+    subtitle: 'Précisez qui peut décider, visiter et valider les étapes',
+    responseKey: 'clientPresence',
+    type: 'choice-single',
+    options: CLIENT_PRESENCE_OPTIONS,
+    required: true,
+    requiredMessage: 'Indiquez si le projet sera suivi sur place, à distance ou par un mandataire.',
+    insight: 'Ce cadrage est essentiel pour les clients hors du pays : il évite les blocages sur les visites, documents, paiements et validations.',
+  });
+
+  if (clientPresence && clientPresence !== 'local') {
+    steps.push({
+      id: 'remote-coordination',
+      title: 'Coordination internationale',
+      subtitle: 'Organisez les échanges, validations et visites terrain à distance',
+      responseKey: '__remote_coordination__',
+      type: 'field-group',
+      fields: [
+        { key: 'clientResidenceCountry', label: 'Pays de résidence du client', type: 'select', options: COUNTRY_OPTIONS, required: true },
+        { key: 'clientTimeZone', label: 'Fuseau horaire', type: 'select', options: TIME_ZONE_OPTIONS, required: true },
+        { key: 'clientPreferredContactChannel', label: 'Canal de contact préféré', type: 'select', options: CONTACT_CHANNEL_OPTIONS, required: true },
+        { key: 'clientContactWindow', label: 'Créneau d’appel souhaité', type: 'select', options: CONTACT_WINDOW_OPTIONS, required: true },
+        { key: 'remoteDecisionMode', label: 'Mode de validation', type: 'select', options: REMOTE_DECISION_OPTIONS, required: true },
+        { key: 'representativeName', label: 'Nom du mandataire local', type: 'text', placeholder: 'Ex : frère, sœur, associé, représentant' },
+        { key: 'representativePhone', label: 'Téléphone du mandataire', type: 'text', placeholder: '+225 07 00 00 00 00' },
+        { key: 'representativeRelation', label: 'Lien avec le mandataire', type: 'select', options: REPRESENTATIVE_RELATION_OPTIONS },
+      ],
+      required: true,
+      requiredMessage: 'Complétez les informations de coordination à distance avant de continuer.',
+    });
+  }
 
   if (family === 'maison' || family === 'rplus' || family === 'promotion') {
     steps.push({
@@ -1026,6 +1158,24 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       requiredMessage: 'Indiquez l’objet précis du financement.',
     },
     {
+      id: 'financial-identity',
+      title: 'Profil financier',
+      subtitle: 'Structurez le dossier comme pour une analyse banque',
+      responseKey: '__financial_identity__',
+      type: 'field-group',
+      fields: [
+        { key: 'employmentStatus', label: 'Situation économique', type: 'select', options: EMPLOYMENT_STATUS_OPTIONS, required: true },
+        { key: 'incomeCurrency', label: 'Devise principale des revenus', type: 'select', options: INCOME_CURRENCY_OPTIONS, required: true },
+        { key: 'incomeStability', label: 'Stabilité des revenus', type: 'select', options: INCOME_STABILITY_OPTIONS, required: true },
+        { key: 'financingOwner', label: 'Porteur du financement', type: 'select', options: FINANCING_OWNER_OPTIONS, required: true },
+        { key: 'coBorrowerStatus', label: 'Co-emprunteur / garant', type: 'select', options: CO_BORROWER_OPTIONS, required: true },
+        { key: 'householdDependents', label: 'Personnes à charge', type: 'number', placeholder: 'Ex : 3', min: 0, unit: 'personne(s)' },
+      ],
+      required: true,
+      requiredMessage: 'Complétez le profil financier avant de passer aux montants.',
+      insight: 'Revenus, devise, stabilité, porteur, garant et capacité réelle avant engagement.',
+    },
+    {
       id: 'financing-profile',
       title: 'Capacité financière',
       subtitle: 'Renseignez les montants clés pour mesurer une mensualité réaliste',
@@ -1202,9 +1352,85 @@ function arrayResponse(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : [];
 }
 
+function stringResponse(responses: Record<string, unknown>, key: string): string | undefined {
+  const value = responses[key];
+  if (value === undefined || value === null) return undefined;
+  const text = String(value).trim();
+  if (!text) return undefined;
+  return isCustomChoiceValue(text) ? getCustomChoiceLabel(text) : text;
+}
+
 function percentRatio(numerator?: number, denominator?: number): number | undefined {
   if (!denominator || denominator <= 0 || numerator === undefined) return undefined;
   return Math.round((numerator / denominator) * 100);
+}
+
+function clampPercent(value: number): number {
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+function bankStageScore(stage?: string): number {
+  const scores: Record<string, number> = {
+    'not-started': 0,
+    simulation: 8,
+    'documents-requested': 12,
+    'under-review': 16,
+    'pre-approved': 24,
+    'funds-available': 30,
+  };
+  return stage ? scores[stage] ?? 0 : 0;
+}
+
+function stabilityScore(stability?: string): number {
+  const scores: Record<string, number> = {
+    'stable-12m': 15,
+    'stable-6m': 12,
+    variable: 9,
+    seasonal: 6,
+    'new-income': 4,
+    'to-document': 2,
+  };
+  return stability ? scores[stability] ?? 0 : 0;
+}
+
+function debtRatioScore(projectedDebtRatioPercent?: number): number {
+  if (projectedDebtRatioPercent === undefined) return 6;
+  if (projectedDebtRatioPercent <= 33) return 20;
+  if (projectedDebtRatioPercent <= 40) return 16;
+  if (projectedDebtRatioPercent <= 45) return 11;
+  if (projectedDebtRatioPercent <= 55) return 5;
+  return 0;
+}
+
+function equityScore(equityRatioPercent?: number): number {
+  if (equityRatioPercent === undefined) return 4;
+  if (equityRatioPercent >= 30) return 15;
+  if (equityRatioPercent >= 20) return 12;
+  if (equityRatioPercent >= 10) return 8;
+  if (equityRatioPercent > 0) return 4;
+  return 0;
+}
+
+function documentScore(documentReadiness: string[]): number {
+  if (documentReadiness.includes('none-yet')) return 0;
+  const coreDocs = ['id', 'income-proof', 'bank-statements', 'quote-or-plans'];
+  return Math.min(12, coreDocs.filter(doc => documentReadiness.includes(doc)).length * 3);
+}
+
+function securityScore(paymentSecurity: string[], commitments: string[]): number {
+  const secured = ['notary-contract', 'bank-disbursement', 'escrow', 'milestone-payment']
+    .filter(item => paymentSecurity.includes(item)).length;
+  const commitmentRatio = FINANCING_COMMITMENT_OPTIONS.length
+    ? commitments.length / FINANCING_COMMITMENT_OPTIONS.length
+    : 0;
+  return Math.min(18, secured * 3 + Math.round(commitmentRatio * 6));
+}
+
+function financialRiskLevel(score: number, projectedDebtRatioPercent?: number): ProjectFinancingData['financialRiskLevel'] {
+  if (projectedDebtRatioPercent !== undefined && projectedDebtRatioPercent > 55) return 'high';
+  if (score >= 75) return 'low';
+  if (score >= 50) return 'moderate';
+  return 'high';
 }
 
 function buildPaymentMilestones(estimatedBudget?: number): ProjectPaymentMilestoneData[] {
@@ -1236,6 +1462,7 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
   const requestedLoanAmount = numberResponse(responses.requestedLoanAmount, true);
   const desiredLoanDurationYears = numberResponse(responses.desiredLoanDurationYears);
   const availableSavings = numberResponse(responses.availableSavings, true);
+  const householdDependents = numberResponse(responses.householdDependents, true);
   const bankAgreementStage = String(responses.bankAgreementStage || '').trim() || undefined;
   const estimatedBudget = budgetMax || budgetMin || undefined;
   const readiness: ProjectFinancingData['readiness'] =
@@ -1245,6 +1472,20 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
           : 'unknown';
   const currentDebtRatioPercent = percentRatio(existingMonthlyDebt, monthlyIncome);
   const projectedDebtRatioPercent = percentRatio((existingMonthlyDebt ?? 0) + (monthlyPaymentCapacity ?? 0), monthlyIncome);
+  const equityRatioPercent = percentRatio(ownContribution, estimatedBudget);
+  const cashReserveMonths = monthlyIncome && availableSavings !== undefined
+    ? Math.round((availableSavings / monthlyIncome) * 10) / 10
+    : undefined;
+  const incomeStability = String(responses.incomeStability || '').trim() || undefined;
+  const affordabilityScore = clampPercent(
+    15
+      + bankStageScore(bankAgreementStage)
+      + stabilityScore(incomeStability)
+      + debtRatioScore(projectedDebtRatioPercent)
+      + equityScore(equityRatioPercent)
+      + documentScore(documentReadiness)
+      + securityScore(paymentSecurity, commitments)
+  );
 
   return {
     mode,
@@ -1258,6 +1499,16 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
     requestedLoanAmount,
     desiredLoanDurationYears,
     availableSavings,
+    employmentStatus: String(responses.employmentStatus || '').trim() || undefined,
+    incomeCurrency: String(responses.incomeCurrency || '').trim() || undefined,
+    incomeStability,
+    householdDependents,
+    coBorrowerStatus: String(responses.coBorrowerStatus || '').trim() || undefined,
+    financingOwner: String(responses.financingOwner || '').trim() || undefined,
+    affordabilityScore,
+    financialRiskLevel: financialRiskLevel(affordabilityScore, projectedDebtRatioPercent),
+    equityRatioPercent,
+    cashReserveMonths,
     bankName: String(responses.bankName || '').trim() || undefined,
     bankContact: String(responses.bankContact || '').trim() || undefined,
     bankAgreementStage,
@@ -1457,6 +1708,15 @@ export function ConfiguratorView() {
       const financing = buildProjectFinancing(responses, localBudgetMin, localBudgetMax);
       const city = getSubmittedCity(responses);
       const country = getSubmittedCountry(responses);
+      const clientPresence = stringResponse(responses, 'clientPresence');
+      const clientResidenceCountry = stringResponse(responses, 'clientResidenceCountry') || user?.residenceCountry;
+      const clientTimeZone = stringResponse(responses, 'clientTimeZone') || user?.timeZone;
+      const clientPreferredContactChannel = stringResponse(responses, 'clientPreferredContactChannel') || user?.preferredContactChannel;
+      const clientContactWindow = stringResponse(responses, 'clientContactWindow');
+      const remoteDecisionMode = stringResponse(responses, 'remoteDecisionMode');
+      const representativeName = stringResponse(responses, 'representativeName') || user?.representativeName;
+      const representativePhone = stringResponse(responses, 'representativePhone') || user?.representativePhone;
+      const representativeRelation = stringResponse(responses, 'representativeRelation') || user?.representativeRelation;
       const declaredDocuments = Array.isArray(responses.documents) ? responses.documents as string[] : [];
       const declaredProjectDocuments = declaredDocuments.map((documentId) => ({
         id: `doc-${ref}-${documentId}`,
@@ -1484,12 +1744,30 @@ export function ConfiguratorView() {
         progress: 5,
         status: 'submitted',
         financing,
+        clientPresence,
+        clientResidenceCountry,
+        clientTimeZone,
+        clientPreferredContactChannel,
+        clientContactWindow,
+        remoteDecisionMode,
+        representativeName,
+        representativePhone,
+        representativeRelation,
         documents: declaredProjectDocuments,
         formData: {
           ...responses,
           country,
           city,
           financing,
+          clientPresence,
+          clientResidenceCountry,
+          clientTimeZone,
+          clientPreferredContactChannel,
+          clientContactWindow,
+          remoteDecisionMode,
+          representativeName,
+          representativePhone,
+          representativeRelation,
           referenceNumber: ref,
           formVersion: 'advanced-construction-v2',
           submittedAt: new Date().toISOString(),
@@ -1515,6 +1793,15 @@ export function ConfiguratorView() {
         status: 'submitted',
         formData: payload.formData,
         financing,
+        clientPresence,
+        clientResidenceCountry,
+        clientTimeZone,
+        clientPreferredContactChannel,
+        clientContactWindow,
+        remoteDecisionMode,
+        representativeName,
+        representativePhone,
+        representativeRelation,
         documents: declaredProjectDocuments,
       };
 
@@ -1546,6 +1833,15 @@ export function ConfiguratorView() {
       const financing = buildProjectFinancing(responses, localBudgetMin, localBudgetMax);
       const city = getSubmittedCity(responses);
       const country = getSubmittedCountry(responses);
+      const clientPresence = stringResponse(responses, 'clientPresence');
+      const clientResidenceCountry = stringResponse(responses, 'clientResidenceCountry') || user?.residenceCountry;
+      const clientTimeZone = stringResponse(responses, 'clientTimeZone') || user?.timeZone;
+      const clientPreferredContactChannel = stringResponse(responses, 'clientPreferredContactChannel') || user?.preferredContactChannel;
+      const clientContactWindow = stringResponse(responses, 'clientContactWindow');
+      const remoteDecisionMode = stringResponse(responses, 'remoteDecisionMode');
+      const representativeName = stringResponse(responses, 'representativeName') || user?.representativeName;
+      const representativePhone = stringResponse(responses, 'representativePhone') || user?.representativePhone;
+      const representativeRelation = stringResponse(responses, 'representativeRelation') || user?.representativeRelation;
       createProjectRequest({
         id: `local-${ref}`,
         referenceNumber: ref,
@@ -1564,11 +1860,29 @@ export function ConfiguratorView() {
         budgetMax: localBudgetMax,
         progress: 5,
         status: 'submitted',
+        clientPresence,
+        clientResidenceCountry,
+        clientTimeZone,
+        clientPreferredContactChannel,
+        clientContactWindow,
+        remoteDecisionMode,
+        representativeName,
+        representativePhone,
+        representativeRelation,
         formData: {
           ...responses,
           country,
           city,
           financing,
+          clientPresence,
+          clientResidenceCountry,
+          clientTimeZone,
+          clientPreferredContactChannel,
+          clientContactWindow,
+          remoteDecisionMode,
+          representativeName,
+          representativePhone,
+          representativeRelation,
           referenceNumber: ref,
           formVersion: 'advanced-construction-v2',
           submittedAt: new Date().toISOString(),
