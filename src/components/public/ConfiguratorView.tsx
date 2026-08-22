@@ -435,6 +435,8 @@ const DOCUMENT_OPTIONS: ChoiceOption[] = [
   { value: 'aucun', label: 'Aucun document', icon: HelpCircle },
 ];
 
+const CUSTOM_CHOICE_PREFIX = 'custom-choice:';
+
 function getProjectFamily(projectType?: string): ProjectFamily {
   if (projectType === 'immeuble-rplus') return 'rplus';
   if (projectType === 'vrd') return 'vrd';
@@ -445,7 +447,20 @@ function getProjectFamily(projectType?: string): ProjectFamily {
   return 'maison';
 }
 
+function makeCustomChoiceValue(label: string): string {
+  return `${CUSTOM_CHOICE_PREFIX}${label.trim()}`;
+}
+
+function isCustomChoiceValue(value: string): boolean {
+  return value.startsWith(CUSTOM_CHOICE_PREFIX);
+}
+
+function getCustomChoiceLabel(value: string): string {
+  return isCustomChoiceValue(value) ? value.slice(CUSTOM_CHOICE_PREFIX.length).trim() : value;
+}
+
 function getLabel(options: ChoiceOption[] | undefined, value: string): string {
+  if (isCustomChoiceValue(value)) return getCustomChoiceLabel(value);
   if (!options) return value;
   return options.find(option => option.value === value)?.label || value;
 }
@@ -1149,6 +1164,7 @@ function getSubmittedCity(responses: Record<string, unknown>): string | undefine
   if (city === 'Autre ville') {
     return String(responses.otherCity || '').trim() || city;
   }
+  if (isCustomChoiceValue(city)) return getCustomChoiceLabel(city);
   return city;
 }
 
@@ -1158,6 +1174,7 @@ function getSubmittedCountry(responses: Record<string, unknown>): string {
   if (country === 'Autre pays') {
     return String(responses.otherCountry || '').trim() || country;
   }
+  if (isCustomChoiceValue(country)) return getCustomChoiceLabel(country);
   return country;
 }
 
@@ -1610,6 +1627,13 @@ export function ConfiguratorView() {
     const options = step.options || [];
     const filteredOptions = getFilteredOptions(step.id, options);
     const searchValue = getSearchValue(step.id);
+    const customLabel = searchValue.trim();
+    const customValue = customLabel.length >= 2 ? makeCustomChoiceValue(customLabel) : '';
+    const customExists = customLabel
+      ? options.some(option => normalizeSearchText(option.label) === normalizeSearchText(customLabel))
+      : true;
+    const canUseCustom = customLabel.length >= 2 && !customExists;
+    const selectedCustomLabel = selected && isCustomChoiceValue(selected) ? getCustomChoiceLabel(selected) : '';
     const showSearch = options.length >= 5;
     const selectOption = (value: string) => {
       setConfiguratorResponse(step.responseKey, value);
@@ -1627,7 +1651,7 @@ export function ConfiguratorView() {
             <Input
               value={searchValue}
               onChange={event => setSearchValue(step.id, event.target.value)}
-              placeholder="Saisir pour trouver un choix"
+              placeholder="Saisir pour chercher ou ajouter"
               className="h-11 rounded-xl pl-9 text-sm"
             />
           </div>
@@ -1679,6 +1703,42 @@ export function ConfiguratorView() {
               Aucun choix trouvé.
             </div>
           )}
+          {selectedCustomLabel && selected !== customValue && (
+            <button
+              type="button"
+              onClick={() => selected && selectOption(selected)}
+              className="col-span-2 flex min-h-[58px] items-center gap-3 rounded-xl border border-foreground bg-foreground px-3 py-3 text-left text-sm text-background shadow-md"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background/15 text-[11px] font-bold text-background">
+                +
+              </span>
+              <span className="min-w-0">
+                <span className="block font-semibold">{selectedCustomLabel}</span>
+                <span className="mt-0.5 block text-xs text-background/75">Réponse saisie par l’utilisateur</span>
+              </span>
+            </button>
+          )}
+          {canUseCustom && (
+            <button
+              type="button"
+              onClick={() => selectOption(customValue)}
+              className={`col-span-2 flex min-h-[58px] items-center gap-3 rounded-xl border border-dashed px-3 py-3 text-left text-sm transition-colors ${
+                selected === customValue ? 'border-foreground bg-foreground text-background' : 'border-border bg-muted/30 hover:border-foreground/45'
+              }`}
+            >
+              <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold ${
+                selected === customValue ? 'bg-background/15 text-background' : 'bg-background text-foreground'
+              }`}>
+                +
+              </span>
+              <span className="min-w-0">
+                <span className="block font-semibold">Utiliser “{customLabel}”</span>
+                <span className={`mt-0.5 block text-xs ${selected === customValue ? 'text-background/75' : 'text-muted-foreground'}`}>
+                  Ajouter cette réponse au dossier.
+                </span>
+              </span>
+            </button>
+          )}
         </div>
         {step.responseKey === 'country' && selected === 'Autre pays' && (
           <Input
@@ -1697,6 +1757,13 @@ export function ConfiguratorView() {
     const options = step.options || [];
     const filteredOptions = getFilteredOptions(step.id, options);
     const searchValue = getSearchValue(step.id);
+    const customLabel = searchValue.trim();
+    const customValue = customLabel.length >= 2 ? makeCustomChoiceValue(customLabel) : '';
+    const customExists = customLabel
+      ? options.some(option => normalizeSearchText(option.label) === normalizeSearchText(customLabel))
+      : true;
+    const canUseCustom = customLabel.length >= 2 && !customExists;
+    const selectedCustomValues = selected.filter(value => isCustomChoiceValue(value) && value !== customValue);
     const showSearch = options.length >= 5;
     const toggle = (value: string) => {
       const next = selected.includes(value)
@@ -1713,7 +1780,7 @@ export function ConfiguratorView() {
             <Input
               value={searchValue}
               onChange={event => setSearchValue(step.id, event.target.value)}
-              placeholder="Saisir pour trouver un choix"
+              placeholder="Saisir pour chercher ou ajouter"
               className="h-11 rounded-xl pl-9 text-sm"
             />
           </div>
@@ -1763,6 +1830,43 @@ export function ConfiguratorView() {
               Aucun choix trouvé.
             </div>
           )}
+          {selectedCustomValues.map(value => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => toggle(value)}
+              className="col-span-2 flex min-h-[58px] items-center gap-3 rounded-xl border border-foreground bg-foreground px-3 py-3 text-left text-sm text-background shadow-md"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background/15 text-[11px] font-bold text-background">
+                +
+              </span>
+              <span className="min-w-0">
+                <span className="block font-semibold">{getCustomChoiceLabel(value)}</span>
+                <span className="mt-0.5 block text-xs text-background/75">Toucher pour retirer cette précision</span>
+              </span>
+            </button>
+          ))}
+          {canUseCustom && (
+            <button
+              type="button"
+              onClick={() => toggle(customValue)}
+              className={`col-span-2 flex min-h-[58px] items-center gap-3 rounded-xl border border-dashed px-3 py-3 text-left text-sm transition-colors ${
+                selected.includes(customValue) ? 'border-foreground bg-foreground text-background' : 'border-border bg-muted/30 hover:border-foreground/45'
+              }`}
+            >
+              <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold ${
+                selected.includes(customValue) ? 'bg-background/15 text-background' : 'bg-background text-foreground'
+              }`}>
+                +
+              </span>
+              <span className="min-w-0">
+                <span className="block font-semibold">Ajouter “{customLabel}”</span>
+                <span className={`mt-0.5 block text-xs ${selected.includes(customValue) ? 'text-background/75' : 'text-muted-foreground'}`}>
+                  Cette précision sera transmise à l’équipe Buildify.
+                </span>
+              </span>
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1773,6 +1877,13 @@ export function ConfiguratorView() {
     const options = step.options || [];
     const filteredOptions = getFilteredOptions(step.id, options);
     const searchValue = getSearchValue(step.id);
+    const customLabel = searchValue.trim();
+    const customValue = customLabel.length >= 2 ? makeCustomChoiceValue(customLabel) : '';
+    const customExists = customLabel
+      ? options.some(option => normalizeSearchText(option.label) === normalizeSearchText(customLabel))
+      : true;
+    const canUseCustom = customLabel.length >= 2 && !customExists;
+    const selectedCustomLabel = isCustomChoiceValue(value) ? getCustomChoiceLabel(value) : '';
     return (
       <div className="space-y-3">
         <div className="relative">
@@ -1780,7 +1891,7 @@ export function ConfiguratorView() {
           <Input
             value={searchValue}
             onChange={event => setSearchValue(step.id, event.target.value)}
-            placeholder="Tapez une ville ou une commune"
+            placeholder="Tapez une ville, commune ou localité"
             className="h-12 rounded-xl pl-9 text-sm"
           />
         </div>
@@ -1818,6 +1929,34 @@ export function ConfiguratorView() {
                 Aucune ville trouvée.
               </div>
             )}
+            {selectedCustomLabel && value !== customValue && (
+              <button
+                type="button"
+                onClick={() => setConfiguratorResponse(step.responseKey, value)}
+                className="col-span-2 flex min-h-[44px] items-center gap-2 rounded-lg border border-foreground bg-foreground px-3 py-2 text-left text-xs font-medium text-background sm:col-span-3 sm:text-sm"
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-background/15 text-[10px] font-bold text-background">
+                  +
+                </span>
+                <span>{selectedCustomLabel}</span>
+              </button>
+            )}
+            {canUseCustom && (
+              <button
+                type="button"
+                onClick={() => setConfiguratorResponse(step.responseKey, customValue)}
+                className={`col-span-2 flex min-h-[44px] items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-left text-xs font-medium sm:col-span-3 sm:text-sm ${
+                  value === customValue ? 'border-foreground bg-foreground text-background' : 'border-border bg-muted/30 hover:border-foreground/45'
+                }`}
+              >
+                <span className={`flex size-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold ${
+                  value === customValue ? 'bg-background/15 text-background' : 'bg-background text-foreground'
+                }`}>
+                  +
+                </span>
+                <span>Utiliser “{customLabel}”</span>
+              </button>
+            )}
           </div>
         </div>
         {value === 'Autre ville' && (
@@ -1838,11 +1977,24 @@ export function ConfiguratorView() {
         const value = responses[field.key] === undefined || responses[field.key] === null ? '' : String(responses[field.key]);
         const fieldOptions = field.options || [];
         const fieldSearchKey = `${step.id}:${field.key}`;
+        const fieldSearchValue = getSearchValue(fieldSearchKey);
         const filteredFieldOptions = getFilteredOptions(fieldSearchKey, fieldOptions);
         const selectedFieldOption = value ? fieldOptions.find(option => option.value === value) : undefined;
-        const visibleFieldOptions = selectedFieldOption && !filteredFieldOptions.some(option => option.value === selectedFieldOption.value)
-          ? [selectedFieldOption, ...filteredFieldOptions]
+        const selectedCustomFieldOption = value && isCustomChoiceValue(value)
+          ? { value, label: getCustomChoiceLabel(value) }
+          : undefined;
+        const customFieldLabel = fieldSearchValue.trim();
+        const customFieldValue = customFieldLabel.length >= 2 ? makeCustomChoiceValue(customFieldLabel) : '';
+        const customFieldExists = customFieldLabel
+          ? fieldOptions.some(option => normalizeSearchText(option.label) === normalizeSearchText(customFieldLabel))
+          : true;
+        const selectedVisibleOption = selectedFieldOption || selectedCustomFieldOption;
+        const visibleFieldOptionsBase = selectedVisibleOption && !filteredFieldOptions.some(option => option.value === selectedVisibleOption.value)
+          ? [selectedVisibleOption, ...filteredFieldOptions]
           : filteredFieldOptions;
+        const visibleFieldOptions = customFieldLabel.length >= 2 && !customFieldExists
+          ? [...visibleFieldOptionsBase, { value: customFieldValue, label: `Utiliser “${customFieldLabel}”` }]
+          : visibleFieldOptionsBase;
         const showFieldSearch = fieldOptions.length >= 5;
         return (
           <div key={field.key} className={field.type === 'textarea' ? 'space-y-2 sm:col-span-2' : 'space-y-2'}>
@@ -1858,7 +2010,7 @@ export function ConfiguratorView() {
                     <Input
                       value={getSearchValue(fieldSearchKey)}
                       onChange={event => setSearchValue(fieldSearchKey, event.target.value)}
-                      placeholder="Saisir pour filtrer"
+                      placeholder="Saisir pour filtrer ou ajouter"
                       className="h-10 rounded-xl pl-9 text-sm"
                     />
                   </div>
@@ -2160,8 +2312,8 @@ export function ConfiguratorView() {
   const technicalReadiness = Math.min(100, Math.round(((currentIdx + answeredCount) / Math.max(1, steps.length + requiredStepCount)) * 100));
   const dossierHighlights = [
     { label: 'Catégorie', value: selectedProjectLabel || 'À choisir' },
-    { label: 'Ville', value: String(responses.city || 'À sélectionner') },
-    { label: 'Accès', value: String(responses.siteAccess || 'À renseigner') },
+    { label: 'Ville', value: getSubmittedCity(responses) || 'À sélectionner' },
+    { label: 'Accès', value: fieldValueToString({ key: 'siteAccess', label: 'Accès', type: 'select', options: SITE_ACCESS_OPTIONS }, responses.siteAccess) || 'À renseigner' },
     { label: 'Éléments saisis', value: `${answeredCount}` },
   ];
 
