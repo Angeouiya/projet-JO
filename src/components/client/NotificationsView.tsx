@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { filterNotificationsForRole } from '@/lib/notification-audience';
 import { useAppStore } from '@/stores/app-store';
 import type { NotificationData, ViewName } from '@/types';
 
@@ -42,7 +43,8 @@ function timeAgo(dateStr: string): string {
 
 export function NotificationsView() {
   const { goBack, navigate, notifications, markNotificationRead, markAllNotificationsRead } = useAppStore();
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const visibleNotifications = filterNotificationsForRole(notifications, false);
+  const unreadCount = visibleNotifications.filter(n => !n.isRead).length;
 
   const handleNotificationClick = (notification: NotificationData) => {
     markNotificationRead(notification.id);
@@ -84,7 +86,7 @@ export function NotificationsView() {
 
       {/* Notification list */}
       <div className="px-4 mt-2">
-        {notifications.length === 0 ? (
+        {visibleNotifications.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -102,7 +104,7 @@ export function NotificationsView() {
           </motion.div>
         ) : (
           <AnimatePresence>
-            {notifications.map((notif, i) => {
+            {visibleNotifications.map((notif, i) => {
               const Icon = getNotificationIcon(notif.type);
               return (
                 <motion.div

@@ -207,6 +207,7 @@ export interface NotificationData {
   title: string;
   message: string;
   type: string;
+  audience?: 'client' | 'admin' | 'both';
   link?: string;
   projectId?: string;
   actionLabel?: string;

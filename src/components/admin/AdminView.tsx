@@ -39,6 +39,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { filterNotificationsForRole } from '@/lib/notification-audience';
 import { useAppStore } from '@/stores/app-store';
 import { AdminCatalog } from './AdminCatalog';
 import { AdminClients } from './AdminClients';
@@ -185,7 +186,8 @@ export function AdminView() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openGroups, setOpenGroups] = useAdminNavState();
   const [adminSearch, setAdminSearch] = useState('');
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const adminNotifications = useMemo(() => filterNotificationsForRole(notifications, true), [notifications]);
+  const unreadCount = adminNotifications.filter(n => !n.isRead).length;
   const workflowRequests = userProjects.filter(project => ['submitted', 'info_required'].includes(project.status)).length;
   const missingInfoCount = userProjects.filter(project => project.missingInfo).length;
   const quoteCount = userProjects.reduce((total, project) => total + (project.quotes?.length ?? 0), 0);
@@ -256,7 +258,7 @@ export function AdminView() {
         projectId: project.id,
       })));
 
-    const notificationResults: GlobalResult[] = notifications
+    const notificationResults: GlobalResult[] = adminNotifications
       .filter(notification => [notification.title, notification.message, notification.projectId].some(value => value?.toLowerCase().includes(query)))
       .map(notification => ({
         id: `notification-${notification.id}`,
@@ -278,7 +280,7 @@ export function AdminView() {
       }));
 
     return [...projectResults, ...quoteResults, ...documentResults, ...notificationResults, ...navResults].slice(0, 8);
-  }, [adminSearch, allItems, notifications, userProjects]);
+  }, [adminSearch, adminNotifications, allItems, userProjects]);
 
   const openAdminTab = (tab: string) => {
     setAdminTab(tab);
@@ -318,7 +320,7 @@ export function AdminView() {
             tab={adminTab}
             searchQuery={adminSearch}
             projects={userProjects}
-            notifications={notifications}
+            notifications={adminNotifications}
             onOpenProject={openProject}
           />
         );

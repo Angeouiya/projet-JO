@@ -14,6 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { unreadNotificationsForRole } from '@/lib/notification-audience';
 import { useAppStore } from '@/stores/app-store';
 import { BrandLogo } from './BrandLogo';
 import type { ViewName } from '@/types';
@@ -166,7 +167,7 @@ export function DesktopDashboardShell({
 }) {
   const { isAuthenticated, user, navigate, requireAuth, notifications } = useAppStore();
   const activeId = getActiveId(currentView);
-  const unreadCount = notifications.filter(notification => !notification.isRead).length;
+  const unreadCount = unreadNotificationsForRole(notifications, false).length;
 
   const handleNav = (item: NavItem) => {
     if (item.private && !isAuthenticated) {

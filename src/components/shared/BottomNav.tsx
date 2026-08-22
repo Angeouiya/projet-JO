@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Home, Search, PlusCircle, FolderKanban, User, Plus
 } from 'lucide-react';
+import { unreadNotificationsForRole } from '@/lib/notification-audience';
 import { useAppStore } from '@/stores/app-store';
 import type { ViewName } from '@/types';
 
@@ -19,7 +20,7 @@ const PRIVATE_NAV_ITEMS: ViewName[] = ['projects', 'profile'];
 
 export function BottomNav() {
   const { currentView, navigate, isAuthenticated, notifications, requireAuth } = useAppStore();
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = unreadNotificationsForRole(notifications, false).length;
 
   const handleNav = (id: ViewName) => {
     if (PRIVATE_NAV_ITEMS.includes(id) && !isAuthenticated) {

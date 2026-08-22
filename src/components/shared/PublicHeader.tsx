@@ -6,13 +6,14 @@ import { LayoutDashboard, Menu, X, Bell, Search, ShieldCheck } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { unreadNotificationsForRole } from '@/lib/notification-audience';
 import { useAppStore } from '@/stores/app-store';
 import { BrandLogo } from './BrandLogo';
 
 export function PublicHeader() {
   const { isAuthenticated, isAdmin, user, navigate, notifications, requireAuth, goBack } = useAppStore();
   const [menuOpen, setMenuOpen] = useState(false);
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = unreadNotificationsForRole(notifications, isAdmin).length;
   const showBack = !['home', 'explore', 'admin'].includes(useAppStore().currentView);
 
   return (

@@ -215,6 +215,7 @@ export function AdminClients() {
       title: `Message admin à ${messageClient.name}`,
       message: messageBody.trim(),
       type: 'message',
+      audience: 'client',
       link: 'messages',
       actionLabel: 'Lire',
     });
