@@ -162,6 +162,25 @@ interface StepDef {
   requiredMessage?: string;
 }
 
+type ControlTone = 'neutral' | 'good' | 'warn' | 'critical';
+
+interface ControlMetric {
+  label: string;
+  value: string;
+  helper?: string;
+  tone?: ControlTone;
+}
+
+interface OuvrageControlProfile {
+  title: string;
+  subtitle: string;
+  icon: LucideIcon;
+  metrics: ControlMetric[];
+  checks: string[];
+  risks: string[];
+  finance: ControlMetric[];
+}
+
 const PROJECT_TYPES: ChoiceOption[] = [
   { value: 'maison-basse', label: 'Maison basse', icon: Home, description: 'Plain-pied, villa ou maison familiale' },
   { value: 'duplex-triplex', label: 'Duplex / Triplex', icon: Building2, description: 'Maison à niveaux privatifs' },
@@ -1699,6 +1718,262 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
   };
 }
 
+function compactStrings(items: Array<string | undefined | null | false>): string[] {
+  return items.filter(Boolean) as string[];
+}
+
+function formatMetricNumber(value: number | undefined, unit: string): string {
+  if (value === undefined) return 'À saisir';
+  return `${new Intl.NumberFormat('fr-FR').format(value)} ${unit}`;
+}
+
+function formatMetricMoney(value: number | undefined): string {
+  if (value === undefined) return 'À saisir';
+  if (value >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: millions < 10 ? 1 : 0 }).format(millions)} M F CFA`;
+  }
+  return `${new Intl.NumberFormat('fr-FR').format(value)} F CFA`;
+}
+
+function formatMetricPercent(value: number | undefined, emptyLabel = 'À calculer'): string {
+  return value === undefined ? emptyLabel : `${value}%`;
+}
+
+function ratioTone(value: number | undefined, warnAt: number, criticalAt: number): ControlTone {
+  if (value === undefined) return 'neutral';
+  if (value >= criticalAt) return 'critical';
+  if (value >= warnAt) return 'warn';
+  return 'good';
+}
+
+function financeRiskTone(value: ProjectFinancingData['financialRiskLevel'] | undefined): ControlTone {
+  if (value === 'low') return 'good';
+  if (value === 'moderate') return 'warn';
+  if (value === 'high') return 'critical';
+  return 'neutral';
+}
+
+function labelsToPreview(values: unknown, options: ChoiceOption[], fallback: string): string {
+  const labels = arrayResponse(values).map(value => getLabel(options, value));
+  if (!labels.length) return fallback;
+  const visible = labels.slice(0, 3).join(', ');
+  return labels.length > 3 ? `${visible} +${labels.length - 3}` : visible;
+}
+
+function buildFinanceMetrics(responses: Record<string, unknown>, budgetMin?: number, budgetMax?: number): ControlMetric[] {
+  const financing = buildProjectFinancing(responses, budgetMin, budgetMax);
+  const score = financing.affordabilityScore;
+  const riskLabels: Record<string, string> = {
+    low: 'Faible',
+    moderate: 'Modéré',
+    high: 'Élevé',
+    unknown: 'À qualifier',
+  };
+
+  return [
+    {
+      label: 'Score finance',
+      value: score === undefined ? 'À compléter' : `${score}/100`,
+      helper: `Lecture risque : ${riskLabels[financing.financialRiskLevel || 'unknown']}`,
+      tone: financeRiskTone(financing.financialRiskLevel),
+    },
+    {
+      label: 'Endettement projeté',
+      value: formatMetricPercent(financing.projectedDebtRatioPercent),
+      helper: 'Charges existantes + mensualité acceptable',
+      tone: ratioTone(financing.projectedDebtRatioPercent, 40, 55),
+    },
+    {
+      label: 'Apport / budget',
+      value: formatMetricPercent(financing.equityRatioPercent),
+      helper: `Apport déclaré : ${formatMetricMoney(financing.ownContribution)}`,
+      tone: financing.equityRatioPercent === undefined ? 'neutral' : financing.equityRatioPercent >= 20 ? 'good' : 'warn',
+    },
+    {
+      label: 'Réserve après apport',
+      value: financing.cashReserveMonths === undefined ? 'À saisir' : `${financing.cashReserveMonths} mois`,
+      helper: 'Épargne restante rapportée au revenu net',
+      tone: financing.cashReserveMonths === undefined ? 'neutral' : financing.cashReserveMonths >= 3 ? 'good' : 'warn',
+    },
+  ];
+}
+
+function buildOuvrageControlProfile(responses: Record<string, unknown>): OuvrageControlProfile {
+  const projectType = stringResponse(responses, 'projectType');
+  const family = getProjectFamily(projectType);
+  const selectedProjectLabel = projectType ? getLabel(PROJECT_TYPES, projectType) : 'Projet Buildify';
+  const budgetValue = stringResponse(responses, 'budget');
+  const [budgetMinRaw, budgetMaxRaw] = getBudgetRange(budgetValue);
+  const budgetMin = budgetMinRaw ?? undefined;
+  const budgetMax = budgetMaxRaw ?? undefined;
+  const finance = buildFinanceMetrics(responses, budgetMin, budgetMax);
+  const financeStress = finance.find(item => item.label === 'Endettement projeté')?.tone;
+  const terrainSurface = numberResponse(responses.surfaceArea);
+  const siteAccess = stringResponse(responses, 'siteAccess');
+  const soilKnown = stringResponse(responses, 'soilKnown');
+  const country = getSubmittedCountry(responses);
+  const city = getSubmittedCity(responses);
+  const locationLabel = city ? `${city}, ${country}` : country;
+
+  if (!projectType) {
+    return {
+      title: 'Contrôle professionnel',
+      subtitle: 'Le tableau devient précis dès que la catégorie est choisie.',
+      icon: ShieldCheck,
+      metrics: [
+        { label: 'Catégorie', value: 'À choisir' },
+        { label: 'Pays', value: country },
+        { label: 'Ville', value: city || 'À sélectionner' },
+        { label: 'Budget', value: budgetValue ? getBudgetLabel(budgetValue) : 'À choisir' },
+      ],
+      checks: [
+        'Choisir la famille d’ouvrage pour charger les bons champs.',
+        'Renseigner localisation, accès et pièces disponibles.',
+        'Structurer le financement avant transmission du dossier.',
+      ],
+      risks: ['Aucun engagement technique sans catégorie, lieu et budget minimum.'],
+      finance,
+    };
+  }
+
+  if (family === 'maison') {
+    const builtSurface = numberResponse(responses.builtSurface);
+    const houseFootprint = numberResponse(responses.houseFootprint);
+    const outdoorArea = numberResponse(responses.usableOutdoorArea, true);
+    const footprintRatio = percentRatio(houseFootprint, terrainSurface);
+    const extension = stringResponse(responses, 'futureExtensionPlan');
+    const bedrooms = numberResponse(responses.bedrooms);
+
+    return {
+      title: `${selectedProjectLabel} - contrôle maison`,
+      subtitle: 'Surface, emprise, confort familial et marge d’évolution.',
+      icon: Home,
+      metrics: [
+        { label: 'Terrain', value: formatMetricNumber(terrainSurface, 'm²'), helper: locationLabel },
+        { label: 'Emprise au sol', value: formatMetricNumber(houseFootprint, 'm²'), helper: 'Occupation réelle du bâti', tone: ratioTone(footprintRatio, 45, 60) },
+        { label: 'Taux d’emprise', value: formatMetricPercent(footprintRatio), helper: 'À vérifier avec les règles locales', tone: ratioTone(footprintRatio, 45, 60) },
+        { label: 'Surface construite', value: formatMetricNumber(builtSurface, 'm²'), helper: bedrooms ? `${bedrooms} chambre(s) demandée(s)` : 'Programme intérieur à compléter' },
+        { label: 'Extérieur préservé', value: formatMetricNumber(outdoorArea, 'm²'), helper: extension ? getLabel([{ value: 'none', label: 'Aucune extension prévue' }, { value: 'horizontal', label: 'Extension horizontale possible' }, { value: 'vertical', label: 'Étage futur possible' }, { value: 'rental-unit', label: 'Dépendance ou logement locatif futur' }, { value: 'to-study', label: 'À étudier avec Buildify' }], extension) : 'Cour, parking, terrasse ou jardin' },
+      ],
+      checks: compactStrings([
+        terrainSurface && houseFootprint ? `Valider ${formatMetricPercent(footprintRatio)} d’emprise avant esquisse.` : 'Saisir terrain + emprise pour calculer l’occupation.',
+        builtSurface ? 'Cadrer le programme pièce par pièce avant métré.' : 'Renseigner la surface construite souhaitée.',
+        siteAccess ? `Accès chantier : ${getLabel(SITE_ACCESS_OPTIONS, siteAccess)}.` : 'Préciser l’accès au site pour les livraisons.',
+        soilKnown === 'faite' ? 'Exploiter l’étude de sol existante.' : 'Prévoir une étude de sol avant chiffrage gros œuvre.',
+      ]),
+      risks: compactStrings([
+        footprintRatio !== undefined && footprintRatio >= 60 && 'Emprise élevée : risque de cour, parking ou recul insuffisant.',
+        soilKnown !== 'faite' && 'Fondations et structure à sécuriser par étude de sol.',
+        financeStress === 'critical' && 'Capacité financière à revoir avant engagement chantier.',
+        !budgetValue && 'Budget indicatif encore absent : devis peu fiable.',
+      ]),
+      finance,
+    };
+  }
+
+  if (family === 'rplus') {
+    const rPlusLevel = numberResponse(responses.rPlusLevel);
+    const unitsPerFloor = numberResponse(responses.unitsPerFloor);
+    const estimatedFootprint = numberResponse(responses.estimatedFootprint);
+    const upperUnits = rPlusLevel && unitsPerFloor ? rPlusLevel * unitsPerFloor : undefined;
+    const totalLevels = rPlusLevel ? rPlusLevel + 1 : undefined;
+    const floorArea = totalLevels && estimatedFootprint ? totalLevels * estimatedFootprint : undefined;
+    const groundFloorLabels: ChoiceOption[] = [
+      { value: 'parking', label: 'Parking' },
+      { value: 'commerce', label: 'Commerces' },
+      { value: 'logements', label: 'Logements' },
+      { value: 'mixte', label: 'Mixte' },
+      { value: 'a-definir', label: 'À définir' },
+    ];
+
+    return {
+      title: 'Immeuble R+ - contrôle structure',
+      subtitle: 'Niveaux, lots, emprise, circulation et sécurité.',
+      icon: Landmark,
+      metrics: [
+        { label: 'Hauteur', value: rPlusLevel ? `R+${rPlusLevel}` : 'À choisir', helper: totalLevels ? `${totalLevels} niveau(x) avec RDC` : 'Compteur simple R+' },
+        { label: 'Lots estimés', value: formatMetricNumber(upperUnits, 'unité(s)'), helper: 'Hors ajustement rez-de-chaussée' },
+        { label: 'Emprise estimée', value: formatMetricNumber(estimatedFootprint, 'm²'), helper: locationLabel },
+        { label: 'Surface plancher indicative', value: formatMetricNumber(floorArea, 'm²'), helper: 'Base très préliminaire à confirmer' },
+        { label: 'Rez-de-chaussée', value: stringResponse(responses, 'groundFloorUse') ? getLabel(groundFloorLabels, String(responses.groundFloorUse)) : 'À préciser', helper: getLabel(BUILDING_USE_OPTIONS, String(responses.buildingUse || 'a-definir')) },
+      ],
+      checks: compactStrings([
+        rPlusLevel && rPlusLevel >= 4 ? 'Anticiper ascenseur, sécurité incendie et contrôle structure.' : 'Valider escalier, accès et évacuation dès l’esquisse.',
+        unitsPerFloor ? 'Contrôler les typologies par étage et les gaines techniques.' : 'Renseigner le nombre de logements ou locaux par étage.',
+        siteAccess ? `Accès chantier : ${getLabel(SITE_ACCESS_OPTIONS, siteAccess)}.` : 'Préciser accès engins, stockage et stationnement chantier.',
+        soilKnown === 'faite' ? 'Analyser la portance selon le niveau R+.' : 'Étude de sol obligatoire avant toute structure R+.',
+      ]),
+      risks: compactStrings([
+        rPlusLevel !== undefined && rPlusLevel >= 6 && 'R+ élevé : vigilance ascenseur, incendie, parking et surpresseur.',
+        !estimatedFootprint && 'Emprise manquante : impossible d’estimer correctement la trame.',
+        soilKnown !== 'faite' && 'Risque structurel si le sol n’est pas confirmé.',
+        financeStress === 'critical' && 'Montage financier sensible pour un immeuble collectif.',
+      ]),
+      finance,
+    };
+  }
+
+  if (family === 'vrd') {
+    const roadLength = numberResponse(responses.roadLength);
+    const roadWidth = numberResponse(responses.roadWidth);
+    const roadArea = roadLength && roadWidth ? Math.round(roadLength * roadWidth) : undefined;
+    const plotCount = numberResponse(responses.plotCount, true);
+    const outfallPoint = stringResponse(responses, 'outfallPoint');
+    const vrdLotsText = labelsToPreview(responses.vrdLots, VRD_LOTS, 'Lots VRD à choisir');
+    const density = roadLength && plotCount ? Math.round((plotCount / roadLength) * 1000) : undefined;
+
+    return {
+      title: 'VRD - contrôle réseaux',
+      subtitle: 'Linéaire, largeur, exutoire, lots desservis et maintenance.',
+      icon: Route,
+      metrics: [
+        { label: 'Linéaire', value: formatMetricNumber(roadLength, 'm'), helper: locationLabel },
+        { label: 'Largeur moyenne', value: formatMetricNumber(roadWidth, 'm'), helper: 'Voirie, accotements et réseaux', tone: roadWidth === undefined ? 'neutral' : roadWidth < 5 ? 'warn' : 'good' },
+        { label: 'Surface voirie indicative', value: formatMetricNumber(roadArea, 'm²'), helper: 'Linéaire x largeur moyenne' },
+        { label: 'Lots desservis', value: formatMetricNumber(plotCount, 'lot(s)'), helper: density ? `${density} lots / km indicatif` : 'Lotissement ou site à raccorder' },
+        { label: 'Lots techniques', value: vrdLotsText, helper: outfallPoint ? `Exutoire : ${outfallPoint}` : 'Exutoire à renseigner' },
+      ],
+      checks: compactStrings([
+        roadLength && roadWidth ? `Pré-métré voirie : environ ${formatMetricNumber(roadArea, 'm²')}.` : 'Saisir linéaire + largeur pour obtenir une base de métré.',
+        outfallPoint ? 'Vérifier altimétrie, pente et capacité de l’exutoire.' : 'Indiquer l’exutoire ou le raccordement prévu.',
+        'Prévoir plans de récolement, regards accessibles et maintenance.',
+        labelsToPreview(responses.vrdLots, VRD_LOTS, '') ? 'Coordonner voirie, eau, électricité, télécoms et drainage.' : 'Sélectionner les lots VRD concernés.',
+      ]),
+      risks: compactStrings([
+        roadWidth !== undefined && roadWidth < 5 && 'Largeur faible : circulation, drainage et croisements à vérifier.',
+        !outfallPoint && 'Exutoire absent : risque majeur sur eaux pluviales.',
+        !plotCount && 'Nombre de lots absent : raccordements et charge réseaux à affiner.',
+        financeStress === 'critical' && 'Financement à sécuriser avant phasage VRD.',
+      ]),
+      finance,
+    };
+  }
+
+  return {
+    title: `${selectedProjectLabel} - contrôle dossier`,
+    subtitle: 'Lots, documents, budget et responsabilités à verrouiller.',
+    icon: ClipboardCheck,
+    metrics: [
+      { label: 'Catégorie', value: selectedProjectLabel },
+      { label: 'Localisation', value: locationLabel },
+      { label: 'Périmètre', value: labelsToPreview(responses.prestations, getPrestationsOptions(family), 'Prestation à choisir') },
+      { label: 'Budget', value: budgetValue ? getBudgetLabel(budgetValue) : 'À choisir' },
+    ],
+    checks: [
+      'Limiter le périmètre exact des lots avant devis.',
+      'Joindre photos, plans, devis existants ou descriptif technique.',
+      'Valider finance, délais et mode de réception.',
+    ],
+    risks: compactStrings([
+      !budgetValue && 'Budget non déclaré : arbitrages difficiles.',
+      financeStress === 'critical' && 'Capacité financière à sécuriser avant engagement.',
+      'Tout lot technique doit prévoir essais et réception.',
+    ]),
+    finance,
+  };
+}
+
 function hasStoredValue(value: unknown): boolean {
   if (value === undefined || value === null) return false;
   if (Array.isArray(value)) return value.length > 0;
@@ -1801,6 +2076,7 @@ export function ConfiguratorView() {
   const progressPercent = progressSteps.length > 1
     ? ((Math.max(0, progressIdx) + 1) / progressSteps.length) * 100
     : 0;
+  const controlProfile = useMemo(() => buildOuvrageControlProfile(responses), [responses]);
 
   const setSearchValue = useCallback((key: string, value: string) => {
     setChoiceSearch(prev => ({ ...prev, [key]: value }));
@@ -2835,6 +3111,87 @@ export function ConfiguratorView() {
     { label: 'Accès', value: fieldValueToString({ key: 'siteAccess', label: 'Accès', type: 'select', options: SITE_ACCESS_OPTIONS }, responses.siteAccess) || 'À renseigner' },
     { label: 'Éléments saisis', value: `${answeredCount}` },
   ];
+  const renderControlProfileCard = (variant: 'mobile' | 'desktop') => {
+    const compact = variant === 'mobile';
+    const ControlIcon = controlProfile.icon;
+    const metricToneClass: Record<ControlTone, string> = {
+      neutral: 'border-border bg-background',
+      good: 'border-foreground/15 bg-muted/30',
+      warn: 'border-amber-500/35 bg-amber-500/10 text-amber-950 dark:text-amber-100',
+      critical: 'border-destructive/35 bg-destructive/10 text-destructive',
+    };
+    const metrics = compact ? controlProfile.metrics.slice(0, 4) : controlProfile.metrics;
+    const checks = compact ? controlProfile.checks.slice(0, 2) : controlProfile.checks;
+    const risks = compact ? controlProfile.risks.slice(0, 2) : controlProfile.risks;
+    const finance = compact ? controlProfile.finance.slice(0, 2) : controlProfile.finance;
+
+    return (
+      <Card className="border-border/70 shadow-sm">
+        <CardContent className={compact ? 'p-4' : 'p-5'}>
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
+              <ControlIcon className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="break-words text-sm font-semibold">{controlProfile.title}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{controlProfile.subtitle}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {metrics.map(item => (
+              <div key={item.label} className={`min-w-0 rounded-xl border px-3 py-2 ${metricToneClass[item.tone || 'neutral']}`}>
+                <p className="break-words text-[11px] font-medium text-muted-foreground">{item.label}</p>
+                <p className="mt-1 break-words text-sm font-bold leading-tight">{item.value}</p>
+                {item.helper && !compact && (
+                  <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground">{item.helper}</p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {checks.length > 0 && (
+            <div className="mt-4 rounded-xl border border-border bg-muted/25 p-3">
+              <p className="text-xs font-semibold">Points de contrôle</p>
+              <div className="mt-2 space-y-2">
+                {checks.map(item => (
+                  <div key={item} className="flex gap-2 text-xs leading-5 text-muted-foreground">
+                    <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-foreground" />
+                    <span className="min-w-0 break-words">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {finance.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {finance.map(item => (
+                <div key={item.label} className={`min-w-0 rounded-xl border px-3 py-2 ${metricToneClass[item.tone || 'neutral']}`}>
+                  <p className="break-words text-[11px] font-medium text-muted-foreground">{item.label}</p>
+                  <p className="mt-1 break-words text-sm font-bold leading-tight">{item.value}</p>
+                  {item.helper && !compact && (
+                    <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground">{item.helper}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {risks.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {risks.map(item => (
+                <div key={item} className="flex gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs leading-5 text-destructive">
+                  <ShieldPlus className="mt-0.5 size-3.5 shrink-0" />
+                  <span className="min-w-0 break-words">{item}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -2907,6 +3264,12 @@ export function ConfiguratorView() {
                 </div>
               )}
 
+              {selectedProjectLabel && activeStep.id !== 'project-type' && !isConfirmation && (
+                <div className="mb-4 lg:hidden">
+                  {renderControlProfileCard('mobile')}
+                </div>
+              )}
+
               {isConfirmation ? (
                 renderConfirmation()
               ) : (
@@ -2964,18 +3327,7 @@ export function ConfiguratorView() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-border/70 shadow-sm">
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="size-4" />
-                      <p className="text-sm font-semibold">Contrôle professionnel</p>
-                    </div>
-                    <div className="mt-4 space-y-3 text-xs leading-5 text-muted-foreground">
-                      <p>Chaque famille d’ouvrage active ses propres champs : maison, immeuble R+, VRD, lots, hydraulique ou étude.</p>
-                      <p>Les données privées ne sont transmises qu’après connexion par e-mail/téléphone et mot de passe.</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                {renderControlProfileCard('desktop')}
               </div>
             </aside>
           )}
