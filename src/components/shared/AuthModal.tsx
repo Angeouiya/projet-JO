@@ -31,6 +31,10 @@ function passwordError(password: string): string | null {
   return null;
 }
 
+function isBuildifyAdminEmail(email: string): boolean {
+  return /^admin@buildify\.ci$/i.test(email.trim()) || /@(buildify|groupeebc)\.[a-z]{2,}$/i.test(email.trim());
+}
+
 export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) {
   const { showAuthModal, dismissAuth, login } = useAppStore();
   const isAdminPlatform = platform === 'admin';
@@ -48,7 +52,7 @@ export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) 
     password: '',
     confirmPassword: '',
     resetEmail: '',
-    adminEmail: 'admin@buildify.ci',
+    adminEmail: '',
     adminPassword: '',
   });
 
@@ -158,12 +162,17 @@ export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) 
 
   const handleAdminLogin = async () => {
     const adminEmail = form.adminEmail.trim();
+    const passError = passwordError(form.adminPassword);
     if (!isEmail(adminEmail)) {
       setError("Saisissez l'e-mail administrateur.");
       return;
     }
-    if (!form.adminPassword) {
-      setError('Le mot de passe administrateur est obligatoire.');
+    if (!isBuildifyAdminEmail(adminEmail)) {
+      setError("Utilisez un e-mail habilité Buildify ou Groupe EBC pour accéder à cette plateforme.");
+      return;
+    }
+    if (passError) {
+      setError(passError);
       return;
     }
 
@@ -268,7 +277,7 @@ export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) 
                   <p className="text-sm text-muted-foreground mt-1">Accès séparé pour les comptes habilités Buildify.</p>
                 </div>
                 <div className="rounded-xl border bg-muted/40 px-4 py-3 text-xs leading-5 text-muted-foreground">
-                  Les clients restent dans l’espace client. Les actions d’administration, devis, finance et suivi interne restent dans cette plateforme.
+                  Utilisez le lien dédié <span className="font-semibold text-foreground">/admin</span>. Les comptes clients ne peuvent pas ouvrir cette plateforme.
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="auth-admin-email" className="text-xs">E-mail administrateur</Label>
@@ -281,6 +290,9 @@ export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) 
                     className="h-12"
                     autoComplete="username"
                   />
+                  <p className="text-[11px] leading-4 text-muted-foreground">
+                    Exemple habilité : admin@buildify.ci, ou une adresse interne Buildify/Groupe EBC.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="auth-admin-password" className="text-xs">Mot de passe</Label>
