@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useInView, type Variants } from 'framer-motion';
 import {
   Home, Building2, Building, Landmark, MapPin,
@@ -131,10 +131,27 @@ function AnimatedSection({ children, className }: { children: React.ReactNode; c
 export function HomeView() {
   const navigate = useAppStore(s => s.navigate);
   const teamMembers = useAppStore(s => s.teamMembers);
+  const [homeModels, setHomeModels] = useState<CatalogModelData[]>(popularModels);
   const publicTeam = useMemo(
     () => teamMembers.filter(member => member.active && member.publicVisible).slice(0, 6),
     [teamMembers]
   );
+
+  useEffect(() => {
+    let active = true;
+    const loadFeaturedModels = async () => {
+      try {
+        const response = await fetch('/api/models?featured=true&limit=8', { cache: 'no-store' });
+        const payload = await response.json().catch(() => null) as { models?: CatalogModelData[] } | null;
+        if (!active) return;
+        if (response.ok && payload?.models?.length) setHomeModels(payload.models);
+      } catch {
+        if (active) setHomeModels(popularModels);
+      }
+    };
+    void loadFeaturedModels();
+    return () => { active = false; };
+  }, []);
 
   return (
     <main className="min-h-screen bg-background">
@@ -227,7 +244,7 @@ export function HomeView() {
           </motion.div>
         </div>
         <div className="mt-8 flex gap-4 overflow-x-auto no-scrollbar px-6 md:px-12 lg:px-20 md:grid md:grid-cols-3 lg:grid-cols-5 md:overflow-visible">
-          {popularModels.map((model) => (
+          {homeModels.slice(0, 5).map((model) => (
             <motion.div key={model.id} variants={fadeUp} className="flex-shrink-0 w-64 md:w-auto">
               <Card
                 className="overflow-hidden cursor-pointer py-0 gap-0 border-border/50 hover:border-foreground/20 transition-colors"
@@ -235,7 +252,7 @@ export function HomeView() {
               >
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img
-                    src={model.image}
+                    src={model.mainImage || model.images[0] || '/images/villa-1.png'}
                     alt={model.name}
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                   />

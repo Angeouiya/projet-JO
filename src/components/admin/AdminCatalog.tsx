@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search, Plus, Eye, Pencil, Trash2, EyeOff, Eye as EyeOn, Grid3X3, List, Gem, PackageCheck, Copy,
@@ -15,8 +15,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { DEFAULT_CATALOG_MODELS } from '@/data/catalog-models';
 import { useAppStore } from '@/stores/app-store';
 import { FORMAT_XOF } from '@/types';
+import type { CatalogModelData } from '@/types';
 
 type CatalogAdminModel = {
   id: string;
@@ -30,6 +32,7 @@ type CatalogAdminModel = {
   budgetMin: number;
   budgetMax: number;
   description: string;
+  source?: CatalogModelData;
 };
 
 type CatalogDraft = Pick<CatalogAdminModel, 'name' | 'category' | 'standing' | 'description' | 'budgetMin' | 'budgetMax'>;
@@ -44,16 +47,56 @@ const STANDING_LABELS: Record<string, string> = {
 const CATEGORIES = ['Maison basse', 'Immeuble R+', 'VRD', 'Lot de travaux', 'Duplex', 'Bureaux', 'Hôtel', 'Cité résidentielle'];
 const STANDINGS = ['economique', 'standard', 'premium', 'luxe'];
 
-const initialCatalogModels: CatalogAdminModel[] = [
-  { id: '1', name: 'Villa Émeraude', category: 'Maison basse', standing: 'luxe', image: '/images/villa-1.png', status: 'published', views: 234, selections: 12, budgetMin: 95000000, budgetMax: 145000000, description: 'Villa familiale haut standing avec terrasse, séjour généreux et finitions premium.' },
-  { id: '2', name: 'Duplex Horizon', category: 'Duplex', standing: 'premium', image: '/images/duplex-1.png', status: 'published', views: 189, selections: 8, budgetMin: 125000000, budgetMax: 220000000, description: 'Duplex urbain avec séparation claire des espaces jour et nuit.' },
-  { id: '3', name: 'Immeuble Skyline', category: 'Immeuble R+', standing: 'premium', image: '/images/immeuble-1.png', status: 'published', views: 156, selections: 5, budgetMin: 280000000, budgetMax: 780000000, description: 'Immeuble R+ modulaire pour logements, bureaux ou investissement locatif.' },
-  { id: '4', name: 'Cité Palmiers', category: 'Cité résidentielle', standing: 'luxe', image: '/images/cite-1.png', status: 'published', views: 312, selections: 18, budgetMin: 750000000, budgetMax: 2400000000, description: 'Programme résidentiel groupé avec voirie interne et équipements communs.' },
-  { id: '5', name: 'Bureau Modern', category: 'Bureaux', standing: 'standard', image: '/images/bureau-1.png', status: 'published', views: 98, selections: 3, budgetMin: 90000000, budgetMax: 260000000, description: 'Plateau tertiaire sobre, efficace et facile à adapter.' },
-  { id: '6', name: 'Hôtel Prestige', category: 'Hôtel', standing: 'luxe', image: '/images/hotel-1.png', status: 'draft', views: 0, selections: 0, budgetMin: 480000000, budgetMax: 1500000000, description: 'Prototype hôtelier en cours de cadrage pour lots architecturaux et techniques.' },
-  { id: '7', name: 'Lot Finition Premium', category: 'Lot de travaux', standing: 'premium', image: '/images/villa-1.png', status: 'published', views: 145, selections: 7, budgetMin: 18000000, budgetMax: 65000000, description: 'Lot finition complet : revêtements, peinture, menuiseries et sanitaires.' },
-  { id: '8', name: 'Pack VRD Quartier', category: 'VRD', standing: 'standard', image: '/images/cite-1.png', status: 'published', views: 267, selections: 15, budgetMin: 55000000, budgetMax: 420000000, description: 'Voirie, drainage et réseaux divers pour terrain, résidence ou mini-lotissement.' },
-];
+function normalizeStanding(value?: string) {
+  const normalized = value?.trim().toLowerCase() || 'standard';
+  if (normalized.includes('éco') || normalized.includes('eco')) return 'economique';
+  if (normalized.includes('luxe')) return 'luxe';
+  if (normalized.includes('premium')) return 'premium';
+  return normalized in STANDING_LABELS ? normalized : 'standard';
+}
+
+function adminModelFromCatalog(model: CatalogModelData): CatalogAdminModel {
+  return {
+    id: model.id,
+    name: model.name,
+    category: model.categoryName || model.categoryId,
+    standing: normalizeStanding(model.standing),
+    image: model.mainImage || model.images[0] || '/images/villa-1.png',
+    status: model.isPublished ? 'published' : 'draft',
+    views: model.viewCount,
+    selections: 0,
+    budgetMin: model.budgetMin || 0,
+    budgetMax: model.budgetMax || model.budgetMin || 0,
+    description: model.description || '',
+    source: model,
+  };
+}
+
+function catalogPayloadFromAdmin(model: CatalogAdminModel): Partial<CatalogModelData> & Pick<CatalogModelData, 'name'> {
+  const source: Partial<CatalogModelData> = model.source ?? {};
+  return {
+    ...source,
+    id: model.id,
+    name: model.name,
+    categoryId: model.category.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+    categoryName: model.category,
+    mainImage: model.image,
+    images: source.images?.length ? source.images : [model.image],
+    plans: source.plans ?? [],
+    levels: source.levels ?? (model.category.toLowerCase().includes('immeuble') ? 4 : model.category.toLowerCase().includes('duplex') ? 2 : 1),
+    standing: model.standing,
+    budgetMin: model.budgetMin,
+    budgetMax: model.budgetMax,
+    description: model.description,
+    equipment: source.equipment ?? [],
+    features: source.features ?? [],
+    viewCount: model.views,
+    isPublished: model.status === 'published',
+    isFeatured: model.status === 'published' && model.views >= 250,
+  };
+}
+
+const initialCatalogModels = DEFAULT_CATALOG_MODELS.map(adminModelFromCatalog);
 
 function defaultDraft(model?: CatalogAdminModel): CatalogDraft {
   return {
@@ -78,6 +121,34 @@ export function AdminCatalog() {
   const [selectedId, setSelectedId] = useState(initialCatalogModels[0]?.id || '');
   const [editingModel, setEditingModel] = useState<CatalogAdminModel | null>(null);
   const [draft, setDraft] = useState<CatalogDraft>(defaultDraft());
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const loadCatalog = async () => {
+      try {
+        const response = await fetch('/api/models?admin=true&limit=60', { cache: 'no-store' });
+        const payload = await response.json().catch(() => null) as { models?: CatalogModelData[]; message?: string; error?: string } | null;
+        if (!active) return;
+        if (!response.ok) {
+          addToast(payload?.message || payload?.error || 'Catalogue serveur indisponible.', 'info');
+          return;
+        }
+        const nextModels = (payload?.models ?? []).map(adminModelFromCatalog);
+        if (nextModels.length) {
+          setModels(nextModels);
+          setSelectedId(nextModels[0].id);
+        }
+      } catch {
+        if (active) addToast('Catalogue serveur indisponible. Données de secours affichées.', 'info');
+      } finally {
+        if (active) setLoadingCatalog(false);
+      }
+    };
+    void loadCatalog();
+    return () => { active = false; };
+  }, [addToast]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -112,7 +183,20 @@ export function AdminCatalog() {
     addToast('Brouillon catalogue créé.', 'success');
   };
 
-  const handleSave = () => {
+  const persistModel = async (model: CatalogAdminModel, method: 'POST' | 'PATCH') => {
+    const response = await fetch('/api/models', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(catalogPayloadFromAdmin(model)),
+    });
+    const payload = await response.json().catch(() => null) as { model?: CatalogModelData; message?: string; error?: string } | null;
+    if (!response.ok || !payload?.model) {
+      throw new Error(payload?.message || payload?.error || 'Sauvegarde catalogue impossible.');
+    }
+    return adminModelFromCatalog(payload.model);
+  };
+
+  const handleSave = async () => {
     if (!editingModel) return;
     if (!draft.name.trim()) {
       addToast('Le nom du modèle est obligatoire.', 'error');
@@ -123,32 +207,50 @@ export function AdminCatalog() {
       return;
     }
 
-    setModels(prev => prev.map(model => (
-      model.id === editingModel.id
-        ? {
-            ...model,
-            name: draft.name.trim(),
-            category: draft.category,
-            standing: draft.standing,
-            description: draft.description.trim(),
-            budgetMin: Number(draft.budgetMin),
-            budgetMax: Number(draft.budgetMax),
-          }
-        : model
-    )));
-    setEditingModel(null);
-    addToast('Modèle catalogue enregistré.', 'success');
+    const nextModel: CatalogAdminModel = {
+      ...editingModel,
+      name: draft.name.trim(),
+      category: draft.category,
+      standing: draft.standing,
+      description: draft.description.trim(),
+      budgetMin: Number(draft.budgetMin),
+      budgetMax: Number(draft.budgetMax),
+    };
+
+    setSavingId(editingModel.id);
+    try {
+      const saved = await persistModel(nextModel, editingModel.id.startsWith('catalog-') ? 'POST' : 'PATCH');
+      setModels(prev => [saved, ...prev.filter(model => model.id !== editingModel.id && model.id !== saved.id)]);
+      setSelectedId(saved.id);
+      setEditingModel(null);
+      addToast('Modèle catalogue enregistré sur le serveur.', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Sauvegarde catalogue impossible.', 'error');
+    } finally {
+      setSavingId(null);
+    }
   };
 
-  const toggleVisibility = (model: CatalogAdminModel) => {
-    const nextStatus = model.status === 'published' ? 'draft' : 'published';
+  const toggleVisibility = async (model: CatalogAdminModel) => {
+    const nextStatus: CatalogAdminModel['status'] = model.status === 'published' ? 'draft' : 'published';
+    const nextModel: CatalogAdminModel = { ...model, status: nextStatus };
     setModels(prev => prev.map(item => (
-      item.id === model.id ? { ...item, status: nextStatus } : item
+      item.id === model.id ? nextModel : item
     )));
-    addToast(nextStatus === 'published' ? 'Modèle publié.' : 'Modèle repassé en brouillon.', 'success');
+    setSavingId(model.id);
+    try {
+      const saved = await persistModel(nextModel, 'PATCH');
+      setModels(prev => prev.map(item => item.id === model.id ? saved : item));
+      addToast(nextStatus === 'published' ? 'Modèle publié.' : 'Modèle repassé en brouillon.', 'success');
+    } catch (error) {
+      setModels(prev => prev.map(item => item.id === model.id ? model : item));
+      addToast(error instanceof Error ? error.message : 'Publication impossible.', 'error');
+    } finally {
+      setSavingId(null);
+    }
   };
 
-  const duplicateModel = (model: CatalogAdminModel) => {
+  const duplicateModel = async (model: CatalogAdminModel) => {
     const copy: CatalogAdminModel = {
       ...model,
       id: `catalog-copy-${Date.now()}`,
@@ -156,18 +258,37 @@ export function AdminCatalog() {
       status: 'draft',
       views: 0,
       selections: 0,
+      source: undefined,
     };
-    setModels(prev => [copy, ...prev]);
-    setSelectedId(copy.id);
-    setEditingModel(copy);
-    setDraft(defaultDraft(copy));
-    addToast('Copie créée en brouillon. Ajustez-la avant publication.', 'success');
+    setSavingId(model.id);
+    try {
+      const saved = await persistModel(copy, 'POST');
+      setModels(prev => [saved, ...prev]);
+      setSelectedId(saved.id);
+      setEditingModel(saved);
+      setDraft(defaultDraft(saved));
+      addToast('Copie créée en brouillon. Ajustez-la avant publication.', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Duplication impossible.', 'error');
+    } finally {
+      setSavingId(null);
+    }
   };
 
-  const deleteModel = (model: CatalogAdminModel) => {
-    setModels(prev => prev.filter(item => item.id !== model.id));
-    if (selectedId === model.id) setSelectedId('');
-    addToast('Modèle supprimé du catalogue.', 'success');
+  const deleteModel = async (model: CatalogAdminModel) => {
+    setSavingId(model.id);
+    try {
+      const response = await fetch(`/api/models?id=${encodeURIComponent(model.id)}`, { method: 'DELETE' });
+      const payload = await response.json().catch(() => null) as { message?: string; error?: string } | null;
+      if (!response.ok) throw new Error(payload?.message || payload?.error || 'Suppression impossible.');
+      setModels(prev => prev.filter(item => item.id !== model.id));
+      if (selectedId === model.id) setSelectedId('');
+      addToast('Modèle supprimé du catalogue serveur.', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Suppression impossible.', 'error');
+    } finally {
+      setSavingId(null);
+    }
   };
 
   const renderActions = (model: CatalogAdminModel, compact = false) => (
@@ -177,15 +298,16 @@ export function AdminCatalog() {
         variant="outline"
         className={compact ? 'h-8 w-8 p-0' : 'h-8 min-w-0 text-xs'}
         onClick={() => setSelectedId(model.id)}
+        disabled={savingId === model.id}
         aria-label={`Voir ${model.name}`}
       >
         <Eye className="size-3.5" />
         {!compact && <span className="ml-1 truncate">Voir</span>}
       </Button>
-      <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => openEditor(model)} aria-label={`Modifier ${model.name}`}>
+      <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => openEditor(model)} disabled={savingId === model.id} aria-label={`Modifier ${model.name}`}>
         <Pencil className="size-3.5" />
       </Button>
-      <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => toggleVisibility(model)} aria-label={model.status === 'published' ? 'Dépublier' : 'Publier'}>
+      <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => toggleVisibility(model)} disabled={savingId === model.id} aria-label={model.status === 'published' ? 'Dépublier' : 'Publier'}>
         {model.status === 'published' ? <EyeOff className="size-3.5" /> : <EyeOn className="size-3.5" />}
       </Button>
     </div>
@@ -196,9 +318,11 @@ export function AdminCatalog() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-xl font-bold">Catalogue admin</h1>
-          <p className="text-sm text-muted-foreground">{models.length} modèles gérés dans la plateforme admin</p>
+          <p className="text-sm text-muted-foreground">
+            {loadingCatalog ? 'Synchronisation du catalogue...' : `${models.length} modèles gérés dans la plateforme admin`}
+          </p>
         </div>
-        <Button size="sm" className="w-full gap-2 sm:w-auto" onClick={handleAdd}>
+        <Button size="sm" className="w-full gap-2 sm:w-auto" onClick={handleAdd} disabled={loadingCatalog}>
           <Plus className="size-4" />
           Ajouter
         </Button>
@@ -238,15 +362,15 @@ export function AdminCatalog() {
               <p className="mt-2 text-sm font-semibold">{budgetLabel(selectedModel)}</p>
             </div>
             <div className="flex flex-wrap gap-2 md:flex-col">
-              <Button size="sm" variant="outline" className="gap-2" onClick={() => openEditor(selectedModel)}>
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => openEditor(selectedModel)} disabled={savingId === selectedModel.id}>
                 <Pencil className="size-4" />
                 Modifier
               </Button>
-              <Button size="sm" variant="outline" className="gap-2" onClick={() => toggleVisibility(selectedModel)}>
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => toggleVisibility(selectedModel)} disabled={savingId === selectedModel.id}>
                 {selectedModel.status === 'published' ? <EyeOff className="size-4" /> : <EyeOn className="size-4" />}
                 {selectedModel.status === 'published' ? 'Dépublier' : 'Publier'}
               </Button>
-              <Button size="sm" variant="outline" className="gap-2" onClick={() => duplicateModel(selectedModel)}>
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => duplicateModel(selectedModel)} disabled={savingId === selectedModel.id}>
                 <Copy className="size-4" />
                 Dupliquer
               </Button>
@@ -257,7 +381,7 @@ export function AdminCatalog() {
                 confirmClassName="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onConfirm={() => deleteModel(selectedModel)}
                 trigger={(
-                  <Button size="sm" variant="outline" className="gap-2">
+                  <Button size="sm" variant="outline" className="gap-2" disabled={savingId === selectedModel.id}>
                     <Trash2 className="size-4" />
                     Supprimer
                   </Button>
@@ -332,7 +456,7 @@ export function AdminCatalog() {
                     confirmClassName="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     onConfirm={() => deleteModel(model)}
                     trigger={(
-                      <Button size="sm" variant="outline" className="h-8 w-8 p-0" aria-label={`Supprimer ${model.name}`}>
+                      <Button size="sm" variant="outline" className="h-8 w-8 p-0" disabled={savingId === model.id} aria-label={`Supprimer ${model.name}`}>
                         <Trash2 className="size-3.5" />
                       </Button>
                     )}
@@ -391,8 +515,10 @@ export function AdminCatalog() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingModel(null)}>Annuler</Button>
-            <Button onClick={handleSave}>Enregistrer</Button>
+            <Button variant="outline" onClick={() => setEditingModel(null)} disabled={Boolean(savingId)}>Annuler</Button>
+            <Button onClick={handleSave} disabled={Boolean(savingId)}>
+              {savingId ? 'Enregistrement...' : 'Enregistrer'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

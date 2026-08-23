@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Search, SlidersHorizontal, Heart, Maximize2, BedDouble, Bath,
   Layers, ArrowUpDown, X, Check,
@@ -18,101 +18,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useAppStore } from '@/stores/app-store';
+import { DEFAULT_CATALOG_MODELS } from '@/data/catalog-models';
 import { FORMAT_SHORT_XOF } from '@/types';
 import type { CatalogModelData, FilterState } from '@/types';
 
-const MOCK_MODELS: CatalogModelData[] = [
-  {
-    id: '1', name: 'Villa Aurore', slug: 'villa-aurore', categoryId: 'villa',
-    categoryName: 'Villa basse', mainImage: '/images/villa-1.png', images: ['/images/villa-1.png'],
-    plans: [], levels: 1, bedrooms: 4, bathrooms: 3, surfaceArea: 220,
-    minLandArea: 500, standing: 'Premium', style: 'Moderne',
-    equipment: ['Piscine', 'Garage', 'Climatisation', 'Cuisine américaine'],
-    budgetMin: 55_000_000, budgetMax: 75_000_000, durationMin: 6, durationMax: 9,
-    features: [], viewCount: 342, isPublished: true, isFeatured: true,
-  },
-  {
-    id: '2', name: 'Duplex Horizon', slug: 'duplex-horizon', categoryId: 'duplex',
-    categoryName: 'Duplex', mainImage: '/images/duplex-1.png', images: ['/images/duplex-1.png'],
-    plans: [], levels: 2, bedrooms: 5, bathrooms: 4, surfaceArea: 310,
-    minLandArea: 400, standing: 'Luxe', style: 'Contemporain',
-    equipment: ['Piscine', 'Garage double', 'Terrasse', 'Climatisation'],
-    budgetMin: 85_000_000, budgetMax: 120_000_000, durationMin: 8, durationMax: 12,
-    features: [], viewCount: 287, isPublished: true, isFeatured: true,
-  },
-  {
-    id: '3', name: 'Immeuble Élysée', slug: 'immeuble-elysee', categoryId: 'immeuble',
-    categoryName: 'Immeuble', mainImage: '/images/immeuble-1.png', images: ['/images/immeuble-1.png'],
-    plans: [], levels: 4, bedrooms: 16, bathrooms: 16, surfaceArea: 1800,
-    minLandArea: 600, standing: 'Luxe', style: 'Néoclassique',
-    equipment: ['Ascenseur', 'Parking sous-sol', 'Gardien', 'Climatisation centrale'],
-    budgetMin: 350_000_000, budgetMax: 500_000_000, durationMin: 14, durationMax: 20,
-    features: [], viewCount: 198, isPublished: true, isFeatured: true,
-  },
-  {
-    id: '4', name: 'Villa Émeraude', slug: 'villa-emeraude', categoryId: 'villa',
-    categoryName: 'Villa basse', mainImage: '/images/villa-1.png', images: ['/images/villa-1.png'],
-    plans: [], levels: 1, bedrooms: 3, bathrooms: 2, surfaceArea: 150,
-    minLandArea: 350, standing: 'Standard', style: 'Moderne',
-    equipment: ['Garage', 'Cuisine équipée', 'Jardin'],
-    budgetMin: 30_000_000, budgetMax: 45_000_000, durationMin: 4, durationMax: 7,
-    features: [], viewCount: 456, isPublished: true, isFeatured: false,
-  },
-  {
-    id: '5', name: 'Cité Résidentielle', slug: 'cite-residentielle', categoryId: 'cite',
-    categoryName: 'Cité', mainImage: '/images/cite-1.png', images: ['/images/cite-1.png'],
-    plans: [], levels: 2, bedrooms: 3, bathrooms: 2, surfaceArea: 120,
-    minLandArea: 200, standing: 'Économique', style: 'Pratique',
-    equipment: ['Garage', 'Espace vert'],
-    budgetMin: 18_000_000, budgetMax: 28_000_000, durationMin: 5, durationMax: 8,
-    features: [], viewCount: 521, isPublished: true, isFeatured: false,
-  },
-  {
-    id: '6', name: 'Triplex Prestige', slug: 'triplex-prestige', categoryId: 'triplex',
-    categoryName: 'Triplex', mainImage: '/images/triplex-1.png', images: ['/images/triplex-1.png'],
-    plans: [], levels: 3, bedrooms: 6, bathrooms: 5, surfaceArea: 420,
-    minLandArea: 500, standing: 'Luxe', style: 'Contemporain',
-    equipment: ['Piscine', 'Garage triple', 'Rooftop', 'Domotique', 'Climatisation'],
-    budgetMin: 120_000_000, budgetMax: 180_000_000, durationMin: 10, durationMax: 14,
-    features: [], viewCount: 176, isPublished: true, isFeatured: true,
-  },
-  {
-    id: '7', name: 'Villa Bambou', slug: 'villa-bambou', categoryId: 'villa',
-    categoryName: 'Villa basse', mainImage: '/images/villa-1.png', images: ['/images/villa-1.png'],
-    plans: [], levels: 1, bedrooms: 2, bathrooms: 1, surfaceArea: 95,
-    minLandArea: 250, standing: 'Économique', style: 'Tropical',
-    equipment: ['Terrasse', 'Jardin'],
-    budgetMin: 15_000_000, budgetMax: 22_000_000, durationMin: 3, durationMax: 5,
-    features: [], viewCount: 634, isPublished: true, isFeatured: false,
-  },
-  {
-    id: '8', name: 'Immeuble Commerce', slug: 'immeuble-commerce', categoryId: 'immeuble',
-    categoryName: 'Immeuble', mainImage: '/images/immeuble-1.png', images: ['/images/immeuble-1.png'],
-    plans: [], levels: 5, bedrooms: 20, bathrooms: 20, surfaceArea: 2500,
-    minLandArea: 800, standing: 'Premium', style: 'Moderne',
-    equipment: ['Ascenseur', 'Parking', 'Boutiques RDC', 'Gardien 24/7'],
-    budgetMin: 450_000_000, budgetMax: 700_000_000, durationMin: 18, durationMax: 24,
-    features: [], viewCount: 143, isPublished: true, isFeatured: false,
-  },
-  {
-    id: '9', name: 'Duplex Cocody', slug: 'duplex-cocody', categoryId: 'duplex',
-    categoryName: 'Duplex', mainImage: '/images/duplex-1.png', images: ['/images/duplex-1.png'],
-    plans: [], levels: 2, bedrooms: 4, bathrooms: 3, surfaceArea: 260,
-    minLandArea: 350, standing: 'Premium', style: 'Contemporain',
-    equipment: ['Piscine', 'Garage', 'Buanderie', 'Climatisation'],
-    budgetMin: 65_000_000, budgetMax: 90_000_000, durationMin: 7, durationMax: 10,
-    features: [], viewCount: 298, isPublished: true, isFeatured: true,
-  },
-  {
-    id: '10', name: 'Villa Palmiers', slug: 'villa-palmiers', categoryId: 'villa',
-    categoryName: 'Villa basse', mainImage: '/images/villa-1.png', images: ['/images/villa-1.png'],
-    plans: [], levels: 1, bedrooms: 5, bathrooms: 4, surfaceArea: 320,
-    minLandArea: 600, standing: 'Luxe', style: 'Balinais',
-    equipment: ['Piscine', 'Garage double', 'Jardin paysager', 'Suite parentale', 'Climatisation'],
-    budgetMin: 90_000_000, budgetMax: 130_000_000, durationMin: 8, durationMax: 12,
-    features: [], viewCount: 412, isPublished: true, isFeatured: true,
-  },
-];
+const FALLBACK_MODELS = DEFAULT_CATALOG_MODELS;
 
 const CATEGORY_PILLS = [
   { value: 'all', label: 'Tout' },
@@ -134,6 +44,8 @@ type SortValue = 'popular' | 'recent' | 'price-asc' | 'price-desc';
 
 export function ExploreView() {
   const { navigate, filters, setFilters, resetFilters, userFavorites, toggleFavorite } = useAppStore();
+  const [catalogModels, setCatalogModels] = useState<CatalogModelData[]>(FALLBACK_MODELS);
+  const [catalogReady, setCatalogReady] = useState(false);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortValue>('popular');
   const [filterOpen, setFilterOpen] = useState(false);
@@ -141,8 +53,27 @@ export function ExploreView() {
 
   const [localFilters, setLocalFilters] = useState<FilterState>({ ...filters });
 
+  useEffect(() => {
+    let active = true;
+    const loadCatalog = async () => {
+      try {
+        const response = await fetch('/api/models?limit=60', { cache: 'no-store' });
+        const payload = await response.json().catch(() => null) as { models?: CatalogModelData[] } | null;
+        if (!active) return;
+        const nextModels = response.ok && payload?.models?.length ? payload.models : FALLBACK_MODELS;
+        setCatalogModels(nextModels);
+      } catch {
+        if (active) setCatalogModels(FALLBACK_MODELS);
+      } finally {
+        if (active) setCatalogReady(true);
+      }
+    };
+    void loadCatalog();
+    return () => { active = false; };
+  }, []);
+
   const filtered = useMemo(() => {
-    let result = [...MOCK_MODELS];
+    let result = [...catalogModels];
 
     if (search) {
       const q = search.toLowerCase();
@@ -193,7 +124,7 @@ export function ExploreView() {
     }
 
     return result;
-  }, [search, activeCategory, filters, sort]);
+  }, [catalogModels, search, activeCategory, filters, sort]);
 
   const activeFilterCount = Object.entries(filters).filter(([, v]) => v !== undefined && v !== false).length;
 
@@ -276,7 +207,7 @@ export function ExploreView() {
 
       {/* Results count */}
       <div className="px-4 py-3 text-xs text-muted-foreground">
-        {filtered.length} modèle{filtered.length > 1 ? 's' : ''}
+        {catalogReady ? `${filtered.length} modèle${filtered.length > 1 ? 's' : ''}` : 'Chargement du catalogue...'}
       </div>
 
       {/* Grid */}

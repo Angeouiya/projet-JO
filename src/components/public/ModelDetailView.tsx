@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Heart, Share2, Maximize2, BedDouble, Bath,
@@ -11,131 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
+import { DEFAULT_CATALOG_MODELS } from '@/data/catalog-models';
 import { FORMAT_XOF, FORMAT_SHORT_XOF } from '@/types';
 import type { CatalogModelData } from '@/types';
 
-const MODELS_MAP: Record<string, CatalogModelData> = {
-  '1': {
-    id: '1', name: 'Villa Aurore', slug: 'villa-aurore', categoryId: 'villa',
-    categoryName: 'Villa basse', mainImage: '/images/villa-1.png',
-    images: ['/images/villa-1.png', '/images/interieur-1.png', '/images/plan-1.png'],
-    plans: ['/images/plan-1.png'], levels: 1, bedrooms: 4, bathrooms: 3, surfaceArea: 220,
-    minLandArea: 500, standing: 'Premium', style: 'Moderne',
-    equipment: ['Piscine', 'Garage', 'Climatisation', 'Cuisine américaine', 'Jardin paysager', 'Terrasse couverte'],
-    budgetMin: 55_000_000, budgetMax: 75_000_000, durationMin: 6, durationMax: 9,
-    description: 'Villa contemporaine à toit plat avec piscine, idéale pour les familles. Design moderne avec de grandes ouvertures et un jardin paysager.',
-    features: ['Séjour double hauteur', 'Suite parentale avec dressing', 'Cuisine ouverte sur terrasse', 'Piscine à débordement'],
-    viewCount: 342, isPublished: true, isFeatured: true,
-  },
-  '2': {
-    id: '2', name: 'Duplex Horizon', slug: 'duplex-horizon', categoryId: 'duplex',
-    categoryName: 'Duplex', mainImage: '/images/duplex-1.png',
-    images: ['/images/duplex-1.png', '/images/interieur-1.png', '/images/plan-1.png'],
-    plans: ['/images/plan-1.png'], levels: 2, bedrooms: 5, bathrooms: 4, surfaceArea: 310,
-    minLandArea: 400, standing: 'Luxe', style: 'Contemporain',
-    equipment: ['Piscine', 'Garage double', 'Terrasse', 'Climatisation', 'Cave', 'Buanderie'],
-    budgetMin: 85_000_000, budgetMax: 120_000_000, durationMin: 8, durationMax: 12,
-    description: 'Duplex haut standing avec vue panoramique depuis la terrasse du 2e étage. Finitions luxueuses et équipements modernes.',
-    features: ['Terrasse panoramique', 'Garage double', 'Cave privative', 'Suite parentale avec balcon'],
-    viewCount: 287, isPublished: true, isFeatured: true,
-  },
-  '3': {
-    id: '3', name: 'Immeuble Élysée', slug: 'immeuble-elysee', categoryId: 'immeuble',
-    categoryName: 'Immeuble', mainImage: '/images/immeuble-1.png',
-    images: ['/images/immeuble-1.png', '/images/chantier-1.png', '/images/plan-1.png'],
-    plans: ['/images/plan-1.png'], levels: 4, bedrooms: 16, bathrooms: 16, surfaceArea: 1800,
-    minLandArea: 600, standing: 'Luxe', style: 'Néoclassique',
-    equipment: ['Ascenseur', 'Parking sous-sol', 'Gardien', 'Climatisation centrale', 'Générateur', 'Citerne'],
-    budgetMin: 350_000_000, budgetMax: 500_000_000, durationMin: 14, durationMax: 20,
-    description: 'Immeuble R+ avec commerces en rez-de-chaussée et appartements de standing. Idéal pour investisseurs.',
-    features: ['4 apparts par étage', 'Commerces RDC', 'Parking sous-sol 12 places', 'Ascenseur 8 personnes'],
-    viewCount: 198, isPublished: true, isFeatured: true,
-  },
-  '4': {
-    id: '4', name: 'Villa Émeraude', slug: 'villa-emeraude', categoryId: 'villa',
-    categoryName: 'Villa basse', mainImage: '/images/villa-1.png',
-    images: ['/images/villa-1.png', '/images/interieur-1.png'],
-    plans: ['/images/plan-1.png'], levels: 1, bedrooms: 3, bathrooms: 2, surfaceArea: 150,
-    minLandArea: 350, standing: 'Standard', style: 'Moderne',
-    equipment: ['Garage', 'Cuisine équipée', 'Jardin', 'Débord de toit'],
-    budgetMin: 30_000_000, budgetMax: 45_000_000, durationMin: 4, durationMax: 7,
-    description: 'Villa familiale compacte et fonctionnelle. Idéale pour un premier achat ou un investissement locatif.',
-    features: ['Séjour lumineux', '3 chambres avec rangements', 'Jardin clôturé', 'Garage attenant'],
-    viewCount: 456, isPublished: true, isFeatured: false,
-  },
-  '5': {
-    id: '5', name: 'Cité Résidentielle', slug: 'cite-residentielle', categoryId: 'cite',
-    categoryName: 'Cité', mainImage: '/images/cite-1.png',
-    images: ['/images/cite-1.png', '/images/chantier-1.png'],
-    plans: [], levels: 2, bedrooms: 3, bathrooms: 2, surfaceArea: 120,
-    minLandArea: 200, standing: 'Économique', style: 'Pratique',
-    equipment: ['Garage', 'Espace vert', 'Clôture', 'Fosse septique'],
-    budgetMin: 18_000_000, budgetMax: 28_000_000, durationMin: 5, durationMax: 8,
-    description: 'Unité résidentielle économique pour programmes de cité. Construction rapide et budget maîtrisé.',
-    features: ['2 niveaux compacts', 'Espaces verts communs', 'Assainissement intégré', 'Budget optimisé'],
-    viewCount: 521, isPublished: true, isFeatured: false,
-  },
-  '6': {
-    id: '6', name: 'Triplex Prestige', slug: 'triplex-prestige', categoryId: 'triplex',
-    categoryName: 'Triplex', mainImage: '/images/triplex-1.png',
-    images: ['/images/triplex-1.png', '/images/interieur-1.png', '/images/plan-1.png'],
-    plans: ['/images/plan-1.png'], levels: 3, bedrooms: 6, bathrooms: 5, surfaceArea: 420,
-    minLandArea: 500, standing: 'Luxe', style: 'Contemporain',
-    equipment: ['Piscine', 'Garage triple', 'Rooftop', 'Domotique', 'Climatisation', 'Cave'],
-    budgetMin: 120_000_000, budgetMax: 180_000_000, durationMin: 10, durationMax: 14,
-    description: 'Triplex d\'exception avec rooftop privatif et domotique intégrée. Le summum du confort urbain.',
-    features: ['Rooftop avec vue panoramique', 'Domotique complète', '6 chambres dont 2 suites', 'Cave et buanderie'],
-    viewCount: 176, isPublished: true, isFeatured: true,
-  },
-  '7': {
-    id: '7', name: 'Villa Bambou', slug: 'villa-bambou', categoryId: 'villa',
-    categoryName: 'Villa basse', mainImage: '/images/villa-1.png',
-    images: ['/images/villa-1.png', '/images/interieur-1.png'],
-    plans: [], levels: 1, bedrooms: 2, bathrooms: 1, surfaceArea: 95,
-    minLandArea: 250, standing: 'Économique', style: 'Tropical',
-    equipment: ['Terrasse', 'Jardin'],
-    budgetMin: 15_000_000, budgetMax: 22_000_000, durationMin: 3, durationMax: 5,
-    description: 'Petite villa tropicale économique, parfaite pour les jeunes ménages ou comme maison de vacances.',
-    features: ['2 chambres spacieuses', 'Terrasse ouverte', 'Jardin tropical', 'Construction rapide'],
-    viewCount: 634, isPublished: true, isFeatured: false,
-  },
-  '8': {
-    id: '8', name: 'Immeuble Commerce', slug: 'immeuble-commerce', categoryId: 'immeuble',
-    categoryName: 'Immeuble', mainImage: '/images/immeuble-1.png',
-    images: ['/images/immeuble-1.png', '/images/chantier-1.png', '/images/plan-1.png'],
-    plans: ['/images/plan-1.png'], levels: 5, bedrooms: 20, bathrooms: 20, surfaceArea: 2500,
-    minLandArea: 800, standing: 'Premium', style: 'Moderne',
-    equipment: ['Ascenseur', 'Parking', 'Boutiques RDC', 'Gardien 24/7', 'Générateur'],
-    budgetMin: 450_000_000, budgetMax: 700_000_000, durationMin: 18, durationMax: 24,
-    description: 'Immeuble mixte R+ avec commerces en rez-de-chaussée et appartements aux étages. Rentabilité assurée.',
-    features: ['5 niveaux habitables', 'Boutiques et bureaux RDC', 'Parking sous-sol', 'Gardien 24h/24'],
-    viewCount: 143, isPublished: true, isFeatured: false,
-  },
-  '9': {
-    id: '9', name: 'Duplex Cocody', slug: 'duplex-cocody', categoryId: 'duplex',
-    categoryName: 'Duplex', mainImage: '/images/duplex-1.png',
-    images: ['/images/duplex-1.png', '/images/interieur-1.png', '/images/plan-1.png'],
-    plans: ['/images/plan-1.png'], levels: 2, bedrooms: 4, bathrooms: 3, surfaceArea: 260,
-    minLandArea: 350, standing: 'Premium', style: 'Contemporain',
-    equipment: ['Piscine', 'Garage', 'Buanderie', 'Climatisation'],
-    budgetMin: 65_000_000, budgetMax: 90_000_000, durationMin: 7, durationMax: 10,
-    description: 'Duplex premium avec piscine, idéal pour les quartiers résidentiels d\'Abidjan.',
-    features: ['4 chambres dont suite parentale', 'Piscine privée', 'Garage indépendant', 'Buanderie'],
-    viewCount: 298, isPublished: true, isFeatured: true,
-  },
-  '10': {
-    id: '10', name: 'Villa Palmiers', slug: 'villa-palmiers', categoryId: 'villa',
-    categoryName: 'Villa basse', mainImage: '/images/villa-1.png',
-    images: ['/images/villa-1.png', '/images/interieur-1.png', '/images/plan-1.png'],
-    plans: ['/images/plan-1.png'], levels: 1, bedrooms: 5, bathrooms: 4, surfaceArea: 320,
-    minLandArea: 600, standing: 'Luxe', style: 'Balinais',
-    equipment: ['Piscine', 'Garage double', 'Jardin paysager', 'Suite parentale', 'Climatisation', 'Pool house'],
-    budgetMin: 90_000_000, budgetMax: 130_000_000, durationMin: 8, durationMax: 12,
-    description: 'Villa de luxe au style balinais avec piscine à débordement et jardin paysager. Un cadre de vie exceptionnel.',
-    features: ['Style balinais authentique', 'Piscine avec pool house', 'Suite parentale VIP', 'Jardin paysager'],
-    viewCount: 412, isPublished: true, isFeatured: true,
-  },
-};
+const FALLBACK_MODELS_MAP = Object.fromEntries(DEFAULT_CATALOG_MODELS.map(model => [model.id, model]));
 
 const SIMILAR_IDS: Record<string, string[]> = {
   '1': ['4', '7', '10', '9'],
@@ -151,13 +31,34 @@ const SIMILAR_IDS: Record<string, string[]> = {
 };
 
 export function ModelDetailView() {
-  const { viewParams, goBack, navigate, requireAuth, userFavorites, toggleFavorite } = useAppStore();
+  const { viewParams, goBack, navigate, requireAuth, userFavorites, toggleFavorite, addToast } = useAppStore();
   const modelId = viewParams?.id || '1';
-  const model = MODELS_MAP[modelId];
+  const [catalogModels, setCatalogModels] = useState<CatalogModelData[]>(DEFAULT_CATALOG_MODELS);
   const [activeImage, setActiveImage] = useState(0);
   const galleryRef = useRef<HTMLDivElement>(null);
   const similarRef = useRef(null);
   const isSimilarInView = useInView(similarRef, { once: true, margin: '-40px' });
+  const catalogMap = useMemo(
+    () => Object.fromEntries(catalogModels.map(item => [item.id, item])),
+    [catalogModels]
+  );
+  const model = catalogMap[modelId] || catalogModels.find(item => item.slug === modelId) || FALLBACK_MODELS_MAP[modelId];
+
+  useEffect(() => {
+    let active = true;
+    const loadCatalog = async () => {
+      try {
+        const response = await fetch('/api/models?limit=60', { cache: 'no-store' });
+        const payload = await response.json().catch(() => null) as { models?: CatalogModelData[] } | null;
+        if (!active) return;
+        if (response.ok && payload?.models?.length) setCatalogModels(payload.models);
+      } catch {
+        if (active) setCatalogModels(DEFAULT_CATALOG_MODELS);
+      }
+    };
+    void loadCatalog();
+    return () => { active = false; };
+  }, []);
 
   if (!model) {
     return (
@@ -173,10 +74,28 @@ export function ModelDetailView() {
   const images = model.images.length > 0 ? model.images : [model.mainImage || ''];
   const isFav = userFavorites.includes(model.id);
   const similarIds = SIMILAR_IDS[model.id] || [];
-  const similarModels = similarIds.map(id => MODELS_MAP[id]).filter(Boolean);
+  const similarModels = similarIds.map(id => catalogMap[id] || FALLBACK_MODELS_MAP[id]).filter(Boolean);
 
   const goPrevImage = () => setActiveImage(i => (i - 1 + images.length) % images.length);
   const goNextImage = () => setActiveImage(i => (i + 1) % images.length);
+  const handleShare = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const text = `${model.name} - ${model.categoryName || 'Buildify'}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: model.name, text, url });
+        addToast('Partage du modèle préparé.', 'success');
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        addToast('Lien du modèle copié.', 'success');
+      } else {
+        addToast('Partage indisponible sur cet appareil.', 'info');
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      addToast('Partage indisponible sur cet appareil.', 'info');
+    }
+  };
 
   const standingClass = model.standing === 'Luxe'
     ? 'bg-foreground text-background'
@@ -195,7 +114,7 @@ export function ModelDetailView() {
           <Button variant="ghost" size="icon" onClick={() => toggleFavorite(model.id)}>
             <Heart className={`size-5 ${isFav ? 'fill-foreground' : ''}`} />
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={handleShare} aria-label="Partager ce modèle">
             <Share2 className="size-5" />
           </Button>
         </div>
