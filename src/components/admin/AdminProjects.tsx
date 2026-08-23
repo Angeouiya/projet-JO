@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import {
   Search, ChevronRight, MapPin, Clock, User as UserIcon, FolderKanban,
   Landmark, ReceiptText, FileText, MessageSquare, ShieldCheck,
-  AlertCircle, Camera, HandCoins, ClipboardCheck,
+  AlertCircle, Camera, HandCoins, ClipboardCheck, Gauge,
+  CalendarDays, NotebookTabs, UserCheck,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { useAppStore } from '@/stores/app-store';
 import { formatProjectLocation } from '@/lib/project-format';
+import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
 import { AdminCreateProjectDialog } from './AdminCreateProjectDialog';
 import type { ProjectData } from '@/types';
 import type { LucideIcon } from 'lucide-react';
@@ -21,6 +23,7 @@ import type { LucideIcon } from 'lucide-react';
 const TABS = ['Tous', 'À traiter', 'Finance', 'Documents', 'Devis', 'En cours', 'Terminés', 'Suspendus', 'Brouillons'];
 
 type AdminProjectRow = {
+  project: ProjectData;
   id: string;
   ref: string;
   title: string;
@@ -39,6 +42,11 @@ type AdminProjectRow = {
   siteUpdates: number;
   nextAction: string;
   nextActionIcon: LucideIcon;
+  decisionScore: number;
+  scoreLabel: string;
+  blockers: string[];
+  activeDecisions: number;
+  primaryLabel: string;
 };
 
 function projectFinanceScore(project: ProjectData): number {
@@ -75,7 +83,9 @@ function nextAdminAction(project: ProjectData) {
 
 function rowFromProject(project: ProjectData): AdminProjectRow {
   const action = nextAdminAction(project);
+  const decisionCenter = buildProjectDecisionCenter(project, 'admin');
   return {
+    project,
     id: project.id,
     ref: project.referenceNumber,
     title: project.title || project.modelName || 'Projet BTP',
@@ -94,7 +104,126 @@ function rowFromProject(project: ProjectData): AdminProjectRow {
     siteUpdates: project.siteUpdates?.length ?? 0,
     nextAction: action.label,
     nextActionIcon: action.icon,
+    decisionScore: decisionCenter.score,
+    scoreLabel: decisionCenter.scoreLabel,
+    blockers: decisionCenter.blockers,
+    activeDecisions: decisionCenter.items.filter(item => item.tone === 'active' || item.tone === 'blocked').length,
+    primaryLabel: decisionCenter.primaryLabel,
   };
+}
+
+function formatCompactBudget(amount: number) {
+  if (!amount) return 'À cadrer';
+  if (amount >= 1_000_000) return `${new Intl.NumberFormat('fr-FR').format(Math.round(amount / 1_000_000))} M XOF`;
+  return `${new Intl.NumberFormat('fr-FR').format(amount)} XOF`;
+}
+
+function searchAdminProject(row: AdminProjectRow, query: string): boolean {
+  if (!query) return true;
+  const haystack = [
+    row.ref,
+    row.title,
+    row.client,
+    row.type,
+    row.city,
+    row.nextAction,
+    row.scoreLabel,
+    row.project.clientEmail,
+    row.project.clientPhone,
+    row.project.financing?.bankName,
+    row.project.financing?.financingPurpose,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return haystack.includes(query);
+}
+
+function AdminOperationsCenter({
+  projects,
+  onOpenProject,
+}: {
+  projects: AdminProjectRow[];
+  onOpenProject: (projectId: string) => void;
+}) {
+  if (projects.length === 0) return null;
+
+  const priorityRows = [...projects]
+    .sort((a, b) => {
+      const aWeight = a.blockers.length * 40 + a.activeDecisions * 12 + (100 - a.decisionScore);
+      const bWeight = b.blockers.length * 40 + b.activeDecisions * 12 + (100 - b.decisionScore);
+      return bWeight - aWeight;
+    })
+    .slice(0, 3);
+  const adminSignals = [
+    { label: 'Décisions actives', value: projects.reduce((total, project) => total + project.activeDecisions, 0), icon: NotebookTabs },
+    { label: 'Blocages', value: projects.reduce((total, project) => total + project.blockers.length, 0), icon: AlertCircle },
+    { label: 'Planning', value: projects.reduce((total, project) => total + (project.project.scheduleItems?.length ?? 0), 0), icon: CalendarDays },
+    { label: 'Responsables', value: projects.filter(project => Boolean(project.project.assignedTo)).length, icon: UserCheck },
+  ];
+  const averageScore = Math.round(projects.reduce((total, project) => total + project.decisionScore, 0) / projects.length);
+
+  return (
+    <Card className="py-0 gap-0 border-foreground/10">
+      <CardContent className="p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Centre d’opérations</p>
+            <h2 className="mt-1 text-lg font-bold">Priorités admin, finance, documents et décisions client</h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Vue portefeuille pour traiter les dossiers critiques sans ouvrir chaque fiche une par une.
+            </p>
+          </div>
+          <div className="rounded-lg border bg-muted/30 px-4 py-3">
+            <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Gauge className="size-3.5" />
+              Score moyen
+            </p>
+            <p className="mt-1 text-xl font-bold">{averageScore}%</p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {adminSignals.map(item => (
+            <div key={item.label} className="rounded-lg border bg-background p-3">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <item.icon className="size-3.5" />
+                {item.label}
+              </p>
+              <p className="mt-1 text-lg font-bold">{item.value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-2 xl:grid-cols-3">
+          {priorityRows.map(row => (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => onOpenProject(row.id)}
+              className="min-w-0 rounded-lg border bg-muted/20 p-3 text-left transition-colors hover:bg-muted/40"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-mono text-muted-foreground">{row.ref}</p>
+                  <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5">{row.title}</p>
+                </div>
+                <Badge variant={row.blockers.length ? 'destructive' : 'outline'} className="shrink-0 text-[10px]">
+                  {row.decisionScore}%
+                </Badge>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{row.primaryLabel} · {row.client}</p>
+              {row.blockers.length > 0 && (
+                <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+                  {row.blockers.slice(0, 2).join(' · ')}
+                </p>
+              )}
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
@@ -116,6 +245,7 @@ export function AdminProjects() {
   const { navigate, userProjects } = useAppStore();
   const [tab, setTab] = useState('Tous');
   const [search, setSearch] = useState('');
+  const normalizedSearch = search.trim().toLowerCase();
 
   const projects = useMemo(() => {
     return userProjects.map(rowFromProject);
@@ -130,7 +260,7 @@ export function AdminProjects() {
     if (tab === 'Terminés' && p.status !== 'delivered') return false;
     if (tab === 'Suspendus' && p.status !== 'suspended') return false;
     if (tab === 'Brouillons' && p.status !== 'draft') return false;
-    if (search && !p.ref.toLowerCase().includes(search.toLowerCase()) && !p.title.toLowerCase().includes(search.toLowerCase()) && !p.client.toLowerCase().includes(search.toLowerCase())) return false;
+    if (!searchAdminProject(p, normalizedSearch)) return false;
     return true;
   });
   const portfolio = {
@@ -176,9 +306,14 @@ export function AdminProjects() {
         ))}
       </div>
 
+      <AdminOperationsCenter
+        projects={projects}
+        onOpenProject={(projectId) => navigate('admin-project-detail', { id: projectId })}
+      />
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Référence, titre, client..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder="Référence, client, ville, ouvrage, banque..." value={search} onChange={e => setSearch(e.target.value)} className="h-11 rounded-lg pl-9" />
       </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar">
@@ -209,7 +344,7 @@ export function AdminProjects() {
           </Card>
         ) : filtered.map(p => {
           const NextIcon = p.nextActionIcon;
-          const globalScore = Math.max(p.progress, p.readiness, p.financeScore);
+          const globalScore = Math.max(p.progress, p.readiness, p.financeScore, p.decisionScore);
 
           return (
           <Card key={p.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('admin-project-detail', { id: p.id })}>
@@ -234,6 +369,9 @@ export function AdminProjects() {
                       Prochaine action
                     </p>
                     <p className="mt-1 text-sm font-semibold">{p.nextAction}</p>
+                    <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                      {p.activeDecisions} décision{p.activeDecisions > 1 ? 's' : ''} active{p.activeDecisions > 1 ? 's' : ''} · {p.scoreLabel}
+                    </p>
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -254,11 +392,21 @@ export function AdminProjects() {
                       <p className="mt-1 text-sm font-bold">{p.messages + p.siteUpdates}</p>
                     </div>
                   </div>
+
+                  {p.blockers.length > 0 && (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {p.blockers.slice(0, 2).map(blocker => (
+                        <div key={blocker} className="rounded-lg border border-dashed bg-background px-3 py-2 text-xs leading-5 text-muted-foreground">
+                          {blocker}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 lg:w-52 lg:grid-cols-1">
                   <div className="rounded-lg border p-3 text-left lg:text-right">
-                    <p className="text-sm font-semibold">{p.budget ? `${(p.budget / 1000000).toFixed(0)} M` : 'À cadrer'}</p>
+                    <p className="text-sm font-semibold">{formatCompactBudget(p.budget)}</p>
                     <p className="text-xs text-muted-foreground">Budget XOF</p>
                   </div>
                   <div className="rounded-lg border p-3">

@@ -3,19 +3,23 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, FolderKanban, FileEdit, CheckCircle2, Clock,
+  Plus, FolderKanban, FileEdit, CheckCircle2,
   MapPin, ChevronRight, RefreshCw, ArrowUpDown,
   Landmark, ReceiptText, MessageSquare, FileText,
   Camera, ShieldCheck, HandCoins, AlertCircle,
+  Search, ClipboardList, Gauge, CalendarDays,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_SHORT_XOF } from '@/types';
 import { formatProjectLocation } from '@/lib/project-format';
+import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
+import type { ProjectDecisionTone } from '@/lib/project-decision-center';
 import type { ProjectData } from '@/types';
 
 type FilterTab = 'all' | 'submitted' | 'info_required' | 'proposal_validated' | 'quote_sent' | 'in_progress' | 'draft' | 'delivered';
@@ -77,6 +81,33 @@ function projectBudgetLabel(project: ProjectData) {
   return 'À cadrer';
 }
 
+function toneBadgeClass(tone: ProjectDecisionTone): string {
+  if (tone === 'good') return 'border-foreground bg-foreground text-background';
+  if (tone === 'active') return 'border-foreground/35 bg-muted/50 text-foreground';
+  if (tone === 'warning') return 'border-dashed border-foreground/35 bg-background text-foreground';
+  if (tone === 'blocked') return 'border-destructive/40 bg-destructive/10 text-destructive';
+  return 'border-border bg-muted/30 text-muted-foreground';
+}
+
+function searchProject(project: ProjectData, query: string): boolean {
+  if (!query) return true;
+  const haystack = [
+    project.referenceNumber,
+    project.title,
+    project.modelName,
+    project.categoryName,
+    project.city,
+    project.country,
+    project.clientPresence,
+    project.financing?.bankName,
+    project.financing?.financingPurpose,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return haystack.includes(query);
+}
+
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
@@ -115,11 +146,120 @@ function EmptyState({ activeTab, onNavigate }: { activeTab: FilterTab; onNavigat
   );
 }
 
+function ClientProjectCommandCenter({
+  projects,
+  onOpenProject,
+}: {
+  projects: ProjectData[];
+  onOpenProject: (project: ProjectData) => void;
+}) {
+  if (projects.length === 0) return null;
+
+  const projectCenters = projects.map(project => ({
+    project,
+    center: buildProjectDecisionCenter(project, 'client'),
+  }));
+  const priority = [...projectCenters].sort((a, b) => {
+    const aWeight = a.center.blockers.length * 35 + (100 - a.center.score);
+    const bWeight = b.center.blockers.length * 35 + (100 - b.center.score);
+    return bWeight - aWeight;
+  })[0];
+  const decisionCount = projectCenters.reduce(
+    (total, item) => total + item.center.items.filter(decision => decision.tone === 'active' || decision.tone === 'blocked').length,
+    0
+  );
+  const unreadOperationalSignals = projects.reduce(
+    (total, project) => total + (project.projectMessages?.length ?? 0) + (project.siteUpdates?.length ?? 0),
+    0
+  );
+  const upcomingSchedules = projects.reduce(
+    (total, project) => total + (project.scheduleItems ?? []).filter(item => ['scheduled', 'confirmed', 'reschedule_requested'].includes(item.status)).length,
+    0
+  );
+  const publishedProposals = projects.reduce(
+    (total, project) => total + (project.visualProposals?.length ?? 0) + (project.visualProposal ? 1 : 0),
+    0
+  );
+  const commandStats = [
+    { label: 'Décisions', value: decisionCount, icon: ClipboardList },
+    { label: 'Planning', value: upcomingSchedules, icon: CalendarDays },
+    { label: 'Visuels', value: publishedProposals, icon: Camera },
+    { label: 'Échanges', value: unreadOperationalSignals, icon: MessageSquare },
+  ];
+  const visibleItems = priority.center.items.slice(0, 4);
+
+  return (
+    <Card className="py-0 gap-0 border-foreground/10">
+      <CardContent className="p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Centre de décision</p>
+            <h2 className="mt-1 break-words text-lg font-bold">{priority.center.headline}</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {priority.project.referenceNumber} · {priority.center.scoreLabel} · {PROJECT_STATUS_LABELS[priority.project.status] || priority.project.status}
+            </p>
+          </div>
+          <Button size="sm" className="h-10 shrink-0 rounded-lg gap-2" onClick={() => onOpenProject(priority.project)}>
+            {priority.center.primaryLabel}
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {commandStats.map(item => (
+            <div key={item.label} className="rounded-lg border bg-muted/20 px-3 py-2">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <item.icon className="size-3.5" />
+                {item.label}
+              </p>
+              <p className="mt-1 text-base font-bold">{item.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {priority.center.blockers.length > 0 && (
+          <div className="mt-4 rounded-lg border border-dashed bg-background p-3">
+            <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <AlertCircle className="size-3.5" />
+              À sécuriser maintenant
+            </p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {priority.center.blockers.slice(0, 4).map(item => (
+                <p key={item} className="rounded-md bg-muted/40 px-2.5 py-2 text-xs leading-5 text-muted-foreground">
+                  {item}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          {visibleItems.map(item => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onOpenProject(priority.project)}
+              className="min-w-0 rounded-lg border bg-background p-3 text-left transition-colors hover:bg-muted/40"
+            >
+              <span className={`inline-flex rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wider ${toneBadgeClass(item.tone)}`}>
+                {item.status}
+              </span>
+              <span className="mt-2 block text-sm font-semibold leading-5">{item.title}</span>
+              <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">{item.owner}</span>
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ProjectCard({ project, onClick }: { project: ProjectData; onClick: () => void }) {
   const nextAction = projectNextAction(project);
   const NextIcon = nextAction.icon;
   const financeScore = projectFinanceScore(project);
   const readiness = projectReadiness(project);
+  const decisionCenter = buildProjectDecisionCenter(project, 'client');
   const docs = project.documents?.length ?? 0;
   const quotes = project.quotes?.length ?? 0;
   const messages = project.projectMessages?.length ?? 0;
@@ -154,6 +294,26 @@ function ProjectCard({ project, onClick }: { project: ProjectData; onClick: () =
               <p className="mt-1 text-sm font-semibold leading-5">{nextAction.label}</p>
             </div>
           </div>
+        </div>
+
+        <div className="mt-3 rounded-lg border bg-background p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Gauge className="size-3.5" />
+              Santé dossier
+            </p>
+            <span className="text-sm font-bold">{decisionCenter.score}%</span>
+          </div>
+          <Progress value={decisionCenter.score} className="mt-2 h-1.5" />
+          {decisionCenter.blockers.length > 0 ? (
+            <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+              {decisionCenter.blockers.slice(0, 2).join(' · ')}
+            </p>
+          ) : (
+            <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
+              {decisionCenter.scoreLabel}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-muted-foreground">
@@ -221,6 +381,7 @@ function ProjectCard({ project, onClick }: { project: ProjectData; onClick: () =
 export function ProjectsView() {
   const { navigate, user, userProjects } = useAppStore();
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
+  const [search, setSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshY, setRefreshY] = useState(0);
   const touchStartY = useRef(0);
@@ -228,6 +389,7 @@ export function ProjectsView() {
 
   const firstName = user?.name?.split(' ')[0] || 'Client';
   const projects = useMemo(() => userProjects, [userProjects]);
+  const normalizedSearch = search.trim().toLowerCase();
 
   const filteredProjects = activeTab === 'all'
     ? projects
@@ -237,6 +399,7 @@ export function ProjectsView() {
       if (activeTab === 'proposal_validated') return ['proposal_ready', 'proposal_validated'].includes(p.status);
       return p.status === activeTab;
     });
+  const visibleProjects = filteredProjects.filter(project => searchProject(project, normalizedSearch));
 
   const stats = {
     submitted: projects.filter(p => p.status === 'submitted').length,
@@ -385,6 +548,25 @@ export function ProjectsView() {
         </motion.div>
       </div>
 
+      <div className="px-4 mt-4">
+        <ClientProjectCommandCenter
+          projects={projects}
+          onOpenProject={(project) => navigate('project-detail', { id: project.id })}
+        />
+      </div>
+
+      <div className="px-4 mt-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Rechercher référence, ville, ouvrage, finance..."
+            className="h-11 rounded-lg pl-9"
+          />
+        </div>
+      </div>
+
       <div className="px-4 mt-6">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           {FILTER_TABS.map(tab => (
@@ -404,10 +586,10 @@ export function ProjectsView() {
       </div>
 
       <div className="px-4 mt-4">
-        {filteredProjects.length > 0 && (
+        {visibleProjects.length > 0 && (
           <div className="space-y-3">
             <AnimatePresence mode="popLayout">
-              {filteredProjects.map((project, i) => (
+              {visibleProjects.map((project, i) => (
                 <motion.div
                   key={project.id}
                   layout
@@ -423,7 +605,7 @@ export function ProjectsView() {
           </div>
         )}
 
-        {filteredProjects.length === 0 && !isRefreshing && (
+        {visibleProjects.length === 0 && !isRefreshing && (
           <EmptyState activeTab={activeTab} onNavigate={() => navigate('create')} />
         )}
       </div>
