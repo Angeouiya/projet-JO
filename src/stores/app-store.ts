@@ -573,8 +573,12 @@ export const useAppStore = create<AppState>()(
       }),
       assignProjectLead: (projectId, leadName) => set(s => {
         const now = new Date().toISOString();
+        let projectRef = '';
+        let projectTitle = '';
         const projects = s.userProjects.map(project => {
           if (project.id !== projectId) return project;
+          projectRef = project.referenceNumber;
+          projectTitle = project.title || project.modelName || project.categoryName || project.referenceNumber;
           return {
             ...project,
             assignedTo: leadName,
@@ -587,7 +591,25 @@ export const useAppStore = create<AppState>()(
           };
         });
 
-        return { userProjects: projects };
+        if (!projectRef) return { userProjects: projects };
+
+        const notifications: NotificationData[] = [
+          {
+            id: uniqueId('notif'),
+            title: 'Responsable dossier affecté',
+            message: `${leadName} est maintenant le responsable Buildify du dossier ${projectRef} (${projectTitle}).`,
+            type: 'team',
+            audience: 'client',
+            link: 'project-detail',
+            projectId,
+            actionLabel: 'Voir équipe',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications, s.isAdmin) };
       }),
       requestProjectInfo: (projectId, message) => set(s => {
         const now = new Date().toISOString();

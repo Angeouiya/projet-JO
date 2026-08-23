@@ -31,6 +31,7 @@ import {
   projectScheduleTypeLabel,
   sortProjectSchedule,
 } from '@/lib/project-schedule';
+import { DEPARTMENT_LABELS, ROLE_LABELS } from '@/data/team';
 import type {
   ProjectData,
   ProjectDocumentData,
@@ -39,6 +40,7 @@ import type {
   ProjectQuoteData,
   ProjectScheduleItemData,
   ProjectSiteUpdateData,
+  TeamMemberData,
   ProjectVisualProposalData,
 } from '@/types';
 
@@ -59,7 +61,15 @@ type ProjectDetailData = {
   terrainStatus: string;
   startDate: string;
   estimatedEnd: string;
-  team: { name: string; role: string }[];
+  team: {
+    name: string;
+    role: string;
+    department?: string;
+    photoUrl?: string;
+    email?: string;
+    phone?: string;
+    bio?: string;
+  }[];
   documents: { id?: string; type: string; name: string; date: string; icon: LucideIcon; url?: string; size?: number }[];
   messages: { id: string; sender: string; senderRole: string; text: string; time: string; isOwn: boolean }[];
   infoResponses?: ProjectData['missingInfoResponses'];
@@ -183,11 +193,12 @@ function getDocumentIcon(type: string, name = ''): LucideIcon {
   return FolderArchive;
 }
 
-function detailFromStoredProject(project: ProjectData): ProjectDetailData {
+function detailFromStoredProject(project: ProjectData, teamMembers: TeamMemberData[] = []): ProjectDetailData {
   const startDate = project.createdAt?.slice(0, 10) || 'Non défini';
   const siteUpdates = project.siteUpdates ?? [];
   const scheduleItems = sortProjectSchedule(project.scheduleItems ?? []);
   const latestSiteUpdate = siteUpdates[0];
+  const assignedMember = teamMembers.find(member => member.active && member.name === project.assignedTo);
   const projectMessages = (project.projectMessages ?? []).slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const missingInfoDate = project.missingInfoRequestedAt
     ? new Date(project.missingInfoRequestedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
@@ -208,7 +219,19 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
     terrainStatus: String(project.formData?.landStatus || 'À confirmer'),
     startDate,
     estimatedEnd: String(project.formData?.timeline || 'À planifier'),
-    team: project.assignedTo ? [{ name: project.assignedTo, role: 'Responsable dossier' }] : [],
+    team: assignedMember
+      ? [{
+          name: assignedMember.name,
+          role: ROLE_LABELS[assignedMember.role] || assignedMember.role,
+          department: DEPARTMENT_LABELS[assignedMember.department] || assignedMember.department,
+          photoUrl: assignedMember.photoUrl,
+          email: assignedMember.email,
+          phone: assignedMember.phone,
+          bio: assignedMember.bio,
+        }]
+      : project.assignedTo
+        ? [{ name: project.assignedTo, role: 'Responsable dossier' }]
+        : [],
     documents: (project.documents ?? []).map(document => ({
       id: document.id,
       type: document.type,
@@ -1763,13 +1786,26 @@ function ResumeTab({
             </h4>
             <div className="mt-3 space-y-2.5">
               {data.team.map((member) => (
-                <div key={member.name} className="flex items-center gap-3">
-                  <div className="size-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold flex-shrink-0">
-                    {member.name.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <div>
+                <div key={member.name} className="flex items-start gap-3 rounded-lg border p-3">
+                  {member.photoUrl ? (
+                    <img src={member.photoUrl} alt={member.name} className="size-12 shrink-0 rounded-lg object-cover grayscale" />
+                  ) : (
+                    <div className="size-12 rounded-lg bg-muted flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {member.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{member.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{member.role}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {member.role}{member.department ? ` · ${member.department}` : ''}
+                    </p>
+                    {member.bio && <p className="mt-1 text-xs leading-5 text-muted-foreground">{member.bio}</p>}
+                    {(member.email || member.phone) && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {member.email && <Badge variant="outline" className="max-w-full truncate text-[10px]">{member.email}</Badge>}
+                        {member.phone && <Badge variant="outline" className="text-[10px]">{member.phone}</Badge>}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -3401,10 +3437,10 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
 type TabValue = 'resume' | 'propositions' | 'financement' | 'planning' | 'documents' | 'messages' | 'devis' | 'chantier';
 
 export function ProjectDetailView() {
-  const { goBack, navigate, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, updateProjectFinancing, updateProjectScheduleStatus, respondProjectInfo, sendProjectMessage, addToast } = useAppStore();
+  const { goBack, navigate, viewParams, userProjects, teamMembers, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, updateProjectFinancing, updateProjectScheduleStatus, respondProjectInfo, sendProjectMessage, addToast } = useAppStore();
   const projectId = viewParams?.id || '';
   const storedProject = userProjects.find(project => project.id === projectId || project.referenceNumber === projectId);
-  const data = storedProject ? detailFromStoredProject(storedProject) : null;
+  const data = storedProject ? detailFromStoredProject(storedProject, teamMembers) : null;
   const preferredTab: TabValue = data?.visualProposal || (data && ['proposal_ready', 'proposal_validated'].includes(data.status))
     ? 'propositions'
     : 'resume';

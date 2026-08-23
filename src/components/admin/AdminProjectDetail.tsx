@@ -48,9 +48,8 @@ import {
   projectScheduleTypeLabel,
   sortProjectSchedule,
 } from '@/lib/project-schedule';
+import { DEPARTMENT_LABELS, ROLE_LABELS } from '@/data/team';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
-
-const TEAM_LEADS = ['Awa Kouadio', 'Moussa Traoré', 'Ibrahim Diarra', 'Fatou Koné'];
 
 function formatBudget(min?: number, max?: number) {
   if (min && max) return `${FORMAT_XOF(min)} - ${FORMAT_XOF(max)}`;
@@ -385,6 +384,7 @@ export function AdminProjectDetail() {
     goBack,
     viewParams,
     userProjects,
+    teamMembers,
     assignProjectLead,
     requestProjectInfo,
     sendProjectMessage,
@@ -401,7 +401,8 @@ export function AdminProjectDetail() {
     () => userProjects.find(item => item.id === projectId || item.referenceNumber === projectId),
     [projectId, userProjects]
   );
-  const [leadName, setLeadName] = useState(project?.assignedTo || TEAM_LEADS[0]);
+  const activeTeamMembers = teamMembers.filter(member => member.active);
+  const [leadName, setLeadName] = useState(project?.assignedTo || activeTeamMembers[0]?.name || '');
   const [infoMessage, setInfoMessage] = useState(project?.missingInfo || 'Merci de compléter les dimensions du terrain et le document foncier disponible.');
   const [quoteAmount, setQuoteAmount] = useState(project?.budgetMax || project?.budgetMin || 0);
   const [quoteLabel, setQuoteLabel] = useState(`Devis ${project?.categoryName || project?.title || 'BTP'}`);
@@ -492,6 +493,10 @@ export function AdminProjectDetail() {
     || !proposalDuration.trim()
     || !proposalDeliverable.trim();
   const financing = project.financing || (project.formData?.financing as typeof project.financing);
+  const selectedLead = activeTeamMembers.find(member => member.name === leadName);
+  const assignedMember = activeTeamMembers.find(member => member.name === project.assignedTo);
+  const leadRoleLabel = selectedLead ? ROLE_LABELS[selectedLead.role] || selectedLead.role : 'Rôle à définir';
+  const leadDepartmentLabel = selectedLead ? DEPARTMENT_LABELS[selectedLead.department] || selectedLead.department : 'Équipe Buildify';
   const visualProposal = project.visualProposal;
   const locationLabel = formatProjectLocation(project);
   const paymentMilestones = financing?.milestones ?? [];
@@ -765,6 +770,11 @@ export function AdminProjectDetail() {
           <CardContent className="p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Responsable</p>
             <p className="mt-2 text-sm font-semibold">{project.assignedTo || 'À affecter'}</p>
+            {assignedMember && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {ROLE_LABELS[assignedMember.role] || assignedMember.role} · {DEPARTMENT_LABELS[assignedMember.department] || assignedMember.department}
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card className="py-0 gap-0">
@@ -879,11 +889,27 @@ export function AdminProjectDetail() {
                     onChange={(event) => setLeadName(event.target.value)}
                     className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm"
                   >
-                    {TEAM_LEADS.map(lead => <option key={lead} value={lead}>{lead}</option>)}
+                    {activeTeamMembers.length === 0 ? (
+                      <option value="">Aucun membre actif</option>
+                    ) : activeTeamMembers.map(member => (
+                      <option key={member.id} value={member.name}>
+                        {member.name} · {ROLE_LABELS[member.role] || member.role}
+                      </option>
+                    ))}
                   </select>
+                  {selectedLead && (
+                    <div className="mt-3 flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
+                      <img src={selectedLead.photoUrl} alt={selectedLead.name} className="size-10 shrink-0 rounded-lg object-cover grayscale" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{selectedLead.name}</p>
+                        <p className="text-xs text-muted-foreground">{leadRoleLabel} · {leadDepartmentLabel}</p>
+                        <p className="mt-1 break-words text-[11px] text-muted-foreground">{selectedLead.email}</p>
+                      </div>
+                    </div>
+                  )}
                   <ConfirmActionDialog
                     title="Affecter ce responsable ?"
-                    description={`${leadName.trim() || 'Le responsable sélectionné'} deviendra le pilote admin du dossier ${project.referenceNumber}. Cette information restera dans la plateforme administration.`}
+                    description={`${leadName.trim() || 'Le responsable sélectionné'} deviendra le pilote du dossier ${project.referenceNumber}. Le client verra le responsable dans son espace projet et recevra une notification.`}
                     confirmLabel="Affecter"
                     onConfirm={handleAssign}
                     trigger={(
