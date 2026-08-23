@@ -4,6 +4,7 @@ import NextImage from 'next/image';
 import { useMemo, useState } from 'react';
 import {
   ArrowLeft,
+  Camera,
   CheckCircle2,
   ClipboardCheck,
   Clock3,
@@ -201,6 +202,7 @@ export function AdminProjectDetail() {
     requestProjectInfo,
     sendProjectQuote,
     updateProjectStatus,
+    publishProjectSiteUpdate,
     addToast,
   } = useAppStore();
   const projectId = viewParams?.id || '';
@@ -211,6 +213,11 @@ export function AdminProjectDetail() {
   const [leadName, setLeadName] = useState(project?.assignedTo || TEAM_LEADS[0]);
   const [infoMessage, setInfoMessage] = useState(project?.missingInfo || 'Merci de compléter les dimensions du terrain et le document foncier disponible.');
   const [quoteAmount, setQuoteAmount] = useState(project?.budgetMax || project?.budgetMin || 0);
+  const [sitePhase, setSitePhase] = useState(project?.siteUpdates?.[0]?.phase || 'Fondations et implantation');
+  const [siteProgress, setSiteProgress] = useState(project?.siteUpdates?.[0]?.progress || Math.max(project?.progress || 25, 25));
+  const [siteImageUrl, setSiteImageUrl] = useState(project?.siteUpdates?.[0]?.imageUrl || '/images/chantier-1.png');
+  const [siteCaption, setSiteCaption] = useState(project?.siteUpdates?.[0]?.caption || 'Contrôle terrain documenté par l’équipe Buildify.');
+  const [siteReport, setSiteReport] = useState(project?.siteUpdates?.[0]?.report || 'Point de contrôle réalisé, photos publiées et prochaine étape à coordonner avec le responsable dossier.');
 
   if (!project) {
     return (
@@ -300,6 +307,25 @@ export function AdminProjectDetail() {
   const handlePlanning = () => {
     updateProjectStatus(project.id, 'planning', 'Projet passé en planification');
     addToast('Projet passé en planification.', 'success');
+  };
+
+  const siteUpdateDisabled = !sitePhase.trim()
+    || !siteCaption.trim()
+    || !siteImageUrl.trim()
+    || !Number.isFinite(Number(siteProgress))
+    || Number(siteProgress) < 0
+    || Number(siteProgress) > 100;
+
+  const handleSiteUpdate = () => {
+    if (siteUpdateDisabled) return;
+    publishProjectSiteUpdate(project.id, {
+      phase: sitePhase,
+      caption: siteCaption,
+      report: siteReport,
+      imageUrl: siteImageUrl,
+      progress: Number(siteProgress),
+    });
+    addToast('Avancement chantier publié côté client.', 'success');
   };
 
   return (
@@ -452,6 +478,71 @@ export function AdminProjectDetail() {
 
               <Separator className="my-4" />
 
+              <div className="rounded-lg border p-3">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">Publier un avancement chantier</h3>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      La photo, le rapport et la progression apparaissent dans l’espace projet client.
+                    </p>
+                  </div>
+                  <Badge variant="outline">{(project.siteUpdates ?? []).length} publication{(project.siteUpdates ?? []).length > 1 ? 's' : ''}</Badge>
+                </div>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="sitePhase">
+                      Phase
+                    </label>
+                    <Input id="sitePhase" value={sitePhase} onChange={event => setSitePhase(event.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="siteProgress">
+                      Progression
+                    </label>
+                    <Input
+                      id="siteProgress"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={siteProgress}
+                      onChange={event => setSiteProgress(Number(event.target.value || 0))}
+                    />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="siteImageUrl">
+                      Photo
+                    </label>
+                    <Input id="siteImageUrl" value={siteImageUrl} onChange={event => setSiteImageUrl(event.target.value)} />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="siteCaption">
+                      Légende client
+                    </label>
+                    <Input id="siteCaption" value={siteCaption} onChange={event => setSiteCaption(event.target.value)} />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="siteReport">
+                      Rapport court
+                    </label>
+                    <Textarea id="siteReport" value={siteReport} onChange={event => setSiteReport(event.target.value)} className="min-h-20" />
+                  </div>
+                </div>
+                <ConfirmActionDialog
+                  title="Publier cet avancement au client ?"
+                  description={`Le client verra la phase "${sitePhase.trim() || 'chantier'}", la photo et le rapport dans son onglet chantier. Une notification sera créée.`}
+                  confirmLabel="Publier"
+                  onConfirm={handleSiteUpdate}
+                  trigger={(
+                    <Button className="mt-3 w-full gap-2 sm:w-auto" disabled={siteUpdateDisabled}>
+                      <Camera className="size-4" />
+                      Publier l’avancement
+                    </Button>
+                  )}
+                />
+              </div>
+
+              <Separator className="my-4" />
+
               <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="infoMessage">
                 Information complémentaire
               </label>
@@ -537,6 +628,42 @@ export function AdminProjectDetail() {
               </CardContent>
             </Card>
           )}
+
+          <Card className="py-0 gap-0">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Camera className="size-4 text-muted-foreground" />
+                <h2 className="text-sm font-semibold">Suivi chantier publié</h2>
+              </div>
+              {(project.siteUpdates ?? []).length === 0 ? (
+                <p className="mt-3 rounded-lg border border-dashed p-4 text-sm leading-6 text-muted-foreground">
+                  Aucun avancement chantier publié. Utilisez l’action de publication pour alimenter l’espace client.
+                </p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {(project.siteUpdates ?? []).slice(0, 3).map(update => (
+                    <div key={update.id} className="overflow-hidden rounded-lg border">
+                      <div className="grid grid-cols-[88px_minmax(0,1fr)]">
+                        <div className="h-full min-h-24 bg-muted">
+                          <img src={update.imageUrl} alt={update.caption} className="h-full w-full object-cover grayscale" />
+                        </div>
+                        <div className="min-w-0 p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-semibold">{update.phase}</p>
+                            <Badge variant="outline" className="text-[10px]">{update.progress}%</Badge>
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">{update.caption}</p>
+                          <p className="mt-2 text-[11px] text-muted-foreground">
+                            {new Date(update.createdAt).toLocaleDateString('fr-FR')} · {update.createdBy || 'Équipe'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card className="py-0 gap-0">
             <CardContent className="p-4">

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { normalizeEmail, normalizeText, parseJsonField, serverError, validationError } from '@/lib/api-utils';
 import { createStoredProject, hasExternalProjectStore, listStoredProjects } from '@/lib/project-store';
-import type { ProjectDocumentData, ProjectFinancingData } from '@/types';
+import type { ProjectDocumentData, ProjectFinancingData, ProjectSiteUpdateData } from '@/types';
 
 const projectQuerySchema = z.object({
   userId: z.string().trim().min(1).optional(),
@@ -48,6 +48,16 @@ const projectCreateSchema = z.object({
     date: z.string().trim().min(1),
     url: z.string().trim().optional(),
     size: z.coerce.number().optional(),
+  })).optional(),
+  siteUpdates: z.array(z.object({
+    id: z.string().trim().min(1),
+    phase: z.string().trim().min(1),
+    caption: z.string().trim().min(1),
+    report: z.string().trim().optional(),
+    imageUrl: z.string().trim().min(1),
+    progress: z.coerce.number().int().min(0).max(100),
+    createdAt: z.string().trim().min(1),
+    createdBy: z.string().trim().optional(),
   })).optional(),
   formData: z.record(z.string(), z.unknown()).optional(),
 }).passthrough();
@@ -211,6 +221,7 @@ export async function POST(request: Request) {
         representativeRelation,
         financing: body.financing as ProjectFinancingData | undefined,
         documents: body.documents as ProjectDocumentData[] | undefined,
+        siteUpdates: body.siteUpdates as ProjectSiteUpdateData[] | undefined,
       });
 
       return NextResponse.json({ project, store: 'external' }, { status: 201 });

@@ -24,7 +24,7 @@ import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { formatProjectLocation } from '@/lib/project-format';
-import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectVisualProposalData } from '@/types';
+import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectSiteUpdateData, ProjectVisualProposalData } from '@/types';
 
 // ── Types dossier client ───────────────────────────────────
 
@@ -60,7 +60,8 @@ type ProjectDetailData = {
   representativePhone?: string;
   representativeRelation?: string;
   phases: { name: string; status: 'done' | 'in_progress' | 'pending'; progress: number }[];
-  photos: { id: string; caption: string; date: string }[];
+  siteUpdates: ProjectSiteUpdateData[];
+  photos: { id: string; caption: string; date: string; imageUrl: string; phase: string; report?: string; progress: number }[];
 };
 
 type VisualProposal = Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy' | 'strengths'> & {
@@ -162,6 +163,8 @@ function getDocumentIcon(type: string, name = ''): LucideIcon {
 
 function detailFromStoredProject(project: ProjectData): ProjectDetailData {
   const startDate = project.createdAt?.slice(0, 10) || 'Non défini';
+  const siteUpdates = project.siteUpdates ?? [];
+  const latestSiteUpdate = siteUpdates[0];
   const missingInfoDate = project.missingInfoRequestedAt
     ? new Date(project.missingInfoRequestedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
     : 'Maintenant';
@@ -232,10 +235,19 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
       { name: 'Vérification', status: project.status === 'submitted' ? 'in_progress' : 'done', progress: project.status === 'submitted' ? 40 : 100 },
       { name: 'Étude & devis', status: ['proposal_validated', 'quote_sent', 'accepted', 'planning', 'in_progress', 'delivered'].includes(project.status) ? 'done' : 'pending', progress: ['proposal_validated', 'quote_sent', 'accepted', 'planning', 'in_progress', 'delivered'].includes(project.status) ? 100 : 0 },
       { name: 'Planification', status: project.status === 'planning' ? 'in_progress' : ['in_progress', 'delivered'].includes(project.status) ? 'done' : 'pending', progress: project.status === 'planning' ? 50 : ['in_progress', 'delivered'].includes(project.status) ? 100 : 0 },
-      { name: 'Chantier', status: project.status === 'in_progress' ? 'in_progress' : project.status === 'delivered' ? 'done' : 'pending', progress: project.status === 'in_progress' ? Math.max(project.progress, 25) : project.status === 'delivered' ? 100 : 0 },
+      { name: 'Chantier', status: project.status === 'in_progress' ? 'in_progress' : project.status === 'delivered' ? 'done' : 'pending', progress: latestSiteUpdate ? Math.max(project.progress, latestSiteUpdate.progress) : project.status === 'in_progress' ? Math.max(project.progress, 25) : project.status === 'delivered' ? 100 : 0 },
       { name: 'Livraison', status: project.status === 'delivered' ? 'done' : 'pending', progress: project.status === 'delivered' ? 100 : 0 },
     ],
-    photos: [],
+    siteUpdates,
+    photos: siteUpdates.map(update => ({
+      id: update.id,
+      caption: update.caption,
+      date: new Date(update.createdAt).toLocaleDateString('fr-FR'),
+      imageUrl: update.imageUrl || '/images/chantier-1.png',
+      phase: update.phase,
+      report: update.report,
+      progress: update.progress,
+    })),
   };
 }
 
@@ -1854,7 +1866,7 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
                   <span className="text-xs text-muted-foreground font-medium">{phase.progress}%</span>
                 </div>
                 {phase.status !== 'pending' && (
-                  <Progress value={phase.progress} className="h-1.5 ml-7" />
+                  <Progress value={phase.progress} className="ml-7 h-1.5 w-[calc(100%-1.75rem)]" />
                 )}
               </div>
             ))}
@@ -1875,14 +1887,17 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
               <p className="mt-2 text-xs text-muted-foreground">Aucune photo disponible.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
               {data.photos.map((photo) => (
                 <div
                   key={photo.id}
                   className="aspect-[4/3] rounded-lg bg-muted flex items-center justify-center overflow-hidden relative group"
                 >
-                  <Camera className="size-6 text-muted-foreground/20" />
+                  <img src={photo.imageUrl} alt={photo.caption} className="h-full w-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-2">
+                    <Badge variant="secondary" className="mb-1 w-fit bg-white/90 text-[9px] text-black">
+                      {photo.progress}%
+                    </Badge>
                     <p className="text-[10px] text-white font-medium leading-tight">{photo.caption}</p>
                     <p className="text-[9px] text-white/60 mt-0.5">{photo.date}</p>
                   </div>
@@ -1900,22 +1915,29 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
             <AlertCircle className="size-3.5" />
             Rapports de chantier
           </h4>
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <ClipboardList className="size-4 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">Rapport hebdomadaire S02</p>
-                <p className="text-[11px] text-muted-foreground">2025-01-06 – 2025-01-10</p>
-              </div>
+          {data.siteUpdates.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              Les rapports publiés par l’équipe terrain apparaîtront ici avec les photos, le pourcentage et la phase concernée.
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <ClipboardCheck className="size-4 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">Rapport hebdomadaire S01</p>
-                <p className="text-[11px] text-muted-foreground">2024-12-30 – 2025-01-03</p>
-              </div>
+          ) : (
+            <div className="space-y-2">
+              {data.siteUpdates.map(update => (
+                <div key={update.id} className="flex items-start gap-3 rounded-lg bg-muted/50 p-3">
+                  <ClipboardList className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium">{update.phase}</p>
+                      <Badge variant="outline" className="text-[10px]">{update.progress}%</Badge>
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {new Date(update.createdAt).toLocaleString('fr-FR')} · {update.createdBy || 'Équipe Buildify'}
+                    </p>
+                    {update.report && <p className="mt-2 text-xs leading-5 text-muted-foreground">{update.report}</p>}
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

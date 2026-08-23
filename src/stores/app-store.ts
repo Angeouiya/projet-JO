@@ -14,6 +14,7 @@ import type {
   ProjectActivityData,
   ProjectFinancingData,
   ProjectVisualProposalData,
+  ProjectSiteUpdateData,
   NotificationData,
   TeamMemberData,
 } from '@/types';
@@ -26,6 +27,7 @@ import { DEFAULT_TEAM_MEMBERS } from '@/data/team';
 type ProjectRequestInput = Partial<ProjectData> & Pick<ProjectData, 'referenceNumber'>;
 type AuthResumeAction = 'submit-configurator';
 type TeamMemberInput = Omit<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'> & Partial<Pick<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'>>;
+type ProjectSiteUpdateInput = Omit<ProjectSiteUpdateData, 'id' | 'createdAt' | 'createdBy'> & Partial<Pick<ProjectSiteUpdateData, 'id' | 'createdAt' | 'createdBy'>>;
 
 interface AppState {
   // Navigation
@@ -118,6 +120,7 @@ interface AppState {
   updateProjectQuoteStatus: (projectId: string, quoteId: string, status: 'accepted' | 'refused') => void;
   validateProjectVisualProposal: (projectId: string, proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
   updateProjectFinancing: (projectId: string, financing: ProjectFinancingData) => void;
+  publishProjectSiteUpdate: (projectId: string, update: ProjectSiteUpdateInput) => void;
   updateProjectStatus: (projectId: string, status: string, label?: string) => void;
   toggleFavorite: (modelId: string) => void;
   setUserFavorites: (ids: string[]) => void;
@@ -406,6 +409,7 @@ export const useAppStore = create<AppState>()(
           quotes: input.quotes ?? [],
           visualProposal: input.visualProposal,
           financing: input.financing,
+          siteUpdates: input.siteUpdates ?? [],
           activityLog: [
             activity(
               createdByAdmin ? 'Dossier créé dans la plateforme admin' : 'Demande client soumise',
@@ -798,6 +802,61 @@ export const useAppStore = create<AppState>()(
             link: s.isAdmin ? 'project-detail' : 'admin-project-detail',
             projectId,
             actionLabel: s.isAdmin ? 'Consulter' : 'Analyser',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications, s.isAdmin) };
+      }),
+      publishProjectSiteUpdate: (projectId, input) => set(s => {
+        const now = new Date().toISOString();
+        let projectRef = '';
+        let projectTitle = '';
+        const createdBy = input.createdBy || s.user?.name || 'Administration';
+        const update: ProjectSiteUpdateData = {
+          ...input,
+          id: input.id || uniqueId('site'),
+          phase: input.phase.trim(),
+          caption: input.caption.trim(),
+          report: input.report?.trim() || undefined,
+          imageUrl: input.imageUrl.trim(),
+          progress: Math.max(0, Math.min(100, Math.round(input.progress))),
+          createdAt: input.createdAt || now,
+          createdBy,
+        };
+
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          projectRef = project.referenceNumber;
+          projectTitle = project.title || project.modelName || project.categoryName || project.referenceNumber;
+          const nextProgress = Math.max(project.progress ?? 0, update.progress);
+          return {
+            ...project,
+            status: project.status === 'delivered' ? project.status : 'in_progress',
+            progress: nextProgress,
+            siteUpdates: [update, ...(project.siteUpdates ?? [])],
+            activityLog: [
+              activity(`Avancement chantier publié : ${update.phase} (${update.progress}%)`, createdBy, 'site'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        if (!projectRef) return { userProjects: projects };
+
+        const notifications: NotificationData[] = [
+          {
+            id: uniqueId('notif'),
+            title: 'Avancement chantier publié',
+            message: `${update.phase} est documenté à ${update.progress}% pour ${projectRef} (${projectTitle}).`,
+            type: 'site',
+            audience: 'client',
+            link: 'project-detail',
+            projectId,
+            actionLabel: 'Voir le chantier',
             isRead: false,
             createdAt: now,
           },

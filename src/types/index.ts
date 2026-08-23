@@ -133,6 +133,7 @@ export interface ProjectData {
   quotes?: ProjectQuoteData[];
   visualProposal?: ProjectVisualProposalData;
   financing?: ProjectFinancingData;
+  siteUpdates?: ProjectSiteUpdateData[];
   activityLog?: ProjectActivityData[];
   createdAt: string;
   updatedAt: string;
@@ -183,6 +184,17 @@ export interface ProjectPaymentMilestoneData {
   percent: number;
   expectedAmount?: number;
   status: 'planned' | 'due' | 'paid' | 'blocked';
+}
+
+export interface ProjectSiteUpdateData {
+  id: string;
+  phase: string;
+  caption: string;
+  report?: string;
+  imageUrl: string;
+  progress: number;
+  createdAt: string;
+  createdBy?: string;
 }
 
 export interface ProjectFinancingData {
@@ -238,7 +250,7 @@ export interface ProjectActivityData {
   id: string;
   label: string;
   actor: string;
-  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status' | 'proposal';
+  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status' | 'proposal' | 'site';
   createdAt: string;
 }
 
