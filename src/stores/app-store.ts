@@ -43,6 +43,7 @@ type ProjectQuoteInput = Partial<Omit<ProjectQuoteData, 'amount' | 'status' | 'd
 type ProjectPaymentMilestoneStatus = ProjectPaymentMilestoneData['status'];
 type ProjectVisualProposalInput = Omit<ProjectVisualProposalData, 'id' | 'publishedAt' | 'publishedBy' | 'validatedAt' | 'validatedBy'> & Partial<Pick<ProjectVisualProposalData, 'id' | 'publishedAt' | 'publishedBy'>>;
 type ProjectScheduleInput = Omit<ProjectScheduleItemData, 'id' | 'createdAt' | 'createdBy' | 'status'> & Partial<Pick<ProjectScheduleItemData, 'id' | 'createdAt' | 'createdBy' | 'status'>>;
+type ProjectScheduleStatus = ProjectScheduleItemData['status'];
 
 interface AppState {
   // Navigation
@@ -139,6 +140,7 @@ interface AppState {
   updateProjectFinancing: (projectId: string, financing: ProjectFinancingData) => void;
   updateProjectPaymentMilestoneStatus: (projectId: string, milestoneId: string, status: ProjectPaymentMilestoneStatus, note?: string) => void;
   scheduleProjectEvent: (projectId: string, event: ProjectScheduleInput) => void;
+  updateProjectScheduleStatus: (projectId: string, scheduleId: string, status: ProjectScheduleStatus, note?: string) => void;
   publishProjectSiteUpdate: (projectId: string, update: ProjectSiteUpdateInput) => void;
   updateProjectStatus: (projectId: string, status: string, label?: string) => void;
   toggleFavorite: (modelId: string) => void;
@@ -1129,6 +1131,94 @@ export const useAppStore = create<AppState>()(
             link: 'project-detail',
             projectId,
             actionLabel: 'Voir planning',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications, s.isAdmin) };
+      }),
+      updateProjectScheduleStatus: (projectId, scheduleId, status, note) => set(s => {
+        const now = new Date().toISOString();
+        const actor = s.user?.name || (s.isAdmin ? 'Administration Buildify' : 'Client');
+        const actorRole: ProjectMessageData['senderRole'] = s.isAdmin ? 'admin' : 'client';
+        const cleanNote = note?.trim() || undefined;
+        let projectRef = '';
+        let projectTitle = '';
+        let scheduleTitle = '';
+        let scheduleType: ProjectScheduleItemData['type'] | undefined;
+        let scheduleDate = '';
+        let scheduleMode: ProjectScheduleItemData['mode'] | undefined;
+        let scheduleTimeZone: string | undefined;
+
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          let changed = false;
+          const scheduleItems = (project.scheduleItems ?? []).map(item => {
+            if (item.id !== scheduleId) return item;
+            changed = true;
+            projectRef = project.referenceNumber;
+            projectTitle = project.title || project.modelName || project.categoryName || project.referenceNumber;
+            scheduleTitle = item.title;
+            scheduleType = item.type;
+            scheduleDate = item.scheduledAt;
+            scheduleMode = item.mode;
+            scheduleTimeZone = item.timeZone;
+            return {
+              ...item,
+              status,
+              clientResponseNote: actorRole === 'client' ? cleanNote : item.clientResponseNote,
+              clientRespondedAt: actorRole === 'client' ? now : item.clientRespondedAt,
+              clientRespondedBy: actorRole === 'client' ? actor : item.clientRespondedBy,
+              note: actorRole === 'admin' ? cleanNote : item.note,
+              updatedAt: now,
+            };
+          });
+
+          if (!changed) return project;
+
+          const statusText = projectScheduleStatusLabel(status).toLowerCase();
+          const messageText = actorRole === 'client'
+            ? `Planning client : ${scheduleTitle} est maintenant ${statusText}.${cleanNote ? ` Note client : ${cleanNote}` : ''}`
+            : `Planning mis à jour : ${scheduleTitle} est maintenant ${statusText}.${cleanNote ? ` Note : ${cleanNote}` : ''}`;
+          const message: ProjectMessageData = {
+            id: uniqueId('msg'),
+            senderName: actor,
+            senderRole: actorRole,
+            message: messageText,
+            createdAt: now,
+          };
+
+          return {
+            ...project,
+            scheduleItems,
+            progress: status === 'confirmed' ? Math.max(project.progress ?? 0, 22) : project.progress,
+            projectMessages: [
+              ...(project.projectMessages ?? []),
+              message,
+            ],
+            activityLog: [
+              activity(`Planning ${projectScheduleStatusLabel(status).toLowerCase()} : ${scheduleTitle}`, actor, 'schedule'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        if (!projectRef || !scheduleType || !scheduleMode) return { userProjects: projects };
+
+        const audience = actorRole === 'client' ? 'admin' : 'client';
+        const notifications: NotificationData[] = [
+          {
+            id: uniqueId('notif'),
+            title: actorRole === 'client' ? 'Réponse planning client' : 'Planning mis à jour',
+            message: `${projectRef} (${projectTitle}) : ${projectScheduleTypeLabel(scheduleType)} "${scheduleTitle}" est ${projectScheduleStatusLabel(status).toLowerCase()} pour ${formatProjectScheduleDate(scheduleDate, scheduleTimeZone)} · ${projectScheduleModeLabel(scheduleMode)}.${cleanNote ? ` Note : ${cleanNote}` : ''}`,
+            type: 'schedule',
+            audience,
+            link: actorRole === 'client' ? 'admin-project-detail' : 'project-detail',
+            projectId,
+            actionLabel: actorRole === 'client' ? 'Ouvrir dossier' : 'Voir planning',
             isRead: false,
             createdAt: now,
           },

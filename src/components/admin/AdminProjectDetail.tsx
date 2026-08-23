@@ -1126,31 +1126,46 @@ export function AdminProjectDetail() {
                 </div>
 
                 {nextScheduleItem && (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-lg border bg-muted/30 p-3">
-                      <div className="flex items-start gap-2">
-                        <CalendarCheck2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Prochain événement</p>
-                          <p className="mt-1 text-sm font-semibold break-words">{nextScheduleItem.title}</p>
+                  <div className="mt-3 space-y-2">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-lg border bg-muted/30 p-3">
+                        <div className="flex items-start gap-2">
+                          <CalendarCheck2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Prochain événement</p>
+                            <p className="mt-1 text-sm font-semibold break-words">{nextScheduleItem.title}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {formatProjectScheduleDate(nextScheduleItem.scheduledAt, nextScheduleItem.timeZone)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="rounded-lg border bg-muted/30 p-3">
+                        <div className="flex items-start gap-2">
+                          <MapPinned className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mode et statut</p>
+                            <p className="mt-1 text-sm font-semibold break-words">
+                              {projectScheduleTypeLabel(nextScheduleItem.type)} · {projectScheduleModeLabel(nextScheduleItem.mode)}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">{projectScheduleStatusLabel(nextScheduleItem.status)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {(nextScheduleItem.clientResponseNote || nextScheduleItem.clientRespondedAt) && (
+                      <div className="rounded-lg border bg-background p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Retour client</p>
+                        <p className="mt-1 text-sm font-semibold break-words">
+                          {nextScheduleItem.clientResponseNote || `${nextScheduleItem.clientRespondedBy || 'Client'} a répondu au planning.`}
+                        </p>
+                        {nextScheduleItem.clientRespondedAt && (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {formatProjectScheduleDate(nextScheduleItem.scheduledAt, nextScheduleItem.timeZone)}
+                            {new Date(nextScheduleItem.clientRespondedAt).toLocaleString('fr-FR')}
                           </p>
-                        </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="rounded-lg border bg-muted/30 p-3">
-                      <div className="flex items-start gap-2">
-                        <MapPinned className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mode et statut</p>
-                          <p className="mt-1 text-sm font-semibold break-words">
-                            {projectScheduleTypeLabel(nextScheduleItem.type)} · {projectScheduleModeLabel(nextScheduleItem.mode)}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">{projectScheduleStatusLabel(nextScheduleItem.status)}</p>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 )}
 

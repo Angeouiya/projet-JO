@@ -218,7 +218,7 @@ export interface ProjectScheduleItemData {
   id: string;
   type: 'appointment' | 'technical_visit' | 'site_meeting' | 'bank_meeting' | 'client_validation';
   title: string;
-  status: 'scheduled' | 'confirmed' | 'completed' | 'postponed' | 'cancelled';
+  status: 'scheduled' | 'confirmed' | 'completed' | 'postponed' | 'reschedule_requested' | 'cancelled';
   scheduledAt: string;
   durationMinutes: number;
   mode: 'phone' | 'video' | 'whatsapp' | 'site' | 'office' | 'bank';
@@ -226,6 +226,9 @@ export interface ProjectScheduleItemData {
   location?: string;
   preparation?: string;
   decisionExpected?: string;
+  clientResponseNote?: string;
+  clientRespondedAt?: string;
+  clientRespondedBy?: string;
   note?: string;
   createdAt: string;
   createdBy?: string;

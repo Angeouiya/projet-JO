@@ -3115,10 +3115,20 @@ function DevisTab({
   );
 }
 
-function PlanningTab({ data }: { data: ProjectDetailData }) {
+function PlanningTab({
+  data,
+  onScheduleStatus,
+}: {
+  data: ProjectDetailData;
+  onScheduleStatus?: (scheduleId: string, status: ProjectScheduleItemData['status'], note?: string) => void;
+}) {
+  const [notesBySchedule, setNotesBySchedule] = useState<Record<string, string>>({});
   const upcoming = data.scheduleItems.filter(item => new Date(item.scheduledAt).getTime() >= Date.now());
   const past = data.scheduleItems.filter(item => new Date(item.scheduledAt).getTime() < Date.now());
   const visibleItems = [...upcoming, ...past];
+  const setNote = (scheduleId: string, note: string) => {
+    setNotesBySchedule(current => ({ ...current, [scheduleId]: note }));
+  };
 
   if (visibleItems.length === 0) {
     return (
@@ -3154,6 +3164,8 @@ function PlanningTab({ data }: { data: ProjectDetailData }) {
       <div className="grid gap-3 lg:grid-cols-2">
         {visibleItems.map(item => {
           const isPast = new Date(item.scheduledAt).getTime() < Date.now();
+          const canAnswer = Boolean(onScheduleStatus) && !isPast && ['scheduled', 'postponed'].includes(item.status);
+          const rescheduleNote = notesBySchedule[item.id] ?? '';
 
           return (
             <Card key={item.id} className="py-0 gap-0">
@@ -3209,6 +3221,59 @@ function PlanningTab({ data }: { data: ProjectDetailData }) {
                     {item.note && (
                       <p className="rounded-lg border p-3 text-xs leading-5 text-muted-foreground">{item.note}</p>
                     )}
+                  </div>
+                )}
+                {(item.clientResponseNote || item.clientRespondedAt) && (
+                  <div className="mt-3 rounded-lg border bg-muted/30 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Retour client</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {item.clientResponseNote || `${item.clientRespondedBy || 'Client'} a répondu au planning.`}
+                    </p>
+                    {item.clientRespondedAt && (
+                      <p className="mt-2 text-[11px] text-muted-foreground">
+                        {new Date(item.clientRespondedAt).toLocaleString('fr-FR')}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {canAnswer && (
+                  <div className="mt-3 rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Votre réponse</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Confirmez votre présence ou demandez un report avec une raison claire pour que Buildify reprogramme vite.
+                    </p>
+                    <Textarea
+                      value={rescheduleNote}
+                      onChange={event => setNote(item.id, event.target.value)}
+                      className="mt-3 min-h-20"
+                      placeholder="Ex. Le mandataire est indisponible à cette date, proposer jeudi après-midi."
+                    />
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <ConfirmActionDialog
+                        title="Confirmer votre présence ?"
+                        description={`Buildify sera informé que vous confirmez ${item.title}. Le dossier admin sera mis à jour et l’équipe pourra préparer la suite.`}
+                        confirmLabel="Confirmer"
+                        onConfirm={() => onScheduleStatus?.(item.id, 'confirmed')}
+                        trigger={(
+                          <Button size="sm" className="gap-1.5 text-xs">
+                            <Check className="size-3.5" />
+                            Confirmer
+                          </Button>
+                        )}
+                      />
+                      <ConfirmActionDialog
+                        title="Demander un report ?"
+                        description="Votre demande sera transmise à l’administration avec la note saisie. Buildify pourra proposer une nouvelle date."
+                        confirmLabel="Demander"
+                        onConfirm={() => onScheduleStatus?.(item.id, 'reschedule_requested', rescheduleNote)}
+                        trigger={(
+                          <Button variant="outline" size="sm" className="gap-1.5 text-xs" disabled={rescheduleNote.trim().length < 8}>
+                            <Clock className="size-3.5" />
+                            Reporter
+                          </Button>
+                        )}
+                      />
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -3336,7 +3401,7 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
 type TabValue = 'resume' | 'propositions' | 'financement' | 'planning' | 'documents' | 'messages' | 'devis' | 'chantier';
 
 export function ProjectDetailView() {
-  const { goBack, navigate, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, updateProjectFinancing, respondProjectInfo, sendProjectMessage, addToast } = useAppStore();
+  const { goBack, navigate, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, updateProjectFinancing, updateProjectScheduleStatus, respondProjectInfo, sendProjectMessage, addToast } = useAppStore();
   const projectId = viewParams?.id || '';
   const storedProject = userProjects.find(project => project.id === projectId || project.referenceNumber === projectId);
   const data = storedProject ? detailFromStoredProject(storedProject) : null;
@@ -3464,7 +3529,15 @@ export function ProjectDetailView() {
                 } : undefined}
               />
             )}
-            {activeTab === 'planning' && <PlanningTab data={data} />}
+            {activeTab === 'planning' && (
+              <PlanningTab
+                data={data}
+                onScheduleStatus={storedProject ? (scheduleId, status, note) => {
+                  updateProjectScheduleStatus(storedProject.id, scheduleId, status, note);
+                  addToast(status === 'confirmed' ? 'Présence confirmée.' : 'Demande de report envoyée.', 'success');
+                } : undefined}
+              />
+            )}
             {activeTab === 'documents' && (
               <DocumentsTab
                 data={data}

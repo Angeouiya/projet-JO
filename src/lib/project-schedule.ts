@@ -22,6 +22,7 @@ export const PROJECT_SCHEDULE_STATUS_LABELS: Record<ProjectScheduleItemData['sta
   confirmed: 'Confirmé',
   completed: 'Réalisé',
   postponed: 'Reporté',
+  reschedule_requested: 'Report demandé',
   cancelled: 'Annulé',
 };
 
