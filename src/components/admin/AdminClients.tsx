@@ -16,31 +16,11 @@ import {
 import { useAppStore } from '@/stores/app-store';
 import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
 import { AdminCreateProjectDialog } from './AdminCreateProjectDialog';
-import type { ProjectData } from '@/types';
+import type { AdminClientData, ProjectData } from '@/types';
 
-type AdminClientRow = {
-  id: string;
-  name: string;
-  type: string;
-  phone?: string;
-  email?: string;
-  projects: number;
-  totalSpent: number;
-  city?: string;
-  lastActivity: string;
-  tags: string[];
-  notes: string;
-  projectIds: string[];
-};
+type AdminClientRow = AdminClientData;
 
 type ClientDraft = Pick<AdminClientRow, 'name' | 'type' | 'phone' | 'email' | 'city' | 'notes'>;
-
-const initialClients: AdminClientRow[] = [
-  { id: 'client-1', name: 'Kouamé Adama', type: 'particulier', phone: '+225 07 08 09 10', email: 'kouame@email.ci', projects: 2, totalSpent: 120000000, city: 'Cocody', lastActivity: 'Il y a 2h', tags: ['VIP', 'Récurrent'], notes: 'Souhaite être rappelé avant toute validation de devis.', projectIds: [] },
-  { id: 'client-2', name: 'Société Akwaba SARL', type: 'entreprise', phone: '+225 01 02 03 04', email: 'contact@akwaba.ci', projects: 3, totalSpent: 850000000, city: 'Plateau', lastActivity: 'Il y a 1h', tags: ['Entreprise', 'Promoteur'], notes: 'Dossiers à traiter avec exigence de planning détaillé.', projectIds: [] },
-  { id: 'client-3', name: 'Diallo Moussa', type: 'particulier', phone: '+225 05 06 07 08', email: 'diallo.m@email.ci', projects: 1, totalSpent: 55000000, city: 'Riviera', lastActivity: 'Il y a 1 jour', tags: ['Nouveau'], notes: '', projectIds: [] },
-  { id: 'client-4', name: 'Promo Côte SA', type: 'promoteur', phone: '+225 01 12 13 14', email: 'info@promocote.ci', projects: 5, totalSpent: 2400000000, city: 'Bingerville', lastActivity: 'Il y a 30 min', tags: ['VIP', 'Promoteur'], notes: 'Priorité forte sur immeubles R+ et VRD.', projectIds: [] },
-];
 
 const TYPE_LABELS: Record<string, string> = {
   particulier: 'Particulier',
@@ -111,6 +91,7 @@ function matchesClient(client: AdminClientRow, query: string) {
     client.email,
     client.phone,
     client.city,
+    client.notes,
     TYPE_LABELS[client.type],
     ...client.tags,
   ].some(value => value?.toLowerCase().includes(needle));
@@ -122,13 +103,16 @@ export function AdminClients() {
     userProjects,
     addToast,
     addNotification,
+    adminClients,
+    adminClientNotes,
+    addAdminClient,
+    setAdminClientNote,
   } = useAppStore();
-  const [manualClients, setManualClients] = useState(initialClients);
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [projectPanelClientId, setProjectPanelClientId] = useState<string | null>(null);
   const [noteClientId, setNoteClientId] = useState<string | null>(null);
-  const [clientNotes, setClientNotes] = useState<Record<string, string>>({});
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [messageClient, setMessageClient] = useState<AdminClientRow | null>(null);
   const [messageBody, setMessageBody] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -141,12 +125,23 @@ export function AdminClients() {
     notes: '',
   });
 
-  const workflowClients = useMemo(() => buildWorkflowClients(userProjects), [userProjects]);
+  const workflowClients = useMemo(
+    () => buildWorkflowClients(userProjects).map(client => ({
+      ...client,
+      notes: adminClientNotes[client.id] ?? client.notes,
+    })),
+    [adminClientNotes, userProjects]
+  );
   const clients = useMemo(() => {
     const workflowKeys = new Set(workflowClients.map(client => (client.email || client.phone || client.name).toLowerCase()));
-    const remainingManual = manualClients.filter(client => !workflowKeys.has((client.email || client.phone || client.name).toLowerCase()));
+    const remainingManual = adminClients
+      .filter(client => !workflowKeys.has((client.email || client.phone || client.name).toLowerCase()))
+      .map(client => ({
+        ...client,
+        notes: adminClientNotes[client.id] ?? client.notes,
+      }));
     return [...workflowClients, ...remainingManual];
-  }, [manualClients, workflowClients]);
+  }, [adminClientNotes, adminClients, workflowClients]);
 
   const projectsById = useMemo(() => new Map(userProjects.map(project => [project.id, project])), [userProjects]);
   const filtered = clients.filter(client => matchesClient(client, search));
@@ -181,18 +176,25 @@ export function AdminClients() {
       projectIds: [],
     };
 
-    setManualClients(prev => [client, ...prev]);
+    addAdminClient(client);
     setExpandedId(client.id);
     setAddOpen(false);
     resetDraft();
     addToast('Client ajouté à la plateforme admin.', 'success');
   };
 
-  const updateNote = (clientId: string, notes: string) => {
-    setClientNotes(prev => ({ ...prev, [clientId]: notes }));
-    setManualClients(prev => prev.map(client => (
-      client.id === clientId ? { ...client, notes, lastActivity: 'Mis à jour maintenant' } : client
-    )));
+  const updateNoteDraft = (clientId: string, notes: string) => {
+    setNoteDrafts(prev => ({ ...prev, [clientId]: notes }));
+  };
+
+  const saveClientNote = (client: AdminClientRow) => {
+    const notes = (noteDrafts[client.id] ?? client.notes).trim();
+    setAdminClientNote(client.id, notes);
+    setNoteDrafts(prev => {
+      const { [client.id]: _saved, ...rest } = prev;
+      return rest;
+    });
+    addToast('Note client enregistrée dans la plateforme admin.', 'success');
   };
 
   const openProjectsPanel = (client: AdminClientRow) => {
@@ -360,12 +362,12 @@ export function AdminClients() {
                               <Label htmlFor={`note-${client.id}`} className="text-xs">Note interne admin</Label>
                               <Textarea
                                 id={`note-${client.id}`}
-                                value={clientNotes[client.id] ?? client.notes}
-                                onChange={event => updateNote(client.id, event.target.value)}
+                                value={noteDrafts[client.id] ?? client.notes}
+                                onChange={event => updateNoteDraft(client.id, event.target.value)}
                                 placeholder="Ajouter une note visible uniquement dans la plateforme admin..."
                                 className="mt-2 min-h-24"
                               />
-                              <Button size="sm" className="mt-3" onClick={() => addToast('Note client enregistrée.', 'success')}>Enregistrer la note</Button>
+                              <Button size="sm" className="mt-3" onClick={() => saveClientNote(client)}>Enregistrer la note</Button>
                           </div>
                         )}
                       </div>

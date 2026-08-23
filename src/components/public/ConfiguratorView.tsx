@@ -2425,6 +2425,10 @@ export function ConfiguratorView() {
   }, [currentIdx, setConfiguratorStep]);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [currentIdx]);
+
+  useEffect(() => {
     if (isInitialized.current) return;
     isInitialized.current = true;
 
@@ -3555,8 +3559,8 @@ export function ConfiguratorView() {
   const financeRiskLabel = financeScoreMetric?.helper?.replace('Lecture risque : ', '') || 'À qualifier';
   const countryControlDisplay = countryControlLabel === "Côte d'Ivoire" ? 'CI' : countryControlLabel;
   const professionalControlLines = [
-    `Contrôle professionnel : Cat. ${categoryControlLabel} · Pays ${countryControlDisplay} · Ville ${cityControlLabel} · Budget ${budgetControlLabel}`,
-    `Finance : ${financeScoreMetric?.value || 'À compléter'} · Risque ${financeRiskLabel} · Dette ${debtMetric?.value || 'À calculer'} · Apport ${equityMetric?.value || 'À calculer'} · Réserve ${reserveMetric?.value || 'À saisir'} · Engagement après catégorie, lieu et budget.`,
+    `Contrôle professionnel · Catégorie ${categoryControlLabel} · Pays ${countryControlDisplay} · Ville ${cityControlLabel} · Budget ${budgetControlLabel} · Points : ouvrage, lieu, accès, pièces, financement.`,
+    `Finance · Score ${financeScoreMetric?.value || 'À compléter'} · Risque ${financeRiskLabel} · Endettement ${debtMetric?.value || 'À calculer'} · Apport ${equityMetric?.value || 'À calculer'} · Réserve ${reserveMetric?.value || 'À saisir'} · Aucun engagement sans catégorie, lieu et budget.`,
   ];
   const professionalControlLabel = [
     `Contrôle professionnel : Catégorie ${categoryControlLabel}, pays ${countryControlLabel}, ville ${cityControlLabel}, budget ${budgetControlLabel}.`,
@@ -3565,20 +3569,23 @@ export function ConfiguratorView() {
 
   const renderProfessionalControlStrip = () => {
     return (
-      <Card className="border-border/70 shadow-sm">
-        <CardContent className="flex min-w-0 items-start gap-3 p-3 sm:p-4">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
-            <ShieldCheck className="size-4" />
-          </span>
-          <div className="min-w-0 flex-1 space-y-1" aria-label={professionalControlLabel}>
-            {professionalControlLines.map(line => (
-              <p key={line} title={line} className="truncate text-[11px] leading-4 text-muted-foreground sm:text-xs sm:leading-5">
-                {line}
-              </p>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <section
+        className="min-w-0 rounded-xl border border-border/70 bg-background px-3 py-2 shadow-sm"
+        aria-label={professionalControlLabel}
+      >
+        <div className="grid min-w-0 gap-0.5">
+          {professionalControlLines.map((line, index) => (
+            <p
+              key={line}
+              title={line}
+              className={`truncate text-[10px] leading-4 sm:text-xs sm:leading-5 ${index === 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+            >
+              {index === 0 && <ShieldCheck className="mr-1.5 inline size-3.5 align-[-2px]" />}
+              {line}
+            </p>
+          ))}
+        </div>
+      </section>
     );
   };
 

@@ -21,6 +21,7 @@ import type {
   ProjectScheduleItemData,
   NotificationData,
   TeamMemberData,
+  AdminClientData,
 } from '@/types';
 import {
   isNotificationForRole,
@@ -33,10 +34,12 @@ import {
   projectScheduleTypeLabel,
 } from '@/lib/project-schedule';
 import { DEFAULT_TEAM_MEMBERS } from '@/data/team';
+import { DEFAULT_ADMIN_CLIENTS } from '@/data/admin-clients';
 
 type ProjectRequestInput = Partial<ProjectData> & Pick<ProjectData, 'referenceNumber'>;
 type AuthResumeAction = 'submit-configurator';
 type TeamMemberInput = Omit<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'> & Partial<Pick<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'>>;
+type AdminClientInput = AdminClientData;
 type ProjectSiteUpdateInput = Omit<ProjectSiteUpdateData, 'id' | 'createdAt' | 'createdBy'> & Partial<Pick<ProjectSiteUpdateData, 'id' | 'createdAt' | 'createdBy'>>;
 type ProjectMessageInput = Omit<ProjectMessageData, 'id' | 'createdAt' | 'senderName' | 'senderRole'> & Partial<Pick<ProjectMessageData, 'id' | 'createdAt' | 'senderName' | 'senderRole'>>;
 type ProjectQuoteInput = Partial<Omit<ProjectQuoteData, 'amount' | 'status' | 'date'>>;
@@ -77,6 +80,8 @@ interface AppState {
   notifications: NotificationData[];
   unreadNotificationCount: number;
   teamMembers: TeamMemberData[];
+  adminClients: AdminClientData[];
+  adminClientNotes: Record<string, string>;
 
   // Filters
   filters: FilterState;
@@ -152,6 +157,10 @@ interface AppState {
   addTeamMember: (member: TeamMemberInput) => TeamMemberData;
   updateTeamMember: (memberId: string, patch: Partial<Omit<TeamMemberData, 'id' | 'createdAt'>>) => void;
   removeTeamMember: (memberId: string) => void;
+  addAdminClient: (client: AdminClientInput) => void;
+  updateAdminClient: (clientId: string, patch: Partial<Omit<AdminClientData, 'id'>>) => void;
+  setAdminClientNote: (clientId: string, notes: string) => void;
+  removeAdminClient: (clientId: string) => void;
 
   // Actions - Filters
   setFilters: (filters: Partial<FilterState>) => void;
@@ -259,6 +268,8 @@ export const useAppStore = create<AppState>()(
       notifications: [],
       unreadNotificationCount: 0,
       teamMembers: DEFAULT_TEAM_MEMBERS,
+      adminClients: DEFAULT_ADMIN_CLIENTS,
+      adminClientNotes: {},
 
       // Filters
       filters: defaultFilters,
@@ -1403,6 +1414,41 @@ export const useAppStore = create<AppState>()(
         )),
       })),
       removeTeamMember: (memberId) => set(s => ({ teamMembers: s.teamMembers.filter(member => member.id !== memberId) })),
+      addAdminClient: (client) => set(s => ({
+        adminClients: [
+          client,
+          ...s.adminClients.filter(item => item.id !== client.id),
+        ],
+        adminClientNotes: {
+          ...s.adminClientNotes,
+          [client.id]: client.notes,
+        },
+      })),
+      updateAdminClient: (clientId, patch) => set(s => ({
+        adminClients: s.adminClients.map(client => (
+          client.id === clientId
+            ? { ...client, ...patch, lastActivity: patch.lastActivity || 'Mis à jour maintenant' }
+            : client
+        )),
+      })),
+      setAdminClientNote: (clientId, notes) => set(s => ({
+        adminClientNotes: {
+          ...s.adminClientNotes,
+          [clientId]: notes,
+        },
+        adminClients: s.adminClients.map(client => (
+          client.id === clientId
+            ? { ...client, notes, lastActivity: 'Mis à jour maintenant' }
+            : client
+        )),
+      })),
+      removeAdminClient: (clientId) => set(s => {
+        const { [clientId]: _removed, ...remainingNotes } = s.adminClientNotes;
+        return {
+          adminClients: s.adminClients.filter(client => client.id !== clientId),
+          adminClientNotes: remainingNotes,
+        };
+      }),
 
       // Actions - Filters
       setFilters: (filters) => set(s => ({ filters: { ...s.filters, ...filters } })),
@@ -1440,6 +1486,8 @@ export const useAppStore = create<AppState>()(
         notifications: state.notifications,
         unreadNotificationCount: state.unreadNotificationCount,
         teamMembers: state.teamMembers,
+        adminClients: state.adminClients,
+        adminClientNotes: state.adminClientNotes,
         adminSidebarCollapsed: state.adminSidebarCollapsed,
         configurator: state.configurator,
         authResumeAction: state.authResumeAction,

@@ -58,6 +58,21 @@ export interface TeamMemberData {
   updatedAt: string;
 }
 
+export interface AdminClientData {
+  id: string;
+  name: string;
+  type: string;
+  phone?: string;
+  email?: string;
+  projects: number;
+  totalSpent: number;
+  city?: string;
+  lastActivity: string;
+  tags: string[];
+  notes: string;
+  projectIds: string[];
+}
+
 export interface CatalogModelData {
   id: string;
   name: string;
