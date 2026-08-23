@@ -598,6 +598,49 @@ function downloadProposalPortfolio(proposals: VisualProposal[], selectedProposal
   URL.revokeObjectURL(url);
 }
 
+function proposalDownloadSlug(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 90);
+}
+
+function proposalImageExtension(contentType: string, imageUrl: string) {
+  if (contentType.includes('png')) return 'png';
+  if (contentType.includes('webp')) return 'webp';
+  if (contentType.includes('avif')) return 'avif';
+  if (contentType.includes('gif')) return 'gif';
+  if (contentType.includes('jpeg') || contentType.includes('jpg')) return 'jpg';
+  const extension = imageUrl.split('?')[0].match(/\.([a-z0-9]{2,5})$/i)?.[1]?.toLowerCase();
+  return extension || 'jpg';
+}
+
+async function downloadProposalImage(proposal: VisualProposal, data: ProjectDetailData) {
+  const imageUrl = new URL(proposal.image, window.location.origin).href;
+  const response = await fetch(imageUrl);
+  if (!response.ok) throw new Error('Image download failed');
+  const blob = await response.blob();
+  const extension = proposalImageExtension(blob.type, imageUrl);
+  const filename = proposalDownloadSlug(`${data.referenceNumber}-${proposal.title}`) || `${proposal.id}-buildify`;
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = `${filename}.${extension}`;
+  anchor.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
+function openProposalImageFallback(proposal: VisualProposal) {
+  const anchor = document.createElement('a');
+  anchor.href = new URL(proposal.image, window.location.origin).href;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener noreferrer';
+  anchor.click();
+}
+
 function quoteScopeItems(quote: ProjectQuoteViewData, data: ProjectDetailData) {
   return quote.scope?.length ? quote.scope : [
     `${quote.label} pour ${data.categoryName}`,
@@ -2478,6 +2521,16 @@ function ProposalsTab({
     addToast('Proposition visuelle validée et rattachée au dossier.', 'success');
   };
 
+  const handleDownloadImage = async () => {
+    try {
+      await downloadProposalImage(selectedProposal, data);
+      addToast('Image de proposition téléchargée.', 'success');
+    } catch {
+      openProposalImageFallback(selectedProposal);
+      addToast('Image ouverte dans un nouvel onglet pour téléchargement manuel.', 'info');
+    }
+  };
+
   if (!selectedProposal) {
     return (
       <div className="flex flex-col items-center py-12 text-center">
@@ -2665,11 +2718,9 @@ function ProposalsTab({
           </div>
 
           <div className="mt-4 flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" className="w-full sm:w-auto gap-2" asChild>
-              <a href={selectedProposal.image} download={`${selectedProposal.id}.png`}>
-                <Download className="size-4" />
-                Télécharger l’image
-              </a>
+            <Button variant="outline" className="w-full sm:w-auto gap-2" onClick={() => { void handleDownloadImage(); }}>
+              <Download className="size-4" />
+              Télécharger l’image
             </Button>
             <Button
               variant="outline"
