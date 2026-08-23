@@ -10,6 +10,7 @@ import {
   ClipboardCheck, AlertCircle, Building2, Eye, Download,
   ShieldCheck, CheckCircle2, FolderArchive, ClipboardList, Home,
   Globe2, Clock3, MessageCircle, UserRoundCheck, Gauge,
+  Ruler,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,8 @@ import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { formatProjectLocation } from '@/lib/project-format';
+import { buildProjectBrief, projectBriefLabel } from '@/lib/project-brief';
+import type { ProjectBrief, ProjectBriefItemKey } from '@/lib/project-brief';
 import {
   formatProjectScheduleDate,
   projectScheduleModeLabel,
@@ -77,6 +80,7 @@ type ProjectDetailData = {
   visualProposals?: ProjectVisualProposalData[];
   visualProposal?: ProjectVisualProposalData;
   financing?: ProjectFinancingData;
+  technicalBrief: ProjectBrief;
   scheduleItems: ProjectScheduleItemData[];
   clientPresence?: string;
   clientResidenceCountry?: string;
@@ -200,9 +204,11 @@ function detailFromStoredProject(project: ProjectData, teamMembers: TeamMemberDa
   const latestSiteUpdate = siteUpdates[0];
   const assignedMember = teamMembers.find(member => member.active && member.name === project.assignedTo);
   const projectMessages = (project.projectMessages ?? []).slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const technicalBrief = buildProjectBrief(project);
   const missingInfoDate = project.missingInfoRequestedAt
     ? new Date(project.missingInfoRequestedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
     : 'Maintenant';
+  const surfaceSummary = technicalBrief.items.find(item => item.key === 'surface');
 
   return {
     projectId: project.id,
@@ -215,10 +221,10 @@ function detailFromStoredProject(project: ProjectData, teamMembers: TeamMemberDa
     budgetMin: project.budgetMin || project.budgetMax || 0,
     budgetMax: project.budgetMax || project.budgetMin || 0,
     progress: project.progress ?? 0,
-    terrain: String(project.formData?.landSurface || project.formData?.surface || 'À préciser'),
-    terrainStatus: String(project.formData?.landStatus || 'À confirmer'),
+    terrain: surfaceSummary?.value || 'À préciser',
+    terrainStatus: projectBriefLabel(project.formData?.terrainStatus || project.formData?.landStatus) || 'À confirmer',
     startDate,
-    estimatedEnd: String(project.formData?.timeline || 'À planifier'),
+    estimatedEnd: projectBriefLabel(project.formData?.timeline) || 'À planifier',
     team: assignedMember
       ? [{
           name: assignedMember.name,
@@ -277,6 +283,7 @@ function detailFromStoredProject(project: ProjectData, teamMembers: TeamMemberDa
     visualProposals: project.visualProposals ?? [],
     visualProposal: project.visualProposal,
     financing: project.financing || (project.formData?.financing as ProjectFinancingData | undefined),
+    technicalBrief,
     scheduleItems,
     clientPresence: labelFromMap(CLIENT_PRESENCE_LABELS, projectText(project, 'clientPresence')),
     clientResidenceCountry: projectText(project, 'clientResidenceCountry'),
@@ -1511,6 +1518,16 @@ function buildFinancingFromDraft(
 
 // ── Sub-views ──────────────────────────────────────────────
 
+const PROJECT_BRIEF_ICONS: Record<ProjectBriefItemKey, LucideIcon> = {
+  category: Building2,
+  location: MapPin,
+  surface: Ruler,
+  scope: ClipboardCheck,
+  context: Gauge,
+  finance: Wallet,
+  timeline: Calendar,
+};
+
 function ResumeTab({
   data,
   onOpenProposals,
@@ -1578,6 +1595,8 @@ function ResumeTab({
     ? data.visualProposals.map(normalizeVisualProposal)
     : buildVisualProposals(data);
   const proposalPreview = data.visualProposal ? normalizeVisualProposal(data.visualProposal) : proposals[0];
+  const technicalBriefItems = data.technicalBrief.items;
+  const technicalBriefChips = data.technicalBrief.chips;
 
   return (
     <div className="space-y-4">
@@ -1657,6 +1676,48 @@ function ResumeTab({
           </Card>
         ))}
       </div>
+
+      <Card className="py-0 gap-0 border-foreground/10">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Brief technique</h4>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Surfaces, lots, contraintes et priorités déclarés dans le formulaire.
+              </p>
+            </div>
+            <Badge variant="outline" className="w-fit">{technicalBriefChips.length} point(s)</Badge>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {technicalBriefItems.map(item => {
+              const Icon = PROJECT_BRIEF_ICONS[item.key];
+              return (
+                <div key={item.key} className="flex min-w-0 items-start gap-3 rounded-lg border bg-background p-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <Icon className="size-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                    <p className="mt-1 text-sm font-semibold break-words">{item.value}</p>
+                    {item.helper && <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{item.helper}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {technicalBriefChips.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {technicalBriefChips.map(chip => (
+                <div key={chip} className="min-h-10 rounded-lg border bg-muted/30 px-3 py-2 text-xs font-medium leading-5 break-words">
+                  {chip}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Terrain */}
       <Card className="py-0 gap-0">

@@ -546,6 +546,59 @@ const STUDY_SCOPES: ChoiceOption[] = [
   { value: 'expertise', label: 'Expertise technique', icon: ShieldCheck },
 ];
 
+const TECHNICAL_INTENT_OPTIONS_BY_FAMILY: Record<ProjectFamily, ChoiceOption[]> = {
+  maison: [
+    { value: 'footprint-optimized', label: 'Optimiser l’emprise au sol', icon: Ruler, description: 'Construire juste sans saturer le terrain' },
+    { value: 'family-comfort', label: 'Confort familial', icon: Home, description: 'Circulation simple, pièces lisibles, usage quotidien' },
+    { value: 'future-extension', label: 'Extension future prévue', icon: Layers, description: 'Prévoir une évolution sans casser l’existant' },
+    { value: 'natural-ventilation', label: 'Ventilation et lumière naturelle', icon: AirVent, description: 'Orientation, ouvertures et confort thermique' },
+    { value: 'outdoor-living', label: 'Vie extérieure / terrasse', icon: Armchair, description: 'Cour, terrasse, jardin ou cuisine extérieure' },
+    { value: 'privacy-security', label: 'Intimité et sécurité', icon: ShieldCheck, description: 'Reculs, clôture, accès et zones privées' },
+  ],
+  rplus: [
+    { value: 'rental-yield', label: 'Rentabilité locative', icon: BadgeDollarSign, description: 'Typologies faciles à louer ou vendre' },
+    { value: 'structural-regularity', label: 'Structure régulière', icon: Building2, description: 'Trame claire pour maîtriser le gros œuvre' },
+    { value: 'vertical-circulation', label: 'Circulation verticale', icon: Route, description: 'Escalier, ascenseur et accès lisibles' },
+    { value: 'fire-safety', label: 'Sécurité incendie', icon: Siren, description: 'Issues, désenfumage et contrôle réglementaire' },
+    { value: 'technical-shafts', label: 'Gaines techniques', icon: ToolCase, description: 'Réseaux empilés, maintenance facilitée' },
+    { value: 'parking-flow', label: 'Flux parking', icon: CircleParking, description: 'Entrées, sorties et stationnement cohérents' },
+  ],
+  vrd: [
+    { value: 'stormwater-control', label: 'Maîtrise eaux pluviales', icon: Waves, description: 'Caniveaux, exutoires, drainage et pentes' },
+    { value: 'utility-corridor', label: 'Couloirs réseaux', icon: Network, description: 'Eau, électricité, télécoms et réservations' },
+    { value: 'road-access', label: 'Accès et circulation', icon: Route, description: 'Largeurs, girations, raccordements et usage' },
+    { value: 'phased-vrd', label: 'VRD par phases', icon: TrafficCone, description: 'Séparer urgence, réseaux et finition de voirie' },
+    { value: 'maintenance-ready', label: 'Maintenance prévue', icon: Wrench, description: 'Regards, curage, accès et exploitation future' },
+  ],
+  lot: [
+    { value: 'defect-correction', label: 'Correction malfaçons', icon: ShieldPlus, description: 'Reprise ciblée avant finition ou livraison' },
+    { value: 'occupied-site-control', label: 'Travaux en site occupé', icon: DoorOpen, description: 'Phasage propre, sécurité et nuisance réduite' },
+    { value: 'material-procurement', label: 'Approvisionnement matériaux', icon: Warehouse, description: 'Choix, disponibilité, quantités et délais' },
+    { value: 'finish-quality', label: 'Qualité des finitions', icon: Gem, description: 'Niveau esthétique et contrôle de réception' },
+    { value: 'technical-compliance', label: 'Conformité technique', icon: ClipboardCheck, description: 'Plomberie, électricité, étanchéité et essais' },
+  ],
+  hydraulique: [
+    { value: 'water-autonomy', label: 'Autonomie en eau', icon: Droplets, description: 'Forage, stockage et continuité de service' },
+    { value: 'daily-capacity', label: 'Capacité journalière', icon: Gauge, description: 'Besoin réel selon usage ou population' },
+    { value: 'energy-continuity', label: 'Continuité énergétique', icon: BatteryCharging, description: 'Réseau, solaire, groupe ou solution hybride' },
+    { value: 'water-treatment', label: 'Traitement de l’eau', icon: ShieldCheck, description: 'Qualité, filtration et contrôle sanitaire' },
+    { value: 'handover-documentation', label: 'Documentation de réception', icon: NotebookTabs, description: 'Essais, fiches techniques et maintenance' },
+  ],
+  etude: [
+    { value: 'permit-ready', label: 'Dossier permis', icon: Stamp, description: 'Pièces administratives et plans cohérents' },
+    { value: 'cost-control', label: 'Contrôle du coût', icon: Calculator, description: 'Métrés, DQE et arbitrages budgétaires' },
+    { value: 'execution-ready', label: 'Prêt pour exécution', icon: ClipboardList, description: 'Plans, détails et coordination technique' },
+    { value: 'site-supervision', label: 'Suivi chantier', icon: Eye, description: 'Contrôles, visites, rapports et réserves' },
+  ],
+  promotion: [
+    { value: 'investor-reporting', label: 'Reporting investisseur', icon: ReceiptText, description: 'Suivi coût, délai, ventes et décisions' },
+    { value: 'rental-yield', label: 'Rentabilité locative', icon: BadgeDollarSign, description: 'Produit adapté au marché ciblé' },
+    { value: 'phased-vrd', label: 'Phasage programme', icon: Layers, description: 'Études, VRD, lots bâtis et commercialisation' },
+    { value: 'parking-flow', label: 'Flux et parking', icon: CircleParking, description: 'Circulation interne et accès visiteurs' },
+    { value: 'cost-control', label: 'Contrôle du coût', icon: Calculator, description: 'Budget promoteur, marges et risques' },
+  ],
+};
+
 const DOCUMENT_OPTIONS: ChoiceOption[] = [
   { value: 'titre-foncier', label: 'Titre foncier / ACD', icon: Stamp },
   { value: 'attestation', label: 'Attestation villageoise', icon: Signature },
@@ -676,6 +729,10 @@ function getPrestationsOptions(family: ProjectFamily): ChoiceOption[] {
   ];
 }
 
+function getTechnicalIntentOptions(family: ProjectFamily): ChoiceOption[] {
+  return TECHNICAL_INTENT_OPTIONS_BY_FAMILY[family] || TECHNICAL_INTENT_OPTIONS_BY_FAMILY.maison;
+}
+
 function buildSteps(responses: Record<string, unknown>): StepDef[] {
   const projectType = responses.projectType as string | undefined;
   const family = getProjectFamily(projectType);
@@ -766,6 +823,19 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
     });
   }
 
+  steps.push({
+    id: 'technical-intent',
+    title: 'Priorités techniques',
+    subtitle: 'Sélectionnez les objectifs qui guideront le cadrage du dossier',
+    responseKey: 'technicalIntent',
+    type: 'choice-multi',
+    options: getTechnicalIntentOptions(family),
+    required: true,
+    minSelections: 1,
+    requiredMessage: 'Choisissez au moins une priorité technique pour orienter le projet.',
+    insight: 'Cette étape transforme le formulaire en brief métier : elle aide Buildify à proposer les bons lots, les bons documents et la bonne lecture budget.',
+  });
+
   if (family === 'maison' || family === 'rplus' || family === 'promotion') {
     steps.push({
       id: 'terrain',
@@ -836,17 +906,56 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
   if (family === 'maison') {
     steps.push(
       {
-        id: 'built-surface',
-        title: projectType === 'duplex-triplex' ? 'Surface bâtie estimée' : 'Surface de la maison',
-        subtitle: 'Surface construite souhaitée',
-        responseKey: 'builtSurface',
-        type: 'slider',
-        min: 40,
-        max: projectType === 'duplex-triplex' ? 900 : 600,
-        step: 10,
-        unit: 'm²',
+        id: 'maison-surfaces',
+        title: projectType === 'duplex-triplex' ? 'Emprise et surfaces par niveau' : 'Emprise de la maison',
+        subtitle: 'Saisissez les surfaces clés pour éviter les ambiguïtés de chiffrage',
+        responseKey: '__maison_surfaces__',
+        type: 'field-group',
+        fields: [
+          {
+            key: 'builtSurface',
+            label: projectType === 'duplex-triplex' ? 'Surface construite totale' : 'Surface construite souhaitée',
+            type: 'number',
+            placeholder: projectType === 'duplex-triplex' ? 'Ex : 360' : 'Ex : 150',
+            unit: 'm²',
+            min: 1,
+            required: true,
+            helper: 'Surface totale à construire ou à aménager, tous espaces principaux inclus.',
+          },
+          {
+            key: 'houseFootprint',
+            label: 'Emprise au sol souhaitée',
+            type: 'number',
+            placeholder: projectType === 'duplex-triplex' ? 'Ex : 160' : 'Ex : 120',
+            unit: 'm²',
+            min: 1,
+            required: true,
+            helper: 'Surface réellement occupée au sol par la maison, hors cour, jardin ou terrasse ouverte.',
+          },
+          {
+            key: 'usableOutdoorArea',
+            label: 'Extérieur à préserver',
+            type: 'number',
+            placeholder: 'Ex : 80',
+            unit: 'm²',
+            min: 0,
+            helper: 'Cour, terrasse, jardin, parking ou zone libre que vous souhaitez garder.',
+          },
+          {
+            key: 'futureExtensionPlan',
+            label: 'Extension future',
+            type: 'select',
+            options: [
+              { value: 'none', label: 'Aucune extension prévue' },
+              { value: 'horizontal', label: 'Extension horizontale possible' },
+              { value: 'vertical', label: 'Étage futur possible' },
+              { value: 'rental-unit', label: 'Dépendance ou logement locatif futur' },
+              { value: 'to-study', label: 'À étudier avec Buildify' },
+            ],
+          },
+        ],
         required: true,
-        requiredMessage: 'Saisissez la surface bâtie ou l’emprise souhaitée de la maison.',
+        requiredMessage: 'Saisissez la surface construite et l’emprise au sol souhaitée avant de continuer.',
       },
       {
         id: 'bedrooms',
@@ -1366,12 +1475,24 @@ function buildAutoDescription(responses: Record<string, unknown>): string {
   const country = getSubmittedCountry(responses);
   const cityName = getSubmittedCity(responses);
   const city = cityName ? ` à ${cityName}, ${country}` : ` en ${country}`;
+  const family = getProjectFamily(String(responses.projectType || 'autre'));
   const lots = [
+    ...(Array.isArray(responses.technicalIntent) ? responses.technicalIntent : []),
     ...(Array.isArray(responses.workLots) ? responses.workLots : []),
     ...(Array.isArray(responses.vrdLots) ? responses.vrdLots : []),
+    ...(Array.isArray(responses.hydraulicWorks) ? responses.hydraulicWorks : []),
+    ...(Array.isArray(responses.studyScope) ? responses.studyScope : []),
     ...(Array.isArray(responses.prestations) ? responses.prestations : []),
   ];
-  const lotText = lots.length ? ` - lots: ${lots.join(', ')}` : '';
+  const labelOptions = [
+    ...getTechnicalIntentOptions(family),
+    ...LOT_TRAVAUX_OPTIONS,
+    ...VRD_LOTS,
+    ...HYDRAULIC_WORKS,
+    ...STUDY_SCOPES,
+    ...getPrestationsOptions(family),
+  ];
+  const lotText = lots.length ? ` - périmètre: ${lots.map(item => getLabel(labelOptions, String(item))).join(', ')}` : '';
   return `${type}${city}${lotText}`;
 }
 
@@ -1818,7 +1939,7 @@ export function ConfiguratorView() {
           representativePhone,
           representativeRelation,
           referenceNumber: ref,
-          formVersion: 'advanced-construction-v2',
+          formVersion: 'advanced-construction-v3',
           submittedAt: new Date().toISOString(),
         },
       };
@@ -1933,7 +2054,7 @@ export function ConfiguratorView() {
           representativePhone,
           representativeRelation,
           referenceNumber: ref,
-          formVersion: 'advanced-construction-v2',
+          formVersion: 'advanced-construction-v3',
           submittedAt: new Date().toISOString(),
           serverStatus: 'service-non-configure-ou-indisponible',
         },

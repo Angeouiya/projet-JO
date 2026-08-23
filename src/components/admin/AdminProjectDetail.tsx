@@ -22,6 +22,7 @@ import {
   MessageSquareText,
   NotebookTabs,
   ReceiptText,
+  Ruler,
   Send,
   ShieldCheck,
   UserCheck,
@@ -39,6 +40,8 @@ import { useAppStore } from '@/stores/app-store';
 import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
 import type { ProjectData, ProjectPaymentMilestoneData, ProjectScheduleItemData } from '@/types';
 import { formatProjectLocation } from '@/lib/project-format';
+import { buildProjectBrief } from '@/lib/project-brief';
+import type { ProjectBriefItemKey } from '@/lib/project-brief';
 import {
   PROJECT_SCHEDULE_MODE_LABELS,
   PROJECT_SCHEDULE_TYPE_LABELS,
@@ -354,6 +357,16 @@ function optionalLabel(labels: Record<string, string>, value?: string): string |
   return labels[value] || value;
 }
 
+const PROJECT_BRIEF_ICONS: Record<ProjectBriefItemKey, LucideIcon> = {
+  category: FileText,
+  location: MapPinned,
+  surface: Ruler,
+  scope: ClipboardCheck,
+  context: FolderSearch,
+  finance: Landmark,
+  timeline: CalendarDays,
+};
+
 function splitQuoteText(value: string) {
   return value
     .split(/\r?\n/)
@@ -499,6 +512,7 @@ export function AdminProjectDetail() {
   const leadDepartmentLabel = selectedLead ? DEPARTMENT_LABELS[selectedLead.department] || selectedLead.department : 'Équipe Buildify';
   const visualProposal = project.visualProposal;
   const locationLabel = formatProjectLocation(project);
+  const technicalBrief = buildProjectBrief(project);
   const paymentMilestones = financing?.milestones ?? [];
   const selectedPaymentMilestone = paymentMilestones.find(item => item.id === paymentMilestoneId) ?? paymentMilestones[0];
   const latestInfoResponse = project.missingInfoResponses?.[0];
@@ -831,6 +845,49 @@ export function AdminProjectDetail() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="py-0 gap-0 border-foreground/10">
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Brief technique client</p>
+                  <h2 className="mt-1 text-lg font-bold">Périmètre, surfaces et contraintes exploitables</h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Synthèse automatique du formulaire pour préparer les questions, le devis, les visuels et le planning.
+                  </p>
+                </div>
+                <Badge variant="outline">{technicalBrief.chips.length} point(s) cadré(s)</Badge>
+              </div>
+
+              <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                {technicalBrief.items.map(item => {
+                  const Icon = PROJECT_BRIEF_ICONS[item.key];
+                  return (
+                    <div key={item.key} className="flex min-w-0 items-start gap-3 rounded-lg border bg-background p-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                        <Icon className="size-4 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                        <p className="mt-1 text-sm font-semibold break-words">{item.value}</p>
+                        {item.helper && <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{item.helper}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {technicalBrief.chips.length > 0 && (
+                <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+                  {technicalBrief.chips.map(chip => (
+                    <div key={chip} className="min-h-10 rounded-lg border bg-muted/30 px-3 py-2 text-xs font-medium leading-5 break-words">
+                      {chip}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
