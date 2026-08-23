@@ -10,7 +10,7 @@ import {
   ClipboardCheck, AlertCircle, Building2, Eye, Download,
   ShieldCheck, CheckCircle2, FolderArchive, ClipboardList, Home,
   Globe2, Clock3, MessageCircle, UserRoundCheck, Gauge,
-  Ruler, Calculator, Scale, PiggyBank, Route,
+  Ruler, Calculator, Scale, PiggyBank, Route, Landmark,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -2811,6 +2811,60 @@ function FinancingTab({
     { label: 'Effort projeté', value: percentOrTodo(financing.projectedDebtRatioPercent), help: 'Charges totales projetées par rapport au revenu net.' },
     { label: 'Écart à sécuriser', value: amountOrTodo(fundingGap), help: 'Budget non couvert par l’apport et le financement déclaré.' },
   ];
+  const monthlyCeiling = financing.monthlyIncome !== undefined
+    ? Math.max(0, Math.round(financing.monthlyIncome * 0.35 - (financing.existingMonthlyDebt ?? 0)))
+    : undefined;
+  const financingCoveragePercent = financing.estimatedBudget
+    ? percentRatio((financing.ownContribution ?? 0) + (financing.requestedLoanAmount ?? 0), financing.estimatedBudget)
+    : undefined;
+  const financingClarityItems = [
+    {
+      icon: Calculator,
+      label: 'Mensualité prudente',
+      value: amountOrTodo(monthlyCeiling),
+      help: 'Repère financier conseillé avant d’accepter un devis ou un échéancier.',
+    },
+    {
+      icon: Scale,
+      label: 'Couverture budget',
+      value: percentOrTodo(financingCoveragePercent),
+      help: 'Part du budget couverte par l’apport et le financement déclaré.',
+    },
+    {
+      icon: PiggyBank,
+      label: 'Apport sécurisé',
+      value: amountOrTodo(financing.ownContribution),
+      help: 'Montant que vous déclarez disponible ou à justifier avant engagement.',
+    },
+    {
+      icon: Route,
+      label: 'Décaissement prévu',
+      value: financing.milestones.length ? `${financing.milestones.length} jalon(s)` : 'À cadrer',
+      help: 'Les paiements suivent les étapes vérifiées, pas une avance floue.',
+    },
+  ];
+  const financingCommitmentItems = [
+    {
+      icon: FileCheck,
+      title: 'Exactitude des données',
+      text: 'Les revenus, charges, prêts en cours et apports doivent être sincères pour éviter un budget irréaliste.',
+    },
+    {
+      icon: Landmark,
+      title: 'Preuve de fonds ou banque',
+      text: 'Buildify peut préparer le dossier banque, mais le client reste responsable des preuves transmises.',
+    },
+    {
+      icon: ShieldCheck,
+      title: 'Protection avant paiement',
+      text: 'Un contrat, un séquestre ou un cadre notarié peut être exigé avant les décaissements importants.',
+    },
+    {
+      icon: ClipboardCheck,
+      title: 'Validation par jalon',
+      text: 'Chaque paiement doit correspondre à une étape lisible, documentée et acceptée dans le projet.',
+    },
+  ];
   const decisionPlan = buildFinancingDecisionPlan(financing, data.budgetMax || data.budgetMin);
   const decisionToneClass = {
     ready: 'border-foreground bg-foreground text-background',
@@ -3074,6 +3128,53 @@ function FinancingTab({
       </Card>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <Card className="py-0 gap-0 border-foreground/10 lg:col-span-2">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Fiche d’engagement financier</p>
+                <h3 className="mt-1 text-lg font-bold">Ce que vous déclarez, ce que cela permet, ce que cela engage</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Cette lecture aide à savoir si le budget peut avancer vers devis, contrat, banque et paiements par étapes. Elle ne remplace pas l’accord bancaire, mais elle évite de lancer un projet sans capacité claire.
+                </p>
+              </div>
+              <Badge variant={decisionPlan.tone === 'ready' ? 'default' : 'outline'} className="w-fit">
+                {decisionPlan.label}
+              </Badge>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+              {financingClarityItems.map(item => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.label} className="rounded-lg border bg-background p-3">
+                    <Icon className="size-4 text-muted-foreground" />
+                    <p className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                    <p className="mt-1 text-sm font-bold break-words">{item.value}</p>
+                    <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{item.help}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              {financingCommitmentItems.map(item => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.title} className="flex min-h-[132px] flex-col rounded-lg border bg-muted/20 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <Icon className="size-4 shrink-0 text-muted-foreground" />
+                      <Badge variant="outline" className="text-[10px]">À comprendre</Badge>
+                    </div>
+                    <p className="mt-3 text-sm font-semibold">{item.title}</p>
+                    <p className="mt-2 flex-1 text-xs leading-5 text-muted-foreground">{item.text}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="py-0 gap-0">
           <CardContent className="p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">

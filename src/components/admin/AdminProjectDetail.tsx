@@ -1054,6 +1054,72 @@ export function AdminProjectDetail() {
     { label: 'Écart à couvrir', value: amountOrTodo(fundingGap), help: 'Budget non couvert par apport + financement déclaré.' },
     { label: 'Jalons cadrés', value: milestoneTotal ? FORMAT_XOF(milestoneTotal) : 'À calculer', help: `${paymentMilestones.length} échéance(s), ${blockedCount} blocage(s).` },
   ];
+  const prudentMonthlyLimit = financing?.monthlyIncome !== undefined
+    ? Math.max(0, Math.round(financing.monthlyIncome * 0.35 - (financing.existingMonthlyDebt ?? 0)))
+    : undefined;
+  const financingCoveragePercent = financing?.estimatedBudget
+    ? Math.round((((financing.ownContribution ?? 0) + (financing.requestedLoanAmount ?? 0)) / financing.estimatedBudget) * 100)
+    : undefined;
+  const adminFinanceControlItems = [
+    {
+      icon: Calculator,
+      label: 'Mensualité prudente',
+      value: amountOrTodo(prudentMonthlyLimit),
+      detail: 'Repère à comparer avec la mensualité cible avant devis et contrat.',
+      done: financing?.monthlyPaymentCapacity !== undefined && prudentMonthlyLimit !== undefined && financing.monthlyPaymentCapacity <= prudentMonthlyLimit,
+    },
+    {
+      icon: Scale,
+      label: 'Effort projeté',
+      value: percentOrTodo(financing?.projectedDebtRatioPercent),
+      detail: 'Zone confortable sous 35%, vigilance entre 35% et 45%.',
+      done: financing?.projectedDebtRatioPercent !== undefined && financing.projectedDebtRatioPercent <= 45,
+    },
+    {
+      icon: PiggyBank,
+      label: 'Couverture budget',
+      value: percentOrTodo(financingCoveragePercent),
+      detail: 'Apport + financement déclaré comparés au budget estimé.',
+      done: financingCoveragePercent !== undefined && financingCoveragePercent >= 100,
+    },
+    {
+      icon: Landmark,
+      label: 'Banque / fonds',
+      value: labelFrom(BANK_STAGE_LABELS, financing?.bankAgreementStage),
+      detail: financing?.bankName || 'Banque, conseiller ou preuve de fonds à confirmer.',
+      done: ['under-review', 'pre-approved', 'funds-available'].includes(financing?.bankAgreementStage || ''),
+    },
+  ];
+  const adminFinanceEngagementChecks = [
+    {
+      icon: FileText,
+      label: 'Pièces financières',
+      detail: missingDocumentCount === 0 ? 'Identité, revenus, relevés et base devis/plans disponibles.' : `${missingDocumentCount} pièce(s) finance à demander au client.`,
+      done: missingDocumentCount === 0,
+      targetId: 'infoMessage',
+    },
+    {
+      icon: ShieldCheck,
+      label: 'Garantie de paiement',
+      detail: financing?.notaryContract || financing?.escrowRequested ? 'Protection prévue avant décaissement majeur.' : 'Proposer notaire, séquestre ou cadre contractuel renforcé.',
+      done: Boolean(financing?.notaryContract || financing?.escrowRequested),
+      targetId: 'infoMessage',
+    },
+    {
+      icon: HandCoins,
+      label: 'Jalons publiables',
+      detail: paymentMilestones.length ? `${paymentMilestones.length} jalon(s), ${dueAmount ? FORMAT_XOF(dueAmount) : 'aucun paiement dû'}.` : 'Créer un échéancier par étapes vérifiables.',
+      done: paymentMilestones.length > 0 && blockedCount === 0,
+      targetId: 'paymentMilestone',
+    },
+    {
+      icon: MessageSquareText,
+      label: 'Compréhension client',
+      detail: financing?.notes ? 'Le client a ajouté une précision financière.' : 'Envoyer une explication si salaire, charges, apport ou banque restent flous.',
+      done: Boolean(financing?.notes || financingScore >= 70),
+      targetId: 'adminDirectMessage',
+    },
+  ];
   const hasPendingQuote = (project.quotes ?? []).some(quote => quote.status === 'sent' || quote.status === 'draft');
   const hasAcceptedQuote = (project.quotes ?? []).some(quote => quote.status === 'accepted');
   const hasVisualProposal = Boolean(project.visualProposal || (project.visualProposals ?? []).length);
@@ -1465,6 +1531,68 @@ export function AdminProjectDetail() {
             <CardContent className="p-4">
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                 <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Finance approfondie</p>
+                  <h2 className="mt-1 text-lg font-bold">Capacité, preuves, protection et engagement client</h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Lecture interne pour sécuriser le dossier avant devis ferme, contrat, banque, appels de paiement et lancement chantier.
+                  </p>
+                </div>
+                <Badge variant={financingScore >= 70 ? 'default' : 'outline'}>{financingScore || 0}% finance</Badge>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
+                {adminFinanceControlItems.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="rounded-lg border bg-background p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <Icon className="size-4 shrink-0 text-muted-foreground" />
+                        <Badge variant={item.done ? 'default' : 'outline'} className="text-[10px]">
+                          {item.done ? 'OK' : 'À suivre'}
+                        </Badge>
+                      </div>
+                      <p className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                      <p className="mt-1 break-words text-sm font-bold">{item.value}</p>
+                      <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{item.detail}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {adminFinanceEngagementChecks.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="flex min-h-[148px] flex-col rounded-lg border bg-muted/20 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <Icon className="size-4 shrink-0 text-muted-foreground" />
+                        <Badge variant={item.done ? 'default' : 'outline'} className="text-[10px]">
+                          {item.done ? 'Sécurisé' : 'Action'}
+                        </Badge>
+                      </div>
+                      <p className="mt-3 text-sm font-semibold">{item.label}</p>
+                      <p className="mt-1 flex-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 h-9 gap-1.5 text-xs"
+                        onClick={() => focusAdminAction(item.targetId)}
+                      >
+                        Traiter
+                        <ArrowLeft className="size-3 rotate-180" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="py-0 gap-0 border-foreground/10">
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Brief technique client</p>
                   <h2 className="mt-1 text-lg font-bold">Périmètre, surfaces et contraintes exploitables</h2>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -1493,7 +1621,7 @@ export function AdminProjectDetail() {
               </div>
 
               {technicalBrief.chips.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+                <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
                   {technicalBrief.chips.map(chip => (
                     <div key={chip} className="min-h-10 rounded-lg border bg-muted/30 px-3 py-2 text-xs font-medium leading-5 break-words">
                       {chip}
@@ -1517,7 +1645,7 @@ export function AdminProjectDetail() {
                 <Badge variant="outline">{missingDocumentCount} pièce{missingDocumentCount > 1 ? 's' : ''} à sécuriser</Badge>
               </div>
 
-              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {projectWorkstreams.map(stream => (
                   <div key={stream.label} className="rounded-lg border p-3">
                     <div className="flex items-start justify-between gap-2">
