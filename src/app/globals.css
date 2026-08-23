@@ -25,6 +25,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -59,7 +60,8 @@
   --muted-foreground: oklch(0.45 0 0);
   --accent: oklch(0.965 0 0);
   --accent-foreground: oklch(0.09 0 0);
-  --destructive: oklch(0.45 0.15 25);
+  --destructive: oklch(0.15 0 0);
+  --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(0.90 0 0);
   --input: oklch(0.90 0 0);
   --ring: oklch(0.09 0 0);
@@ -93,7 +95,8 @@
   --muted-foreground: oklch(0.65 0 0);
   --accent: oklch(0.20 0 0);
   --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.55 0.15 25);
+  --destructive: oklch(0.86 0 0);
+  --destructive-foreground: oklch(0.09 0 0);
   --border: oklch(0.22 0 0);
   --input: oklch(0.22 0 0);
   --ring: oklch(0.45 0 0);
@@ -125,6 +128,10 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  img,
+  video {
+    filter: grayscale(1);
   }
 }
 

@@ -353,7 +353,7 @@ export function buildProjectDossierHtml(project: ProjectData, mode: ProjectDossi
     .cell, .box, .step { border: 1px solid #ddd; border-radius: 10px; padding: 13px; break-inside: avoid; }
     .decision { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border: 2px solid #111; border-radius: 12px; padding: 16px; }
     .decision strong { font-size: 34px; white-space: nowrap; }
-    .risk { border-color: #b91c1c; }
+    .risk { border-color: #111; border-left-width: 4px; }
     .structure { border-style: dashed; }
     .missing { border-style: dashed; background: #fafafa; }
     .timeline { display: grid; gap: 10px; margin-top: 12px; }

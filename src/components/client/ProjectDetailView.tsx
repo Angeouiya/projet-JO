@@ -32,8 +32,8 @@ import { buildProjectBrief, projectBriefLabel } from '@/lib/project-brief';
 import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
 import { buildPaymentSecurityPlan } from '@/lib/project-payment-security';
 import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
+import { PROJECT_BLOCKER_CLASS, PROJECT_DECISION_TONE_CLASS } from '@/lib/project-tone-styles';
 import { downloadProjectDossier } from '@/lib/project-dossier-export';
-import type { ProjectDecisionTone } from '@/lib/project-decision-center';
 import type { ProjectBrief, ProjectBriefItemKey } from '@/lib/project-brief';
 import {
   formatProjectScheduleDate,
@@ -2699,8 +2699,7 @@ function ProposalsTab({
             loading="eager"
             sizes="(min-width: 1024px) 1120px, 100vw"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 text-white">
+          <div className="absolute inset-x-0 bottom-0 bg-black/70 p-4 text-white sm:p-5">
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <Badge className="bg-white text-black hover:bg-white">{selectedProposal.category}</Badge>
               <span className="rounded-md border border-white/35 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/85">
@@ -4312,7 +4311,7 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
                   className="aspect-[4/3] rounded-lg bg-muted flex items-center justify-center overflow-hidden relative group"
                 >
                   <img src={photo.imageUrl} alt={photo.caption} className="h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-2">
+                  <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end bg-black/70 p-2">
                     <Badge variant="secondary" className="mb-1 w-fit bg-white/90 text-[9px] text-black">
                       {photo.progress}%
                     </Badge>
@@ -4374,13 +4373,6 @@ function ClientDecisionCenter({
   onNavigate: (target: string) => void;
 }) {
   const center = useMemo(() => buildProjectDecisionCenter(project, 'client'), [project]);
-  const toneClass: Record<ProjectDecisionTone, string> = {
-    good: 'border-foreground/15 bg-muted/30',
-    active: 'border-foreground bg-foreground text-background',
-    warning: 'border-amber-500/35 bg-amber-500/10 text-amber-950 dark:text-amber-100',
-    blocked: 'border-destructive/35 bg-destructive/10 text-destructive',
-    muted: 'border-border bg-background',
-  };
   const iconMap: Record<string, LucideIcon> = {
     messages: MessageSquare,
     proposal: Eye,
@@ -4415,7 +4407,7 @@ function ClientDecisionCenter({
 
         <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
           {center.metrics.map(metric => (
-            <div key={metric.label} className={`min-w-0 rounded-xl border px-3 py-2 ${toneClass[metric.tone]}`}>
+            <div key={metric.label} className={`min-w-0 rounded-xl border px-3 py-2 ${PROJECT_DECISION_TONE_CLASS[metric.tone]}`}>
               <p className="break-words text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{metric.label}</p>
               <p className="mt-1 break-words text-sm font-bold leading-tight">{metric.value}</p>
               <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground">{metric.helper}</p>
@@ -4426,7 +4418,7 @@ function ClientDecisionCenter({
         {center.blockers.length > 0 && (
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {center.blockers.slice(0, 2).map(blocker => (
-              <div key={blocker} className="flex gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs leading-5 text-destructive">
+              <div key={blocker} className={PROJECT_BLOCKER_CLASS}>
                 <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                 <span className="min-w-0 break-words">{blocker}</span>
               </div>
@@ -4443,7 +4435,7 @@ function ClientDecisionCenter({
                 key={item.id}
                 type="button"
                 onClick={() => onNavigate(item.target)}
-                className={`min-h-[132px] rounded-xl border p-3 text-left transition-colors hover:border-foreground/40 ${toneClass[item.tone]}`}
+                className={`min-h-[132px] rounded-xl border p-3 text-left transition-colors hover:border-foreground/40 ${PROJECT_DECISION_TONE_CLASS[item.tone]}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${isInverted ? 'bg-background/15' : 'bg-muted'}`}>

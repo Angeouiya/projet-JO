@@ -183,8 +183,7 @@ export function RealizationsView() {
               alt={r.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4">
+            <div className="absolute inset-x-0 bottom-0 bg-black/70 p-3 md:p-4">
               <Badge variant="secondary" className="text-[10px] mb-1.5">{r.category}</Badge>
               <p className="text-white text-sm font-semibold leading-tight line-clamp-1">{r.title}</p>
               <div className="flex items-center gap-2 mt-1 text-[11px] text-white/60">

@@ -50,8 +50,8 @@ import { buildProjectBrief } from '@/lib/project-brief';
 import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
 import { buildPaymentSecurityPlan } from '@/lib/project-payment-security';
 import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
+import { PROJECT_BLOCKER_CLASS, PROJECT_DECISION_TONE_CLASS } from '@/lib/project-tone-styles';
 import { downloadProjectDossier } from '@/lib/project-dossier-export';
-import type { ProjectDecisionTone } from '@/lib/project-decision-center';
 import type { ProjectBriefItemKey } from '@/lib/project-brief';
 import {
   PROJECT_SCHEDULE_MODE_LABELS,
@@ -514,13 +514,6 @@ function AdminDecisionRegister({
   onFocus: (targetId: string) => void;
 }) {
   const center = useMemo(() => buildProjectDecisionCenter(project, 'admin'), [project]);
-  const toneClass: Record<ProjectDecisionTone, string> = {
-    good: 'border-foreground/15 bg-muted/30',
-    active: 'border-foreground bg-foreground text-background',
-    warning: 'border-amber-500/35 bg-amber-500/10 text-amber-950 dark:text-amber-100',
-    blocked: 'border-destructive/35 bg-destructive/10 text-destructive',
-    muted: 'border-border bg-background',
-  };
   const iconMap: Record<string, LucideIcon> = {
     lead: UserCheck,
     info: MessageSquareText,
@@ -555,7 +548,7 @@ function AdminDecisionRegister({
 
         <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
           {center.metrics.map(metric => (
-            <div key={metric.label} className={`min-w-0 rounded-xl border px-3 py-2 ${toneClass[metric.tone]}`}>
+            <div key={metric.label} className={`min-w-0 rounded-xl border px-3 py-2 ${PROJECT_DECISION_TONE_CLASS[metric.tone]}`}>
               <p className="break-words text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{metric.label}</p>
               <p className="mt-1 break-words text-sm font-bold leading-tight">{metric.value}</p>
               <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground">{metric.helper}</p>
@@ -566,7 +559,7 @@ function AdminDecisionRegister({
         {center.blockers.length > 0 && (
           <div className="mt-4 grid gap-2 md:grid-cols-3">
             {center.blockers.slice(0, 3).map(blocker => (
-              <div key={blocker} className="flex gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs leading-5 text-destructive">
+              <div key={blocker} className={PROJECT_BLOCKER_CLASS}>
                 <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                 <span className="min-w-0 break-words">{blocker}</span>
               </div>
@@ -583,7 +576,7 @@ function AdminDecisionRegister({
                 key={item.id}
                 type="button"
                 onClick={() => onFocus(item.target)}
-                className={`min-h-[138px] rounded-xl border p-3 text-left transition-colors hover:border-foreground/40 ${toneClass[item.tone]}`}
+                className={`min-h-[138px] rounded-xl border p-3 text-left transition-colors hover:border-foreground/40 ${PROJECT_DECISION_TONE_CLASS[item.tone]}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${isInverted ? 'bg-background/15' : 'bg-muted'}`}>

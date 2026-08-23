@@ -288,8 +288,7 @@ export function HomeView() {
                 alt={r.title}
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4">
+              <div className="absolute inset-x-0 bottom-0 bg-black/70 p-3 md:p-4">
                 <p className="text-white text-xs font-medium">{r.title}</p>
                 <p className="text-white/60 text-[10px] mt-0.5">{r.category}</p>
               </div>
