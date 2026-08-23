@@ -3557,10 +3557,32 @@ export function ConfiguratorView() {
   const equityMetric = financeMetric('Apport / budget');
   const reserveMetric = financeMetric('Réserve après apport');
   const financeRiskLabel = financeScoreMetric?.helper?.replace('Lecture risque : ', '') || 'À qualifier';
-  const countryControlDisplay = countryControlLabel === "Côte d'Ivoire" ? 'CI' : countryControlLabel;
-  const professionalControlLines = [
-    `Contrôle professionnel · Catégorie ${categoryControlLabel} · Pays ${countryControlDisplay} · Ville ${cityControlLabel} · Budget ${budgetControlLabel} · Points : ouvrage, lieu, accès, pièces, financement.`,
-    `Finance · Score ${financeScoreMetric?.value || 'À compléter'} · Risque ${financeRiskLabel} · Endettement ${debtMetric?.value || 'À calculer'} · Apport ${equityMetric?.value || 'À calculer'} · Réserve ${reserveMetric?.value || 'À saisir'} · Aucun engagement sans catégorie, lieu et budget.`,
+  const professionalControlRows = [
+    {
+      label: 'Contrôle professionnel',
+      icon: ShieldCheck,
+      items: [
+        `Catégorie : ${categoryControlLabel}`,
+        `Pays : ${countryControlLabel}`,
+        `Ville : ${cityControlLabel}`,
+        `Budget : ${budgetControlLabel}`,
+        'Points : ouvrage, localisation, accès et pièces disponibles',
+      ],
+    },
+    {
+      label: 'Finance',
+      icon: Wallet,
+      items: [
+        `Score : ${financeScoreMetric?.value || 'À compléter'}`,
+        `Risque : ${financeRiskLabel}`,
+        `Endettement : ${debtMetric?.value || 'À calculer'} (charges + mensualité)`,
+        `Apport / budget : ${equityMetric?.value || 'À calculer'}`,
+        equityMetric?.helper || 'Apport déclaré : À saisir',
+        `Réserve : ${reserveMetric?.value || 'À saisir'} (épargne nette / revenu)`,
+        'Financement structuré avant transmission',
+        'Aucun engagement sans catégorie, lieu et budget',
+      ],
+    },
   ];
   const professionalControlLabel = [
     `Contrôle professionnel : Catégorie ${categoryControlLabel}, pays ${countryControlLabel}, ville ${cityControlLabel}, budget ${budgetControlLabel}.`,
@@ -3570,20 +3592,26 @@ export function ConfiguratorView() {
   const renderProfessionalControlStrip = () => {
     return (
       <section
-        className="min-w-0 rounded-xl border border-border/70 bg-background px-3 py-2 shadow-sm"
+        className="min-w-0 overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm"
         aria-label={professionalControlLabel}
       >
-        <div className="grid min-w-0 gap-0.5">
-          {professionalControlLines.map((line, index) => (
-            <p
-              key={line}
-              title={line}
-              className={`truncate text-[10px] leading-4 sm:text-xs sm:leading-5 ${index === 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
-            >
-              {index === 0 && <ShieldCheck className="mr-1.5 inline size-3.5 align-[-2px]" />}
-              {line}
-            </p>
-          ))}
+        <div className="overflow-x-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="grid min-w-max gap-0.5">
+            {professionalControlRows.map(({ label, icon: RowIcon, items }, rowIndex) => (
+              <p
+                key={label}
+                className={`flex min-w-max items-center whitespace-nowrap text-[10px] leading-4 sm:text-xs sm:leading-5 ${rowIndex === 0 ? 'text-foreground' : 'text-muted-foreground'}`}
+              >
+                <RowIcon className="mr-1.5 size-3.5 shrink-0" aria-hidden="true" />
+                <strong className="font-semibold text-foreground">{label}</strong>
+                {items.map(item => (
+                  <span key={item} className="before:mx-1.5 before:text-border before:content-['•'] sm:before:mx-2">
+                    {item}
+                  </span>
+                ))}
+              </p>
+            ))}
+          </div>
         </div>
       </section>
     );
@@ -3637,13 +3665,15 @@ export function ConfiguratorView() {
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-4 pb-44 pt-6 md:py-10 lg:pb-10">
-        <div className="grid w-full min-w-0 max-w-6xl gap-6 lg:grid-cols-[minmax(0,760px)_minmax(300px,1fr)]">
-          <div key={activeStep.id} className="w-full min-w-0 max-w-full">
-              {!isConfirmation && (
-                <div className="mb-4">
-                  {renderProfessionalControlStrip()}
-                </div>
-              )}
+        <div className="w-full min-w-0 max-w-6xl">
+          {!isConfirmation && (
+            <div className="mb-4">
+              {renderProfessionalControlStrip()}
+            </div>
+          )}
+
+          <div className="grid w-full min-w-0 gap-6 lg:grid-cols-[minmax(0,760px)_minmax(300px,1fr)]">
+            <div key={activeStep.id} className="w-full min-w-0 max-w-full">
 
               {!isConfirmation && (
                 <div className="mb-6 text-center">
@@ -3687,13 +3717,13 @@ export function ConfiguratorView() {
                   </CardContent>
                 </Card>
               )}
-          </div>
+            </div>
 
-          {!isConfirmation && (
-            <aside className="hidden lg:block">
-              <div className="sticky top-24 space-y-4">
-                <Card className="border-border/70 shadow-sm">
-                  <CardContent className="p-5">
+            {!isConfirmation && (
+              <aside className="hidden lg:block">
+                <div className="sticky top-24 space-y-4">
+                  <Card className="border-border/70 shadow-sm">
+                    <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold">Dossier technique</p>
@@ -3720,11 +3750,12 @@ export function ConfiguratorView() {
                         </div>
                       ))}
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </aside>
-          )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </aside>
+            )}
+          </div>
         </div>
       </main>
 
