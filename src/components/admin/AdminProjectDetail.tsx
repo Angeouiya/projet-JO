@@ -64,6 +64,7 @@ import {
 } from '@/lib/project-schedule';
 import { DEPARTMENT_LABELS, ROLE_LABELS } from '@/data/team';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { ActionRequirementHint } from '@/components/shared/ActionRequirementHint';
 
 function formatBudget(min?: number, max?: number) {
   if (min && max) return `${FORMAT_XOF(min)} - ${FORMAT_XOF(max)}`;
@@ -1009,20 +1010,24 @@ export function AdminProjectDetail() {
   const quoteScopeItems = splitQuoteText(quoteScopeText);
   const quoteAssumptionItems = splitQuoteText(quoteAssumptionsText);
   const quoteExclusionItems = splitQuoteText(quoteExclusionsText);
-  const quoteDisabled = !Number.isFinite(Number(quoteAmount))
-    || Number(quoteAmount) <= 0
-    || !quoteLabel.trim()
-    || !quoteDescription.trim()
-    || quoteScopeItems.length === 0
-    || !quotePaymentTerms.trim()
-    || !Number.isFinite(Number(quoteValidityDays))
-    || Number(quoteValidityDays) < 1;
-  const proposalDisabled = !proposalTitle.trim()
-    || !proposalImage.trim()
-    || !proposalDescription.trim()
-    || !proposalEstimate.trim()
-    || !proposalDuration.trim()
-    || !proposalDeliverable.trim();
+  const quoteRequirementReasons = [
+    (!Number.isFinite(Number(quoteAmount)) || Number(quoteAmount) <= 0) ? 'Montant valide' : '',
+    !quoteLabel.trim() ? 'Libellé du devis' : '',
+    !quoteDescription.trim() ? 'Description client' : '',
+    quoteScopeItems.length === 0 ? 'Périmètre inclus' : '',
+    !quotePaymentTerms.trim() ? 'Modalités de paiement' : '',
+    (!Number.isFinite(Number(quoteValidityDays)) || Number(quoteValidityDays) < 1) ? 'Validité en jours' : '',
+  ].filter(Boolean);
+  const quoteDisabled = quoteRequirementReasons.length > 0;
+  const proposalRequirementReasons = [
+    !proposalTitle.trim() ? 'Titre de proposition' : '',
+    !proposalImage.trim() ? 'Image professionnelle' : '',
+    !proposalDescription.trim() ? 'Description client' : '',
+    !proposalEstimate.trim() ? 'Budget indicatif' : '',
+    !proposalDuration.trim() ? 'Délai estimatif' : '',
+    !proposalDeliverable.trim() ? 'Livrable attendu' : '',
+  ].filter(Boolean);
+  const proposalDisabled = proposalRequirementReasons.length > 0;
   const financing = project.financing || (project.formData?.financing as typeof project.financing);
   const financingDecisionPlan = financing ? buildFinancingDecisionPlan(financing, project.budgetMax || project.budgetMin) : undefined;
   const adminClientIsRemote = Boolean(
@@ -1037,6 +1042,11 @@ export function AdminProjectDetail() {
   const adminDecisionIcons: LucideIcon[] = [Calculator, PiggyBank, Gauge, Scale, Landmark, Route];
   const selectedLead = activeTeamMembers.find(member => member.name === leadName);
   const assignedMember = activeTeamMembers.find(member => member.name === project.assignedTo);
+  const leadRequirementReasons = [
+    activeTeamMembers.length === 0 ? 'Créer ou activer un membre équipe' : '',
+    !leadName.trim() ? 'Sélectionner un responsable' : '',
+  ].filter(Boolean);
+  const leadDisabled = leadRequirementReasons.length > 0;
   const leadRoleLabel = selectedLead ? ROLE_LABELS[selectedLead.role] || selectedLead.role : 'Rôle à définir';
   const leadDepartmentLabel = selectedLead ? DEPARTMENT_LABELS[selectedLead.department] || selectedLead.department : 'Équipe Buildify';
   const visualProposal = project.visualProposal;
@@ -1096,7 +1106,11 @@ export function AdminProjectDetail() {
   const missingDocumentCount = (financing?.documentReadiness ?? []).includes('none-yet')
     ? 4
     : Math.max(0, 4 - (financing?.documentReadiness ?? []).filter(item => ['id', 'income-proof', 'bank-statements', 'quote-or-plans'].includes(item)).length);
-  const paymentMilestoneDisabled = !selectedPaymentMilestone || !paymentMilestoneStatus;
+  const paymentMilestoneRequirementReasons = [
+    !selectedPaymentMilestone ? 'Jalon financier' : '',
+    !paymentMilestoneStatus ? 'Statut du jalon' : '',
+  ].filter(Boolean);
+  const paymentMilestoneDisabled = paymentMilestoneRequirementReasons.length > 0;
   const nextAdminAction = project.status === 'submitted'
     ? 'Qualifier le dossier'
     : project.status === 'info_required'
@@ -1418,13 +1432,14 @@ export function AdminProjectDetail() {
     .slice()
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 4);
-  const scheduleDisabled = !scheduleTitle.trim()
-    || !scheduleAt
-    || Number.isNaN(new Date(scheduleAt).getTime())
-    || !Number.isFinite(Number(scheduleDuration))
-    || Number(scheduleDuration) < 15
-    || !scheduleMode
-    || !scheduleType;
+  const scheduleRequirementReasons = [
+    !scheduleTitle.trim() ? 'Titre du rendez-vous' : '',
+    (!scheduleAt || Number.isNaN(new Date(scheduleAt).getTime())) ? 'Date et heure valides' : '',
+    (!Number.isFinite(Number(scheduleDuration)) || Number(scheduleDuration) < 15) ? 'Durée minimum 15 min' : '',
+    !scheduleMode ? 'Mode du rendez-vous' : '',
+    !scheduleType ? 'Type de rendez-vous' : '',
+  ].filter(Boolean);
+  const scheduleDisabled = scheduleRequirementReasons.length > 0;
   const infoRequestTemplates = [
     {
       label: 'Terrain',
@@ -1577,12 +1592,13 @@ export function AdminProjectDetail() {
     addToast('Planning publié dans l’espace projet client.', 'success');
   };
 
-  const siteUpdateDisabled = !sitePhase.trim()
-    || !siteCaption.trim()
-    || !siteImageUrl.trim()
-    || !Number.isFinite(Number(siteProgress))
-    || Number(siteProgress) < 0
-    || Number(siteProgress) > 100;
+  const siteUpdateRequirementReasons = [
+    !sitePhase.trim() ? 'Phase chantier' : '',
+    !siteCaption.trim() ? 'Légende client' : '',
+    !siteImageUrl.trim() ? 'Photo chantier' : '',
+    (!Number.isFinite(Number(siteProgress)) || Number(siteProgress) < 0 || Number(siteProgress) > 100) ? 'Progression 0 à 100' : '',
+  ].filter(Boolean);
+  const siteUpdateDisabled = siteUpdateRequirementReasons.length > 0;
 
   const focusAdminAction = (targetId: string) => {
     const element = document.getElementById(targetId);
@@ -2013,11 +2029,15 @@ export function AdminProjectDetail() {
                     confirmLabel="Affecter"
                     onConfirm={handleAssign}
                     trigger={(
-                      <Button className="mt-3 w-full gap-2" disabled={!leadName.trim()}>
+                      <Button className="mt-3 w-full gap-2" disabled={leadDisabled}>
                         <UserCheck className="size-4" />
                         Affecter
                       </Button>
                     )}
+                  />
+                  <ActionRequirementHint
+                    items={leadRequirementReasons}
+                    readyText="Responsable prêt à affecter au dossier."
                   />
                 </div>
 
@@ -2134,6 +2154,10 @@ export function AdminProjectDetail() {
                         Transmettre
                       </Button>
                     )}
+                  />
+                  <ActionRequirementHint
+                    items={quoteRequirementReasons}
+                    readyText="Devis prêt à transmettre après confirmation."
                   />
                 </div>
 
@@ -2299,6 +2323,10 @@ export function AdminProjectDetail() {
                       </Button>
                     )}
                   />
+                  <ActionRequirementHint
+                    items={proposalRequirementReasons}
+                    readyText="Proposition prête à publier dans l’espace client."
+                  />
                 </div>
               </div>
 
@@ -2461,6 +2489,11 @@ export function AdminProjectDetail() {
                     </Button>
                   )}
                 />
+                <ActionRequirementHint
+                  items={scheduleRequirementReasons}
+                  readyText="Planning prêt à publier au client."
+                  className="sm:max-w-xl"
+                />
               </div>
 
               <Separator className="my-4" />
@@ -2526,6 +2559,11 @@ export function AdminProjectDetail() {
                     </Button>
                   )}
                 />
+                <ActionRequirementHint
+                  items={siteUpdateRequirementReasons}
+                  readyText="Avancement prêt à publier côté client."
+                  className="sm:max-w-xl"
+                />
               </div>
 
               <Separator className="my-4" />
@@ -2578,6 +2616,11 @@ export function AdminProjectDetail() {
                   )}
                 />
               </div>
+              <ActionRequirementHint
+                items={infoMessage.trim() ? [] : ['Question ou demande à rédiger']}
+                readyText="Demande prête à envoyer au client."
+                className="sm:max-w-xl"
+              />
 
               <Separator className="my-4" />
 
@@ -2614,6 +2657,11 @@ export function AdminProjectDetail() {
                     Envoyer au client
                   </Button>
                 )}
+              />
+              <ActionRequirementHint
+                items={adminDirectMessage.trim() ? [] : ['Message client à rédiger']}
+                readyText="Message prêt à transmettre dans le fil projet."
+                className="sm:max-w-xl"
               />
             </CardContent>
           </Card>
@@ -2994,6 +3042,10 @@ export function AdminProjectDetail() {
                             Mettre à jour
                           </Button>
                         )}
+                      />
+                      <ActionRequirementHint
+                        items={paymentMilestoneRequirementReasons}
+                        readyText="Jalon prêt à mettre à jour côté client."
                       />
                     </div>
                   )}

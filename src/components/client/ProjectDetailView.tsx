@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { ActionRequirementHint } from '@/components/shared/ActionRequirementHint';
 import { formatProjectLocation } from '@/lib/project-format';
 import { buildProjectBrief, projectBriefLabel } from '@/lib/project-brief';
 import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
@@ -3087,23 +3088,26 @@ function FinancingTab({
   const decisionMetricIcons: LucideIcon[] = [Calculator, PiggyBank, Gauge, Scale, Wallet, Route];
   const projectedFinancing = buildFinancingFromDraft(financing, draft, data);
   const projectedScore = projectedFinancing.affordabilityScore ?? 0;
-  const requiredFinancialFieldsMissing = !draft.employmentStatus
-    || !draft.financialSector
-    || !draft.contractType
-    || !draft.employerName.trim()
-    || !draft.incomeCurrency
-    || !draft.incomeStability
-    || !draft.financingOwner
-    || !draft.coBorrowerStatus
-    || !draft.bankAgreementStage
-    || !draft.financingPurpose
-    || !draft.downPaymentSource
-    || draftNumber(draft.baseSalary) === undefined
-    || financingDraftMonthlyIncome(draft) === undefined
-    || draftNumber(draft.existingMonthlyDebt) === undefined
-    || draftNumber(draft.monthlyPaymentCapacity) === undefined
-    || draftNumber(draft.ownContribution) === undefined
-    || draftNumber(draft.requestedLoanAmount) === undefined;
+  const requiredFinancialFieldLabels = [
+    !draft.employmentStatus ? 'Situation professionnelle' : '',
+    !draft.financialSector ? 'Secteur financier' : '',
+    !draft.contractType ? 'Type de contrat' : '',
+    !draft.employerName.trim() ? 'Employeur ou activité' : '',
+    !draft.incomeCurrency ? 'Devise du revenu' : '',
+    !draft.incomeStability ? 'Stabilité du revenu' : '',
+    !draft.financingOwner ? 'Porteur du financement' : '',
+    !draft.coBorrowerStatus ? 'Co-emprunteur' : '',
+    !draft.bankAgreementStage ? 'Accord banque' : '',
+    !draft.financingPurpose ? 'Objet du financement' : '',
+    !draft.downPaymentSource ? 'Origine de l’apport' : '',
+    draftNumber(draft.baseSalary) === undefined ? 'Salaire ou revenu fixe' : '',
+    financingDraftMonthlyIncome(draft) === undefined ? 'Revenu mensuel total' : '',
+    draftNumber(draft.existingMonthlyDebt) === undefined ? 'Charges et crédits' : '',
+    draftNumber(draft.monthlyPaymentCapacity) === undefined ? 'Capacité mensuelle' : '',
+    draftNumber(draft.ownContribution) === undefined ? 'Apport disponible' : '',
+    draftNumber(draft.requestedLoanAmount) === undefined ? 'Montant à financer' : '',
+  ].filter(Boolean);
+  const requiredFinancialFieldsMissing = requiredFinancialFieldLabels.length > 0;
 
   function setDraftField<K extends keyof FinancingDraft>(key: K, value: FinancingDraft[K]) {
     setDraft(prev => ({ ...prev, [key]: value }));
@@ -3702,11 +3706,11 @@ function FinancingTab({
                 </div>
               </div>
 
-              {requiredFinancialFieldsMissing && (
-                <p className="rounded-lg border border-dashed p-3 text-xs leading-5 text-muted-foreground">
-                  Complétez au minimum la situation, le secteur, le contrat, l’employeur ou activité, la devise, la stabilité, le porteur, le co-emprunteur, le salaire ou revenu fixe, les charges, la capacité, l’apport, le montant à financer, l’accord banque, l’objet du financement et l’origine de l’apport.
-                </p>
-              )}
+              <ActionRequirementHint
+                items={requiredFinancialFieldLabels}
+                title="Informations financières nécessaires"
+                readyText="Profil financier complet, prêt à transmettre à Buildify."
+              />
 
               <div className="rounded-lg border bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
                 En envoyant ces données, vous ne payez pas une avance de démarrage. Vous permettez à Buildify de structurer votre capacité, d’échanger avec votre banque si demandé, de préparer le contrat sécurisé et de déclencher les paiements uniquement après contrôle des étapes.
