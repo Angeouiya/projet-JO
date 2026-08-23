@@ -873,6 +873,15 @@ function percentOrTodo(value: number | undefined) {
   return value !== undefined ? `${value}%` : 'À calculer';
 }
 
+function percentRatio(part?: number, total?: number) {
+  if (part === undefined || total === undefined || total <= 0) return undefined;
+  return Math.round((part / total) * 100);
+}
+
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
 function paymentMilestoneStatusLabel(status: ProjectPaymentMilestoneData['status']) {
   if (status === 'due') return 'À régler';
   if (status === 'paid') return 'Payé';
@@ -974,6 +983,257 @@ const FINANCIAL_RISK_LABELS: Record<NonNullable<ProjectFinancingData['financialR
   high: 'Risque élevé',
   unknown: 'À analyser',
 };
+
+type FinancingDraft = {
+  mode: string;
+  employmentStatus: string;
+  incomeCurrency: string;
+  incomeStability: string;
+  financingOwner: string;
+  coBorrowerStatus: string;
+  monthlyIncome: number | '';
+  existingMonthlyDebt: number | '';
+  monthlyPaymentCapacity: number | '';
+  ownContribution: number | '';
+  requestedLoanAmount: number | '';
+  desiredLoanDurationYears: number | '';
+  availableSavings: number | '';
+  householdDependents: number | '';
+  bankName: string;
+  bankAgreementStage: string;
+  financingPurpose: string;
+  downPaymentSource: string;
+  notaryContract: boolean;
+  escrowRequested: boolean;
+  bankSupportRequested: boolean;
+  landSupportRequested: boolean;
+  notes: string;
+};
+
+type FinancingNumberField =
+  | 'monthlyIncome'
+  | 'existingMonthlyDebt'
+  | 'monthlyPaymentCapacity'
+  | 'ownContribution'
+  | 'requestedLoanAmount'
+  | 'desiredLoanDurationYears'
+  | 'availableSavings'
+  | 'householdDependents';
+
+type FinancingBooleanField =
+  | 'notaryContract'
+  | 'escrowRequested'
+  | 'bankSupportRequested'
+  | 'landSupportRequested';
+
+const FINANCING_NUMBER_FIELDS: Array<{ key: FinancingNumberField; label: string; placeholder: string }> = [
+  { key: 'monthlyIncome', label: 'Revenu net', placeholder: '1500000' },
+  { key: 'existingMonthlyDebt', label: 'Charges', placeholder: '250000' },
+  { key: 'monthlyPaymentCapacity', label: 'Capacité', placeholder: '500000' },
+  { key: 'ownContribution', label: 'Apport', placeholder: '5000000' },
+  { key: 'requestedLoanAmount', label: 'À financer', placeholder: '35000000' },
+  { key: 'desiredLoanDurationYears', label: 'Durée an(s)', placeholder: '10' },
+  { key: 'availableSavings', label: 'Épargne', placeholder: '3000000' },
+  { key: 'householdDependents', label: 'Charges foyer', placeholder: '2' },
+];
+
+const FINANCING_BOOLEAN_FIELDS: Array<{ key: FinancingBooleanField; label: string }> = [
+  { key: 'notaryContract', label: 'Contrat notarié' },
+  { key: 'escrowRequested', label: 'Séquestre' },
+  { key: 'bankSupportRequested', label: 'Aide banque' },
+  { key: 'landSupportRequested', label: 'Aide terrain' },
+];
+
+const FINANCING_MODE_OPTIONS = [
+  { value: 'confirmed-bank', label: 'Financement confirmé' },
+  { value: 'bank-support', label: 'Aide banque demandée' },
+  { value: 'progress-payment', label: 'Paiement par avancement' },
+  { value: 'notary-secured', label: 'Contrat notarié' },
+  { value: 'land-and-finance', label: 'Terrain + financement' },
+  { value: 'to-structure', label: 'À structurer' },
+];
+
+function financingDraftFrom(financing: ProjectFinancingData): FinancingDraft {
+  return {
+    mode: financing.mode || 'progress-payment',
+    employmentStatus: financing.employmentStatus || '',
+    incomeCurrency: financing.incomeCurrency || 'XOF',
+    incomeStability: financing.incomeStability || '',
+    financingOwner: financing.financingOwner || '',
+    coBorrowerStatus: financing.coBorrowerStatus || '',
+    monthlyIncome: financing.monthlyIncome ?? '',
+    existingMonthlyDebt: financing.existingMonthlyDebt ?? '',
+    monthlyPaymentCapacity: financing.monthlyPaymentCapacity ?? '',
+    ownContribution: financing.ownContribution ?? '',
+    requestedLoanAmount: financing.requestedLoanAmount ?? '',
+    desiredLoanDurationYears: financing.desiredLoanDurationYears ?? '',
+    availableSavings: financing.availableSavings ?? '',
+    householdDependents: financing.householdDependents ?? '',
+    bankName: financing.bankName || '',
+    bankAgreementStage: financing.bankAgreementStage || '',
+    financingPurpose: financing.financingPurpose || '',
+    downPaymentSource: financing.downPaymentSource || '',
+    notaryContract: financing.notaryContract,
+    escrowRequested: financing.escrowRequested,
+    bankSupportRequested: financing.bankSupportRequested,
+    landSupportRequested: financing.landSupportRequested,
+    notes: financing.notes || '',
+  };
+}
+
+function draftNumber(value: number | '') {
+  return value === '' || !Number.isFinite(Number(value)) ? undefined : Number(value);
+}
+
+function numberInputValue(value: number | '') {
+  return value === '' ? '' : String(value);
+}
+
+function defaultMilestonesForBudget(estimatedBudget?: number): ProjectPaymentMilestoneData[] {
+  const phases = [
+    { id: 'foundation', label: 'Fondations validées', trigger: 'Décaissement après contrôle et photos des fondations.', percent: 10 },
+    { id: 'structure', label: 'Élévation / structure', trigger: 'Décaissement après avancement structurel conforme.', percent: 20 },
+    { id: 'roofing', label: 'Toiture / clos couvert', trigger: 'Décaissement après toiture, menuiseries ou étape équivalente.', percent: 15 },
+    { id: 'secondary', label: 'Second œuvre', trigger: 'Décaissement après réseaux, plomberie, électricité et cloisons.', percent: 25 },
+    { id: 'finishes', label: 'Finitions', trigger: 'Décaissement après validation des finitions et équipements.', percent: 20 },
+    { id: 'handover', label: 'Réception', trigger: 'Solde à la réception selon contrat.', percent: 10 },
+  ];
+
+  return phases.map(phase => ({
+    ...phase,
+    expectedAmount: estimatedBudget ? Math.round((estimatedBudget * phase.percent) / 100) : undefined,
+    status: 'planned' as const,
+  }));
+}
+
+function buildMilestonesForBudget(existing: ProjectPaymentMilestoneData[], estimatedBudget?: number) {
+  if (existing.length === 0) return defaultMilestonesForBudget(estimatedBudget);
+  return existing.map(milestone => ({
+    ...milestone,
+    expectedAmount: estimatedBudget ? Math.round((estimatedBudget * milestone.percent) / 100) : milestone.expectedAmount,
+  }));
+}
+
+function financingDraftScore(draft: FinancingDraft, estimatedBudget?: number) {
+  const monthlyIncome = draftNumber(draft.monthlyIncome);
+  const existingDebt = draftNumber(draft.existingMonthlyDebt) ?? 0;
+  const monthlyCapacity = draftNumber(draft.monthlyPaymentCapacity) ?? 0;
+  const ownContribution = draftNumber(draft.ownContribution);
+  const projectedDebtRatio = percentRatio(existingDebt + monthlyCapacity, monthlyIncome);
+  const equityRatio = percentRatio(ownContribution, estimatedBudget);
+  const bankScore = ['funds-available', 'pre-approved'].includes(draft.bankAgreementStage)
+    ? 22
+    : draft.bankAgreementStage === 'under-review'
+      ? 14
+      : draft.bankAgreementStage === 'documents-requested'
+        ? 9
+        : 3;
+  const stabilityScore = ['stable-12m', 'stable-contract'].includes(draft.incomeStability)
+    ? 18
+    : draft.incomeStability === 'stable-6m'
+      ? 12
+      : draft.incomeStability
+        ? 7
+        : 2;
+  const debtScore = projectedDebtRatio === undefined
+    ? 4
+    : projectedDebtRatio <= 35
+      ? 22
+      : projectedDebtRatio <= 45
+        ? 13
+        : 5;
+  const equityScore = equityRatio === undefined
+    ? 4
+    : equityRatio >= 30
+      ? 18
+      : equityRatio >= 15
+        ? 11
+        : 5;
+  const securityScore = [draft.notaryContract, draft.escrowRequested, draft.bankSupportRequested].filter(Boolean).length * 5;
+
+  return clampPercent(bankScore + stabilityScore + debtScore + equityScore + securityScore);
+}
+
+function financialRiskLevel(score: number, projectedDebtRatio?: number): ProjectFinancingData['financialRiskLevel'] {
+  if (projectedDebtRatio !== undefined && projectedDebtRatio > 50) return 'high';
+  if (score >= 75) return 'low';
+  if (score >= 45) return 'moderate';
+  return 'high';
+}
+
+function financingReadinessFromDraft(draft: FinancingDraft): ProjectFinancingData['readiness'] {
+  if (draft.mode === 'confirmed-bank' || ['funds-available', 'pre-approved'].includes(draft.bankAgreementStage)) return 'confirmed';
+  if (draft.mode === 'bank-support' || ['under-review', 'documents-requested'].includes(draft.bankAgreementStage)) return 'bank_review';
+  if (draft.mode === 'to-structure' || draft.mode === 'land-and-finance') return 'to_structure';
+  return 'unknown';
+}
+
+function buildFinancingFromDraft(
+  base: ProjectFinancingData,
+  draft: FinancingDraft,
+  data: ProjectDetailData
+): ProjectFinancingData {
+  const estimatedBudget = base.estimatedBudget || data.budgetMax || data.budgetMin || undefined;
+  const monthlyIncome = draftNumber(draft.monthlyIncome);
+  const existingMonthlyDebt = draftNumber(draft.existingMonthlyDebt);
+  const monthlyPaymentCapacity = draftNumber(draft.monthlyPaymentCapacity);
+  const ownContribution = draftNumber(draft.ownContribution);
+  const requestedLoanAmount = draftNumber(draft.requestedLoanAmount);
+  const desiredLoanDurationYears = draftNumber(draft.desiredLoanDurationYears);
+  const availableSavings = draftNumber(draft.availableSavings);
+  const householdDependents = draftNumber(draft.householdDependents);
+  const currentDebtRatioPercent = percentRatio(existingMonthlyDebt, monthlyIncome);
+  const projectedDebtRatioPercent = percentRatio((existingMonthlyDebt ?? 0) + (monthlyPaymentCapacity ?? 0), monthlyIncome);
+  const equityRatioPercent = percentRatio(ownContribution, estimatedBudget);
+  const cashReserveMonths = monthlyIncome && availableSavings !== undefined
+    ? Math.round((availableSavings / monthlyIncome) * 10) / 10
+    : undefined;
+  const affordabilityScore = financingDraftScore(draft, estimatedBudget);
+
+  return {
+    ...base,
+    mode: draft.mode,
+    readiness: financingReadinessFromDraft(draft),
+    paymentPrinciple: 'Objectif Buildify : structurer un financement lisible, protéger l’apport, éviter les avances non sécurisées et déclencher les paiements uniquement par jalons vérifiés.',
+    estimatedBudget,
+    monthlyIncome,
+    existingMonthlyDebt,
+    monthlyPaymentCapacity,
+    ownContribution,
+    requestedLoanAmount,
+    desiredLoanDurationYears,
+    availableSavings,
+    employmentStatus: draft.employmentStatus || undefined,
+    incomeCurrency: draft.incomeCurrency || undefined,
+    incomeStability: draft.incomeStability || undefined,
+    householdDependents,
+    coBorrowerStatus: draft.coBorrowerStatus || undefined,
+    financingOwner: draft.financingOwner || undefined,
+    affordabilityScore,
+    financialRiskLevel: financialRiskLevel(affordabilityScore, projectedDebtRatioPercent),
+    equityRatioPercent,
+    cashReserveMonths,
+    bankName: draft.bankName.trim() || undefined,
+    bankAgreementStage: draft.bankAgreementStage || undefined,
+    financingPurpose: draft.financingPurpose || undefined,
+    downPaymentSource: draft.downPaymentSource || undefined,
+    currentDebtRatioPercent,
+    projectedDebtRatioPercent,
+    notaryContract: draft.notaryContract,
+    escrowRequested: draft.escrowRequested,
+    bankSupportRequested: draft.bankSupportRequested,
+    landSupportRequested: draft.landSupportRequested,
+    notes: draft.notes.trim() || undefined,
+    guarantees: [
+      ...(draft.notaryContract ? ['notary-contract'] : []),
+      ...(draft.escrowRequested ? ['escrow'] : []),
+      ...(draft.bankSupportRequested ? ['bank-support'] : []),
+    ],
+    commitments: ['truthful-data', 'bank-verification', 'progress-payment', 'no-hidden-advance'],
+    milestones: buildMilestonesForBudget(base.milestones, estimatedBudget),
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 // ── Sub-views ──────────────────────────────────────────────
 
@@ -1701,8 +1961,16 @@ function ProposalsTab({
   );
 }
 
-function FinancingTab({ data }: { data: ProjectDetailData }) {
+function FinancingTab({
+  data,
+  onUpdate,
+}: {
+  data: ProjectDetailData;
+  onUpdate?: (financing: ProjectFinancingData) => void;
+}) {
   const financing = data.financing ?? buildDefaultFinancing(data);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState<FinancingDraft>(() => financingDraftFrom(financing));
   const flags = [
     { label: 'Contrat notarié', active: financing.notaryContract },
     { label: 'Compte bloqué / séquestre', active: financing.escrowRequested },
@@ -1727,6 +1995,31 @@ function FinancingTab({ data }: { data: ProjectDetailData }) {
     .filter(item => item.status === 'due')
     .reduce((total, item) => total + (item.expectedAmount ?? 0), 0);
   const blockedCount = financing.milestones.filter(item => item.status === 'blocked').length;
+  const projectedFinancing = buildFinancingFromDraft(financing, draft, data);
+  const projectedScore = projectedFinancing.affordabilityScore ?? 0;
+  const requiredFinancialFieldsMissing = !draft.employmentStatus
+    || !draft.incomeCurrency
+    || !draft.financingOwner
+    || !draft.coBorrowerStatus
+    || draftNumber(draft.monthlyIncome) === undefined
+    || draftNumber(draft.existingMonthlyDebt) === undefined
+    || draftNumber(draft.monthlyPaymentCapacity) === undefined
+    || draftNumber(draft.ownContribution) === undefined
+    || draftNumber(draft.requestedLoanAmount) === undefined;
+
+  function setDraftField<K extends keyof FinancingDraft>(key: K, value: FinancingDraft[K]) {
+    setDraft(prev => ({ ...prev, [key]: value }));
+  }
+
+  function setDraftNumber(key: FinancingNumberField, value: string) {
+    setDraft(prev => ({ ...prev, [key]: value === '' ? '' : Number(value) }));
+  }
+
+  function handleUpdateFinancing() {
+    if (!onUpdate || requiredFinancialFieldsMissing) return;
+    onUpdate(projectedFinancing);
+    setIsEditing(false);
+  }
 
   return (
     <div className="space-y-4">
@@ -1838,6 +2131,177 @@ function FinancingTab({ data }: { data: ProjectDetailData }) {
               </Badge>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="py-0 gap-0">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold">Profil financier client</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Mettez à jour les revenus, charges, apport, banque et garanties. Ces données servent à sécuriser le devis, le contrat et les jalons.
+              </p>
+            </div>
+            <Button variant={isEditing ? 'secondary' : 'outline'} size="sm" className="h-10" onClick={() => setIsEditing(prev => !prev)}>
+              {isEditing ? 'Fermer' : 'Mettre à jour'}
+            </Button>
+          </div>
+
+          {isEditing && (
+            <div className="mt-4 space-y-4">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-mode">Mode</label>
+                  <select id="finance-mode" value={draft.mode} onChange={event => setDraftField('mode', event.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-xs">
+                    {FINANCING_MODE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-employment">Situation</label>
+                  <select id="finance-employment" value={draft.employmentStatus} onChange={event => setDraftField('employmentStatus', event.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-xs">
+                    <option value="">Choisir</option>
+                    {Object.entries(EMPLOYMENT_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-currency">Devise</label>
+                  <select id="finance-currency" value={draft.incomeCurrency} onChange={event => setDraftField('incomeCurrency', event.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-xs">
+                    {['XOF', 'EUR', 'USD', 'CAD', 'GBP'].map(currency => <option key={currency} value={currency}>{currency}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-stability">Stabilité</label>
+                  <select id="finance-stability" value={draft.incomeStability} onChange={event => setDraftField('incomeStability', event.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-xs">
+                    <option value="">Choisir</option>
+                    {Object.entries(INCOME_STABILITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-bank-stage">Banque</label>
+                  <select id="finance-bank-stage" value={draft.bankAgreementStage} onChange={event => setDraftField('bankAgreementStage', event.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-xs">
+                    <option value="">Choisir</option>
+                    {Object.entries(BANK_STAGE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-owner">Porteur</label>
+                  <select id="finance-owner" value={draft.financingOwner} onChange={event => setDraftField('financingOwner', event.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-xs">
+                    <option value="">Choisir</option>
+                    {Object.entries(FINANCING_OWNER_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-coborrower">Co-emprunteur</label>
+                  <select id="finance-coborrower" value={draft.coBorrowerStatus} onChange={event => setDraftField('coBorrowerStatus', event.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-xs">
+                    <option value="">Choisir</option>
+                    {Object.entries(CO_BORROWER_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {FINANCING_NUMBER_FIELDS.map(({ key, label, placeholder }) => (
+                  <div key={key} className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor={`finance-${key}`}>{label}</label>
+                    <Input
+                      id={`finance-${key}`}
+                      type="number"
+                      min={0}
+                      value={numberInputValue(draft[key])}
+                      placeholder={placeholder}
+                      onChange={event => setDraftNumber(key, event.target.value)}
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-2 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-bank-name">Banque ou organisme</label>
+                  <Input id="finance-bank-name" value={draft.bankName} onChange={event => setDraftField('bankName', event.target.value)} placeholder="Ex : Banque partenaire diaspora" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-purpose">Objet du financement</label>
+                  <select id="finance-purpose" value={draft.financingPurpose} onChange={event => setDraftField('financingPurpose', event.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                    <option value="">Choisir</option>
+                    {Object.entries(FINANCING_PURPOSE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-down-source">Origine de l’apport</label>
+                  <select id="finance-down-source" value={draft.downPaymentSource} onChange={event => setDraftField('downPaymentSource', event.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+                    <option value="">Choisir</option>
+                    {Object.entries(DOWN_PAYMENT_SOURCE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {FINANCING_BOOLEAN_FIELDS.map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 rounded-lg border p-3 text-xs font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={draft[key]}
+                      onChange={event => setDraftField(key, event.target.checked)}
+                      className="size-4"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-notes">Précision financière utile</label>
+                <Textarea
+                  id="finance-notes"
+                  value={draft.notes}
+                  onChange={event => setDraftField('notes', event.target.value)}
+                  rows={3}
+                  placeholder="Préaccord, origine de l’apport, contrainte bancaire, personne à contacter, devise des revenus..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Score prévu</p>
+                  <p className="mt-1 text-sm font-bold">{projectedScore}%</p>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Risque</p>
+                  <p className="mt-1 text-xs font-semibold">{FINANCIAL_RISK_LABELS[projectedFinancing.financialRiskLevel ?? 'unknown']}</p>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ratio projeté</p>
+                  <p className="mt-1 text-sm font-bold">{percentOrTodo(projectedFinancing.projectedDebtRatioPercent)}</p>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Réserve</p>
+                  <p className="mt-1 text-sm font-bold">{projectedFinancing.cashReserveMonths !== undefined ? `${projectedFinancing.cashReserveMonths} mois` : 'À calculer'}</p>
+                </div>
+              </div>
+
+              {requiredFinancialFieldsMissing && (
+                <p className="rounded-lg border border-dashed p-3 text-xs leading-5 text-muted-foreground">
+                  Complétez au minimum la situation, la devise, le porteur, le co-emprunteur, le revenu net, les charges, la capacité, l’apport et le montant à financer.
+                </p>
+              )}
+
+              <ConfirmActionDialog
+                title="Envoyer ces informations financières ?"
+                description={`Buildify recevra votre mise à jour financière avec un score recalculé de ${projectedScore}%, un ratio projeté de ${percentOrTodo(projectedFinancing.projectedDebtRatioPercent)} et les garanties cochées. Ces données servent à préparer le devis, le contrat et les jalons de paiement.`}
+                confirmLabel="Envoyer"
+                onConfirm={handleUpdateFinancing}
+                trigger={(
+                  <Button className="w-full gap-2" disabled={!onUpdate || requiredFinancialFieldsMissing}>
+                    <Check className="size-4" />
+                    Envoyer mes informations
+                  </Button>
+                )}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -2200,7 +2664,7 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
 type TabValue = 'resume' | 'propositions' | 'financement' | 'documents' | 'messages' | 'devis' | 'chantier';
 
 export function ProjectDetailView() {
-  const { goBack, navigate, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, respondProjectInfo, sendProjectMessage } = useAppStore();
+  const { goBack, navigate, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, updateProjectFinancing, respondProjectInfo, sendProjectMessage, addToast } = useAppStore();
   const projectId = viewParams?.id || '';
   const storedProject = userProjects.find(project => project.id === projectId || project.referenceNumber === projectId);
   const data = storedProject ? detailFromStoredProject(storedProject) : null;
@@ -2317,7 +2781,15 @@ export function ProjectDetailView() {
                 onValidate={storedProject ? (proposal) => validateProjectVisualProposal(storedProject.id, proposal) : undefined}
               />
             )}
-            {activeTab === 'financement' && <FinancingTab data={data} />}
+            {activeTab === 'financement' && (
+              <FinancingTab
+                data={data}
+                onUpdate={storedProject ? (financing) => {
+                  updateProjectFinancing(storedProject.id, financing);
+                  addToast('Informations financières envoyées.', 'success');
+                } : undefined}
+              />
+            )}
             {activeTab === 'documents' && (
               <DocumentsTab
                 data={data}
