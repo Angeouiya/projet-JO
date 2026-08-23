@@ -1223,7 +1223,7 @@ type FinancingBooleanField =
   | 'landSupportRequested';
 
 const FINANCING_NUMBER_FIELDS: Array<{ key: FinancingNumberField; label: string; placeholder: string }> = [
-  { key: 'baseSalary', label: 'Salaire de base net', placeholder: '1200000' },
+  { key: 'baseSalary', label: 'Salaire / revenu fixe net', placeholder: '1200000' },
   { key: 'variableMonthlyIncome', label: 'Primes / revenus variables', placeholder: '200000' },
   { key: 'otherMonthlyIncome', label: 'Autres revenus mensuels', placeholder: '100000' },
   { key: 'monthlyIncome', label: 'Revenu net retenu', placeholder: '1500000' },
@@ -2356,9 +2356,15 @@ function FinancingTab({
   const requiredFinancialFieldsMissing = !draft.employmentStatus
     || !draft.financialSector
     || !draft.contractType
+    || !draft.employerName.trim()
     || !draft.incomeCurrency
+    || !draft.incomeStability
     || !draft.financingOwner
     || !draft.coBorrowerStatus
+    || !draft.bankAgreementStage
+    || !draft.financingPurpose
+    || !draft.downPaymentSource
+    || draftNumber(draft.baseSalary) === undefined
     || financingDraftMonthlyIncome(draft) === undefined
     || draftNumber(draft.existingMonthlyDebt) === undefined
     || draftNumber(draft.monthlyPaymentCapacity) === undefined
@@ -2775,7 +2781,7 @@ function FinancingTab({
 
               {requiredFinancialFieldsMissing && (
                 <p className="rounded-lg border border-dashed p-3 text-xs leading-5 text-muted-foreground">
-                  Complétez au minimum la situation, le secteur, le contrat, la devise, le porteur, le co-emprunteur, le revenu retenu ou sa composition, les charges, la capacité, l’apport et le montant à financer.
+                  Complétez au minimum la situation, le secteur, le contrat, l’employeur ou activité, la devise, la stabilité, le porteur, le co-emprunteur, le salaire ou revenu fixe, les charges, la capacité, l’apport, le montant à financer, l’accord banque, l’objet du financement et l’origine de l’apport.
                 </p>
               )}
 

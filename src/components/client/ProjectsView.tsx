@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, FolderKanban, FileEdit, CheckCircle2, Clock,
   MapPin, ChevronRight, RefreshCw, ArrowUpDown,
+  Landmark, ReceiptText, MessageSquare, FileText,
+  Camera, ShieldCheck, HandCoins, AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,6 +38,43 @@ function getStatusVariant(status: string): 'default' | 'secondary' | 'outline' |
   if (status === 'draft') return 'secondary';
   if (status === 'delivered') return 'outline';
   return 'secondary';
+}
+
+function projectFinanceScore(project: ProjectData): number {
+  if (project.financing?.affordabilityScore !== undefined) return project.financing.affordabilityScore;
+  if (project.financing?.readiness === 'confirmed') return 80;
+  if (project.financing?.readiness === 'bank_review') return 58;
+  if (project.budgetMin || project.budgetMax) return 32;
+  return 0;
+}
+
+function projectNextAction(project: ProjectData) {
+  if (project.status === 'info_required') return { label: 'Compléter les informations', icon: FileEdit };
+  if ((project.visualProposals?.length ?? 0) > 0 && !project.visualProposal) return { label: 'Valider une proposition', icon: ShieldCheck };
+  if ((project.quotes ?? []).some(quote => quote.status === 'sent' || quote.status === 'draft')) return { label: 'Lire le devis transmis', icon: ReceiptText };
+  if (!project.financing || projectFinanceScore(project) < 50) return { label: 'Renforcer le financement', icon: Landmark };
+  if ((project.documents ?? []).length === 0) return { label: 'Ajouter les pièces du dossier', icon: FileText };
+  if ((project.projectMessages ?? []).length === 0) return { label: 'Envoyer une précision', icon: MessageSquare };
+  if (project.status === 'in_progress') return { label: 'Suivre le chantier', icon: Camera };
+  return { label: 'Suivre le dossier', icon: FolderKanban };
+}
+
+function projectReadiness(project: ProjectData): number {
+  const checks = [
+    Boolean(project.city && project.country),
+    Boolean(project.financing && projectFinanceScore(project) >= 50),
+    Boolean((project.documents ?? []).length),
+    Boolean((project.quotes ?? []).length || (project.visualProposals ?? []).length),
+    Boolean((project.projectMessages ?? []).length || project.missingInfoResponses?.length),
+  ];
+  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+}
+
+function projectBudgetLabel(project: ProjectData) {
+  if (project.budgetMin != null && project.budgetMax != null) return `${FORMAT_SHORT_XOF(project.budgetMin)} - ${FORMAT_SHORT_XOF(project.budgetMax)}`;
+  if (project.budgetMax != null) return FORMAT_SHORT_XOF(project.budgetMax);
+  if (project.budgetMin != null) return FORMAT_SHORT_XOF(project.budgetMin);
+  return 'À cadrer';
 }
 
 function formatDate(dateStr: string): string {
@@ -77,6 +116,15 @@ function EmptyState({ activeTab, onNavigate }: { activeTab: FilterTab; onNavigat
 }
 
 function ProjectCard({ project, onClick }: { project: ProjectData; onClick: () => void }) {
+  const nextAction = projectNextAction(project);
+  const NextIcon = nextAction.icon;
+  const financeScore = projectFinanceScore(project);
+  const readiness = projectReadiness(project);
+  const docs = project.documents?.length ?? 0;
+  const quotes = project.quotes?.length ?? 0;
+  const messages = project.projectMessages?.length ?? 0;
+  const siteUpdates = project.siteUpdates?.length ?? 0;
+
   return (
     <Card
       className="cursor-pointer py-0 gap-0 hover:bg-accent/50 transition-colors"
@@ -98,26 +146,65 @@ function ProjectCard({ project, onClick }: { project: ProjectData; onClick: () =
           <ChevronRight className="size-4 text-muted-foreground mt-1 flex-shrink-0" />
         </div>
 
-        <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+        <div className="mt-3 rounded-lg border bg-muted/30 p-3">
+          <div className="flex items-start gap-2">
+            <NextIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Prochaine action</p>
+              <p className="mt-1 text-sm font-semibold leading-5">{nextAction.label}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <MapPin className="size-3" />
             {formatProjectLocation(project, 'Non défini')}
           </span>
-          {project.budgetMin != null && project.budgetMax != null && (
-            <span className="flex items-center gap-1">
-              <ArrowUpDown className="size-3" />
-              {FORMAT_SHORT_XOF(project.budgetMin)} &ndash; {FORMAT_SHORT_XOF(project.budgetMax)}
-            </span>
-          )}
+          <span className="flex items-center gap-1">
+            <ArrowUpDown className="size-3" />
+            {projectBudgetLabel(project)}
+          </span>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-lg border p-2.5">
+            <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Landmark className="size-3" />
+              Finance
+            </p>
+            <p className="mt-1 text-sm font-bold">{financeScore || 0}%</p>
+          </div>
+          <div className="rounded-lg border p-2.5">
+            <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <FileText className="size-3" />
+              Pièces
+            </p>
+            <p className="mt-1 text-sm font-bold">{docs}</p>
+          </div>
+          <div className="rounded-lg border p-2.5">
+            <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <ReceiptText className="size-3" />
+              Devis
+            </p>
+            <p className="mt-1 text-sm font-bold">{quotes}</p>
+          </div>
+          <div className="rounded-lg border p-2.5">
+            <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <MessageSquare className="size-3" />
+              Suivi
+            </p>
+            <p className="mt-1 text-sm font-bold">{messages + siteUpdates}</p>
+          </div>
         </div>
 
         {project.progress > 0 && (
           <div className="mt-3">
             <div className="flex items-center justify-between text-[11px] mb-1.5">
-              <span className="text-muted-foreground">Avancement</span>
-              <span className="font-medium">{project.progress}%</span>
+              <span className="text-muted-foreground">Préparation dossier</span>
+              <span className="font-medium">{Math.max(project.progress, readiness)}%</span>
             </div>
-            <Progress value={project.progress} className="h-1.5" />
+            <Progress value={Math.max(project.progress, readiness)} className="h-1.5" />
           </div>
         )}
 
@@ -158,6 +245,12 @@ export function ProjectsView() {
     proposal_validated: projects.filter(p => ['proposal_ready', 'proposal_validated'].includes(p.status)).length,
     quote_sent: projects.filter(p => p.status === 'quote_sent').length,
   };
+  const portfolio = {
+    active: projects.filter(p => !['draft', 'delivered', 'suspended'].includes(p.status)).length,
+    financeReady: projects.filter(p => projectFinanceScore(p) >= 70).length,
+    needsAction: projects.filter(p => projectReadiness(p) < 80).length,
+    documents: projects.reduce((total, project) => total + (project.documents?.length ?? 0), 0),
+  };
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -188,9 +281,15 @@ export function ProjectsView() {
   const statCards = [
     { label: 'Demandes', value: stats.submitted, icon: FolderKanban },
     { label: 'À compléter', value: stats.info_required, icon: FileEdit },
-    { label: 'Propositions', value: stats.proposal_validated, icon: CheckCircle2 },
+    { label: 'Propositions', value: stats.proposal_validated, icon: ShieldCheck },
     { label: 'Terminés', value: stats.delivered, icon: CheckCircle2 },
-    { label: 'Devis en attente', value: stats.quote_sent, icon: Clock },
+    { label: 'Devis en attente', value: stats.quote_sent, icon: ReceiptText },
+  ];
+  const commandCards = [
+    { label: 'Actifs', value: portfolio.active, icon: HandCoins },
+    { label: 'Finance prête', value: portfolio.financeReady, icon: Landmark },
+    { label: 'À renforcer', value: portfolio.needsAction, icon: AlertCircle },
+    { label: 'Documents', value: portfolio.documents, icon: FileText },
   ];
 
   return (
@@ -233,7 +332,7 @@ export function ProjectsView() {
 
       <div className="px-4 mt-4">
         <div className="grid grid-cols-2 gap-3">
-          {statCards.map((stat, i) => (
+          {commandCards.map((stat, i) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 15 }}
@@ -252,6 +351,20 @@ export function ProjectsView() {
                 </CardContent>
               </Card>
             </motion.div>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-4 mt-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {statCards.map((stat) => (
+            <div key={stat.label} className="rounded-lg border bg-muted/20 px-3 py-2">
+              <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <stat.icon className="size-3" />
+                {stat.label}
+              </p>
+              <p className="mt-1 text-sm font-bold">{stat.value}</p>
+            </div>
           ))}
         </div>
       </div>

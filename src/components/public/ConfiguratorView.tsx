@@ -383,6 +383,32 @@ const EMPLOYMENT_STATUS_OPTIONS: ChoiceOption[] = [
   { value: 'to-confirm', label: 'À confirmer', icon: HelpCircle },
 ];
 
+const FINANCIAL_SECTOR_OPTIONS: ChoiceOption[] = [
+  { value: 'public', label: 'Administration publique', icon: ShieldCheck },
+  { value: 'private', label: 'Entreprise privée', icon: BriefcaseBusiness },
+  { value: 'construction', label: 'BTP / immobilier', icon: BrickWall },
+  { value: 'trade', label: 'Commerce', icon: Warehouse },
+  { value: 'transport', label: 'Transport / logistique', icon: Route },
+  { value: 'health', label: 'Santé', icon: ShieldPlus },
+  { value: 'education', label: 'Éducation', icon: NotebookTabs },
+  { value: 'digital', label: 'Digital / télécoms', icon: RadioTower },
+  { value: 'agriculture', label: 'Agriculture / agro', icon: Sprout },
+  { value: 'diaspora', label: 'Revenus diaspora', icon: Globe },
+  { value: 'business', label: 'Activité indépendante', icon: ToolCase },
+  { value: 'other', label: 'Autre secteur', icon: HelpCircle },
+];
+
+const CONTRACT_TYPE_OPTIONS: ChoiceOption[] = [
+  { value: 'permanent', label: 'CDI / contrat permanent', icon: BadgeCheck },
+  { value: 'fixed', label: 'CDD / mission longue', icon: CalendarClock },
+  { value: 'civil', label: 'Fonction publique', icon: Stamp },
+  { value: 'business', label: 'Activité indépendante', icon: Hammer },
+  { value: 'company', label: 'Société porteuse', icon: Building },
+  { value: 'mixed', label: 'Revenus mixtes', icon: Layers },
+  { value: 'informal', label: 'Revenus à documenter', icon: ReceiptText },
+  { value: 'other', label: 'Autre situation', icon: HelpCircle },
+];
+
 const INCOME_CURRENCY_OPTIONS: ChoiceOption[] = [
   { value: 'XOF', label: 'F CFA (XOF)', icon: Banknote },
   { value: 'EUR', label: 'Euro (EUR)', icon: CircleDollarSign },
@@ -1165,6 +1191,10 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       type: 'field-group',
       fields: [
         { key: 'employmentStatus', label: 'Situation économique', type: 'select', options: EMPLOYMENT_STATUS_OPTIONS, required: true },
+        { key: 'financialSector', label: 'Domaine / secteur financier', type: 'select', options: FINANCIAL_SECTOR_OPTIONS, required: true },
+        { key: 'contractType', label: 'Type de contrat ou statut', type: 'select', options: CONTRACT_TYPE_OPTIONS, required: true },
+        { key: 'employerName', label: 'Employeur / activité principale', type: 'text', placeholder: 'Ex : Ministère, société, commerce, activité diaspora', required: true },
+        { key: 'salaryDomiciliationBank', label: 'Banque de domiciliation', type: 'text', placeholder: 'Banque où arrivent les revenus ou épargne principale' },
         { key: 'incomeCurrency', label: 'Devise principale des revenus', type: 'select', options: INCOME_CURRENCY_OPTIONS, required: true },
         { key: 'incomeStability', label: 'Stabilité des revenus', type: 'select', options: INCOME_STABILITY_OPTIONS, required: true },
         { key: 'financingOwner', label: 'Porteur du financement', type: 'select', options: FINANCING_OWNER_OPTIONS, required: true },
@@ -1173,7 +1203,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       ],
       required: true,
       requiredMessage: 'Complétez le profil financier avant de passer aux montants.',
-      insight: 'Revenus, devise, stabilité, porteur, garant et capacité réelle avant engagement.',
+      insight: 'Situation, secteur, contrat, employeur, devise, stabilité, porteur, garant et capacité réelle avant engagement.',
     },
     {
       id: 'financing-profile',
@@ -1182,7 +1212,10 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       responseKey: '__financing_profile__',
       type: 'field-group',
       fields: [
-        { key: 'monthlyIncome', label: 'Revenu mensuel net', type: 'number', placeholder: 'Ex : 1500000', unit: 'F CFA', min: 0, required: true, helper: 'Revenu stable disponible chaque mois : salaire, activité, loyers ou revenus d’entreprise.' },
+        { key: 'baseSalary', label: 'Salaire de base / revenu fixe', type: 'number', placeholder: 'Ex : 1200000', unit: 'F CFA', min: 0, required: true, helper: 'Montant fixe réellement disponible avant primes, loyers, transferts ou revenus variables.' },
+        { key: 'variableMonthlyIncome', label: 'Primes / revenus variables', type: 'number', placeholder: 'Ex : 200000', unit: 'F CFA', min: 0, helper: 'Moyenne mensuelle prudente : primes régulières, commissions, missions ou activité complémentaire.' },
+        { key: 'otherMonthlyIncome', label: 'Autres revenus mensuels', type: 'number', placeholder: 'Ex : 100000', unit: 'F CFA', min: 0, helper: 'Loyers, transferts familiaux stables, dividendes ou autre revenu documentable.' },
+        { key: 'monthlyIncome', label: 'Revenu net retenu', type: 'number', placeholder: 'Ex : 1500000', unit: 'F CFA', min: 0, required: true, helper: 'Montant total que vous acceptez de retenir pour l’analyse. Il doit rester prudent et justifiable.' },
         { key: 'existingMonthlyDebt', label: 'Charges ou crédits mensuels', type: 'number', placeholder: 'Ex : 250000', unit: 'F CFA', min: 0, required: true, helper: 'Indiquez 0 si vous n’avez pas de crédit ou charge fixe importante.' },
         { key: 'monthlyPaymentCapacity', label: 'Mensualité acceptable', type: 'number', placeholder: 'Ex : 450000', unit: 'F CFA', min: 0, required: true, helper: 'Montant maximum que vous pensez pouvoir payer sans mettre votre foyer ou activité sous tension.' },
         { key: 'ownContribution', label: 'Apport disponible immédiatement', type: 'number', placeholder: 'Ex : 5000000', unit: 'F CFA', min: 0, required: true },
@@ -1455,7 +1488,16 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
   const paymentSecurity = arrayResponse(responses.paymentSecurity);
   const documentReadiness = arrayResponse(responses.documentReadiness);
   const commitments = arrayResponse(responses.commitments);
-  const monthlyIncome = numberResponse(responses.monthlyIncome, true);
+  const baseSalary = numberResponse(responses.baseSalary, true);
+  const variableMonthlyIncome = numberResponse(responses.variableMonthlyIncome, true);
+  const otherMonthlyIncome = numberResponse(responses.otherMonthlyIncome, true);
+  const composedMonthlyIncome = [baseSalary, variableMonthlyIncome, otherMonthlyIncome]
+    .filter((value): value is number => value !== undefined)
+    .reduce((total, value) => total + value, 0);
+  const declaredMonthlyIncome = numberResponse(responses.monthlyIncome, true);
+  const monthlyIncome = declaredMonthlyIncome !== undefined
+    ? declaredMonthlyIncome
+    : composedMonthlyIncome > 0 ? composedMonthlyIncome : undefined;
   const existingMonthlyDebt = numberResponse(responses.existingMonthlyDebt, true);
   const monthlyPaymentCapacity = numberResponse(responses.monthlyPaymentCapacity, true);
   const ownContribution = numberResponse(responses.ownContribution, true);
@@ -1490,9 +1532,12 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
   return {
     mode,
     readiness,
-    paymentPrinciple: 'Objectif Buildify : structurer un financement lisible, protéger l’apport, éviter les avances non sécurisées et déclencher les paiements uniquement par jalons vérifiés.',
+    paymentPrinciple: 'Objectif Buildify : lire les revenus, charges, apport, banque et garanties avant engagement, protéger l’apport, éviter les avances non sécurisées et déclencher les paiements uniquement par jalons vérifiés.',
     estimatedBudget,
     monthlyIncome,
+    baseSalary,
+    variableMonthlyIncome,
+    otherMonthlyIncome,
     existingMonthlyDebt,
     monthlyPaymentCapacity,
     ownContribution,
@@ -1500,6 +1545,10 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
     desiredLoanDurationYears,
     availableSavings,
     employmentStatus: String(responses.employmentStatus || '').trim() || undefined,
+    financialSector: String(responses.financialSector || '').trim() || undefined,
+    contractType: String(responses.contractType || '').trim() || undefined,
+    employerName: String(responses.employerName || '').trim() || undefined,
+    salaryDomiciliationBank: String(responses.salaryDomiciliationBank || '').trim() || undefined,
     incomeCurrency: String(responses.incomeCurrency || '').trim() || undefined,
     incomeStability,
     householdDependents,
