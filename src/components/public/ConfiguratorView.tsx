@@ -181,6 +181,24 @@ interface OuvrageControlProfile {
   finance: ControlMetric[];
 }
 
+interface FinancingAdvisorMetric {
+  label: string;
+  value: string;
+  helper: string;
+  icon: LucideIcon;
+}
+
+interface FinancingAdvisorPlan {
+  title: string;
+  summary: string;
+  stageLabel: string;
+  readinessLabel: string;
+  metrics: FinancingAdvisorMetric[];
+  safeguards: string[];
+  nextActions: string[];
+  milestones: ProjectPaymentMilestoneData[];
+}
+
 const PROJECT_TYPES: ChoiceOption[] = [
   { value: 'maison-basse', label: 'Maison basse', icon: Home, description: 'Plain-pied, villa ou maison familiale' },
   { value: 'duplex-triplex', label: 'Duplex / Triplex', icon: Building2, description: 'Maison à niveaux privatifs' },
@@ -1755,6 +1773,111 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
   };
 }
 
+const FINANCE_ADVISOR_STEP_IDS = new Set([
+  'financing',
+  'financing-purpose',
+  'financial-identity',
+  'financing-profile',
+  'financing-bank',
+  'payment-security',
+  'financing-documents',
+  'financing-commitments',
+]);
+
+function estimateLoanPrincipal(monthlyPayment?: number, durationYears?: number): number | undefined {
+  if (!monthlyPayment || !durationYears) return undefined;
+  const rawCapacity = monthlyPayment * durationYears * 12;
+  return Math.round(rawCapacity * 0.78);
+}
+
+function financingReadinessText(readiness: ProjectFinancingData['readiness']): string {
+  if (readiness === 'confirmed') return 'Financement lisible';
+  if (readiness === 'bank_review') return 'Banque à suivre';
+  if (readiness === 'to_structure') return 'À structurer';
+  return 'À qualifier';
+}
+
+function financingStageText(financing: ProjectFinancingData, coveragePercent?: number): string {
+  if (financing.financialRiskLevel === 'high') return 'Restructurer avant engagement';
+  if ((coveragePercent ?? 0) >= 100 && (financing.affordabilityScore ?? 0) >= 70) return 'Projet finançable à sécuriser';
+  if ((coveragePercent ?? 0) >= 80) return 'Projet possible avec ajustements';
+  if ((coveragePercent ?? 0) >= 55) return 'Projet à phaser ou à réduire';
+  return 'Montage à reprendre';
+}
+
+function buildFinancingAdvisorPlan(responses: Record<string, unknown>, budgetMin?: number, budgetMax?: number): FinancingAdvisorPlan {
+  const financing = buildProjectFinancing(responses, budgetMin, budgetMax);
+  const budget = budgetMax || budgetMin || financing.estimatedBudget;
+  const maxPrudentMonthly = financing.monthlyIncome !== undefined
+    ? Math.max(0, Math.round((financing.monthlyIncome * 0.35) - (financing.existingMonthlyDebt ?? 0)))
+    : undefined;
+  const declaredCapacity = financing.monthlyPaymentCapacity;
+  const retainedMonthly = declaredCapacity !== undefined && maxPrudentMonthly !== undefined
+    ? Math.min(declaredCapacity, maxPrudentMonthly)
+    : declaredCapacity ?? maxPrudentMonthly;
+  const loanCapacity = estimateLoanPrincipal(retainedMonthly, financing.desiredLoanDurationYears);
+  const totalCapacity = (loanCapacity ?? 0) + (financing.ownContribution ?? 0);
+  const hasAnyCapacity = loanCapacity !== undefined || financing.ownContribution !== undefined;
+  const coveragePercent = budget && hasAnyCapacity ? clampPercent((totalCapacity / budget) * 100) : undefined;
+  const gap = budget && hasAnyCapacity ? Math.max(0, budget - totalCapacity) : undefined;
+  const firstMilestoneAmount = budget ? Math.round(budget * 0.1) : undefined;
+  const requiredMonthlyGap = gap && financing.desiredLoanDurationYears
+    ? Math.round((gap / (financing.desiredLoanDurationYears * 12)) / 0.78)
+    : undefined;
+  const documentCount = financing.documentReadiness?.filter(item => item !== 'none-yet').length ?? 0;
+  const stageLabel = financingStageText(financing, coveragePercent);
+  const safeguards = compactStrings([
+    'Aucun paiement important avant étape contrôlée, preuve d’avancement et validation écrite.',
+    firstMilestoneAmount ? `Premier jalon indicatif : ${formatMetricMoney(firstMilestoneAmount)} après contrôle de fondations ou étape équivalente.` : 'Les montants de jalons seront calculés après budget définitif.',
+    financing.escrowRequested || financing.notaryContract ? 'Contrat notarié, compte séquestre ou paiement bancaire peuvent sécuriser les décaissements.' : 'Ajoutez contrat notarié, séquestre ou décaissement bancaire si vous voulez plus de protection.',
+  ]);
+  const nextActions = compactStrings([
+    financing.monthlyIncome === undefined && 'Saisir le revenu net retenu pour mesurer la mensualité prudente.',
+    financing.existingMonthlyDebt === undefined && 'Déclarer les charges ou crédits mensuels, même si le montant est 0.',
+    financing.ownContribution === undefined && 'Indiquer l’apport réellement disponible avant d’engager le dossier.',
+    financing.desiredLoanDurationYears === undefined && 'Choisir une durée de financement pour estimer la capacité.',
+    documentCount < 3 && 'Préparer pièce d’identité, justificatifs de revenus et relevés bancaires.',
+    gap !== undefined && gap > 0 && requiredMonthlyGap !== undefined && `Écart à couvrir : ${formatMetricMoney(gap)} ou environ ${formatMetricMoney(requiredMonthlyGap)} de mensualité supplémentaire prudente.`,
+    coveragePercent !== undefined && coveragePercent >= 100 && 'Passer à la sécurisation banque, contrat et planning de paiement par jalons.',
+  ]).slice(0, 5);
+
+  return {
+    title: stageLabel,
+    summary: 'Lecture indicative pour savoir si le projet peut avancer, doit être phasé ou nécessite un échange banque avant engagement.',
+    stageLabel,
+    readinessLabel: financingReadinessText(financing.readiness),
+    metrics: [
+      {
+        label: 'Mensualité prudente',
+        value: retainedMonthly === undefined ? 'À saisir' : formatMetricMoney(retainedMonthly),
+        helper: maxPrudentMonthly === undefined ? 'Calculée après revenu et charges.' : `Plafond prudent estimé : ${formatMetricMoney(maxPrudentMonthly)}.`,
+        icon: Wallet,
+      },
+      {
+        label: 'Capacité financement',
+        value: loanCapacity === undefined ? 'À calculer' : formatMetricMoney(loanCapacity),
+        helper: financing.desiredLoanDurationYears ? `Sur ${financing.desiredLoanDurationYears} an(s), lecture volontairement prudente.` : 'Ajoutez la durée souhaitée.',
+        icon: Landmark,
+      },
+      {
+        label: 'Couverture budget',
+        value: coveragePercent === undefined ? 'À calculer' : `${coveragePercent}%`,
+        helper: budget ? `Budget retenu : ${formatMetricMoney(budget)} avec apport + capacité.` : 'Choisissez un budget indicatif.',
+        icon: Gauge,
+      },
+      {
+        label: 'Reste à structurer',
+        value: gap === undefined ? 'À calculer' : gap > 0 ? formatMetricMoney(gap) : '0 F CFA',
+        helper: gap && gap > 0 ? 'À couvrir par apport, banque, phasage ou réduction de périmètre.' : 'Montage théorique couvert, à sécuriser par documents.',
+        icon: BanknoteArrowDown,
+      },
+    ],
+    safeguards,
+    nextActions: nextActions.length ? nextActions : ['Continuer vers les pièces, garanties et engagements de compréhension.'],
+    milestones: financing.milestones.slice(0, 4),
+  };
+}
+
 function compactStrings(items: Array<string | undefined | null | false>): string[] {
   return items.filter(Boolean) as string[];
 }
@@ -2768,8 +2891,95 @@ export function ConfiguratorView() {
     );
   };
 
+  const renderFinanceAdvisor = (step: StepDef) => {
+    if (!FINANCE_ADVISOR_STEP_IDS.has(step.id)) return null;
+    const [budgetMinRaw, budgetMaxRaw] = getBudgetRange(responses.budget as string | undefined);
+    const plan = buildFinancingAdvisorPlan(responses, budgetMinRaw ?? undefined, budgetMaxRaw ?? undefined);
+
+    return (
+      <Card className="border-foreground/10 bg-muted/20">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Assistant financier</p>
+              <h3 className="mt-1 text-base font-bold leading-6 sm:text-lg">{plan.title}</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{plan.summary}</p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Badge variant="outline" className="text-[10px]">{plan.readinessLabel}</Badge>
+              <Badge variant="secondary" className="text-[10px]">Indicatif</Badge>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {plan.metrics.map(metric => (
+              <div key={metric.label} className="min-w-0 rounded-xl border bg-background p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <metric.icon className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="rounded-md bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">Live</span>
+                </div>
+                <p className="mt-3 break-words text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{metric.label}</p>
+                <p className="mt-1 break-words text-sm font-bold leading-tight">{metric.value}</p>
+                <p className="mt-2 break-words text-[11px] leading-4 text-muted-foreground">{metric.helper}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="rounded-xl border bg-background p-3">
+              <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <ShieldCheck className="size-3.5" />
+                Protection des paiements
+              </p>
+              <div className="mt-3 space-y-2">
+                {plan.safeguards.map(item => (
+                  <p key={item} className="rounded-lg bg-muted/45 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                    {item}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl border bg-background p-3">
+              <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <ClipboardCheck className="size-3.5" />
+                Prochaines actions
+              </p>
+              <div className="mt-3 space-y-2">
+                {plan.nextActions.map(item => (
+                  <p key={item} className="rounded-lg bg-muted/45 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                    {item}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border bg-background p-3">
+            <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <CalendarCheck className="size-3.5" />
+              Paiement par niveau d’avancement
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+              {plan.milestones.map(milestone => (
+                <div key={milestone.id} className="min-w-0 rounded-lg border bg-muted/25 p-3">
+                  <p className="text-sm font-bold">{milestone.percent}%</p>
+                  <p className="mt-1 break-words text-xs font-semibold leading-4">{milestone.label}</p>
+                  <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
+                    {milestone.expectedAmount ? formatMetricMoney(milestone.expectedAmount) : 'Montant après budget'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderFieldGroup = (step: StepDef) => (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {step.fields?.map(field => {
         const value = responses[field.key] === undefined || responses[field.key] === null ? '' : String(responses[field.key]);
         const fieldOptions = field.options || [];
@@ -2890,6 +3100,8 @@ export function ConfiguratorView() {
           </div>
         );
       })}
+      </div>
+      {renderFinanceAdvisor(step)}
     </div>
   );
 
