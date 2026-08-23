@@ -27,6 +27,8 @@ import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { formatProjectLocation } from '@/lib/project-format';
 import { buildProjectBrief, projectBriefLabel } from '@/lib/project-brief';
 import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
+import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
+import type { ProjectDecisionTone } from '@/lib/project-decision-center';
 import type { ProjectBrief, ProjectBriefItemKey } from '@/lib/project-brief';
 import {
   formatProjectScheduleDate,
@@ -186,6 +188,11 @@ function labelFromMap(labels: Record<string, string>, value?: string): string | 
   return labels[value] || value;
 }
 
+function publicActorLabel(value?: string) {
+  if (!value) return 'Équipe Buildify';
+  return /admin|administration/i.test(value) ? 'Équipe Buildify' : value;
+}
+
 function getDocumentIcon(type: string, name = ''): LucideIcon {
   const normalized = `${type} ${name}`.toLowerCase();
   if (normalized.includes('photo') || normalized.includes('image')) return ImageIcon;
@@ -252,7 +259,7 @@ function detailFromStoredProject(project: ProjectData, teamMembers: TeamMemberDa
       ...(project.missingInfo ? [
         {
           id: `info-${project.id}`,
-          sender: 'Administration',
+          sender: 'Équipe Buildify',
           senderRole: 'Chargé de dossier',
           text: project.missingInfo,
           time: missingInfoDate,
@@ -678,7 +685,7 @@ function buildQuoteHtml(quote: ProjectQuoteViewData, data: ProjectDetailData) {
       <div class="box"><div class="box-title">Statut</div><div class="box-value">${escapeHtml(statusLabel)}</div></div>
       <div class="box"><div class="box-title">Validité</div><div class="box-value">${escapeHtml(validity)}</div></div>
       <div class="box"><div class="box-title">Date devis</div><div class="box-value">${escapeHtml(quote.date)}</div></div>
-      <div class="box"><div class="box-title">Préparé par</div><div class="box-value">${escapeHtml(quote.createdBy || 'Buildify')}</div></div>
+      <div class="box"><div class="box-title">Préparé par</div><div class="box-value">${escapeHtml(publicActorLabel(quote.createdBy))}</div></div>
     </section>
     <div class="split">
       <section class="box"><div class="box-title">Périmètre inclus</div><ul>${renderList(quoteScopeItems(quote, data))}</ul></section>
@@ -739,7 +746,7 @@ function documentTypeLabel(type: string) {
   return labels[type] || type;
 }
 
-function buildDocumentReceiptHtml(document: ClientDocumentView, data: ProjectDetailData, source: 'client' | 'admin') {
+function buildDocumentReceiptHtml(document: ClientDocumentView, data: ProjectDetailData) {
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -773,7 +780,7 @@ function buildDocumentReceiptHtml(document: ClientDocumentView, data: ProjectDet
       </div>
     </header>
     <h1>${escapeHtml(document.name)}</h1>
-    <p>Fiche de dépôt générée depuis l’espace ${source === 'admin' ? 'administrateur' : 'client'} Buildify.</p>
+    <p>Fiche de dépôt générée depuis l’espace projet Buildify.</p>
     <section class="grid">
       <div class="box"><div class="label">Type</div><div class="value">${escapeHtml(documentTypeLabel(document.type))}</div></div>
       <div class="box"><div class="label">Date</div><div class="value">${escapeHtml(document.date)}</div></div>
@@ -781,7 +788,7 @@ function buildDocumentReceiptHtml(document: ClientDocumentView, data: ProjectDet
       <div class="box"><div class="label">Statut</div><div class="value">Déposé au dossier</div></div>
     </section>
     <section class="note">
-      Ce registre ne remplace pas le fichier original. Il sert à tracer la pièce déclarée, faciliter le suivi admin/client, préparer les demandes de pièces complémentaires et sécuriser le parcours devis, banque, contrat et chantier.
+      Ce registre ne remplace pas le fichier original. Il sert à tracer la pièce déclarée, faciliter le suivi du dossier, préparer les demandes de pièces complémentaires et sécuriser le parcours devis, banque, contrat et chantier.
       ${document.url ? `<br /><br />Lien déclaré : ${escapeHtml(document.url)}` : ''}
     </section>
     <footer>Document rattaché au dossier ${escapeHtml(data.referenceNumber)} · Buildify</footer>
@@ -790,8 +797,8 @@ function buildDocumentReceiptHtml(document: ClientDocumentView, data: ProjectDet
 </html>`;
 }
 
-function downloadDocumentReceipt(document: ClientDocumentView, data: ProjectDetailData, source: 'client' | 'admin' = 'client') {
-  const blob = new Blob([buildDocumentReceiptHtml(document, data, source)], { type: 'text/html;charset=utf-8' });
+function downloadDocumentReceipt(document: ClientDocumentView, data: ProjectDetailData) {
+  const blob = new Blob([buildDocumentReceiptHtml(document, data)], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = window.document.createElement('a');
   anchor.href = url;
@@ -1160,7 +1167,7 @@ const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {
 };
 
 const FINANCIAL_SECTOR_LABELS: Record<string, string> = {
-  public: 'Administration publique',
+  public: 'Secteur public',
   private: 'Entreprise privée',
   construction: 'BTP / immobilier',
   trade: 'Commerce',
@@ -1629,7 +1636,7 @@ function ResumeTab({
       title: hasInfoRequest ? 'Répondre à la demande Buildify' : 'Garder le canal projet ouvert',
       description: hasInfoRequest
         ? 'Une information est attendue pour débloquer l’analyse, le devis ou le planning.'
-        : 'Tous les échanges utiles restent centralisés dans le dossier, sans mélange avec l’administration.',
+        : 'Tous les échanges utiles restent centralisés dans le dossier Buildify.',
       owner: hasInfoRequest ? 'Client' : 'Client + Buildify',
       statusLabel: hasInfoRequest ? 'Prioritaire' : data.messages.length ? 'Actif' : 'Ouvert',
       tone: hasInfoRequest ? 'active' : 'pending',
@@ -2199,7 +2206,7 @@ function MessagesTab({ data, onSend }: { data: ProjectDetailData; onSend?: (mess
     setNewMessage('');
     onSend?.(text, hasActiveInfoRequest ? 'info' : 'message');
     if (onSend) {
-      addToast(hasActiveInfoRequest ? 'Information transmise à l’administration.' : 'Message transmis au dossier.', 'success');
+      addToast(hasActiveInfoRequest ? 'Information transmise à Buildify.' : 'Message transmis au dossier.', 'success');
     }
   };
 
@@ -3111,7 +3118,7 @@ function FinancingTab({
               <div className="grid gap-2 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-employer">Employeur / activité</label>
-                  <Input id="finance-employer" value={draft.employerName} onChange={event => setDraftField('employerName', event.target.value)} placeholder="Entreprise, administration ou activité principale" />
+                  <Input id="finance-employer" value={draft.employerName} onChange={event => setDraftField('employerName', event.target.value)} placeholder="Organisation, entreprise ou activité principale" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-salary-bank">Banque de domiciliation</label>
@@ -3399,7 +3406,7 @@ function DevisTab({
                   </div>
                   <div className="rounded-lg border p-2.5 sm:col-span-2">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Préparé par</p>
-                    <p className="mt-1 text-xs font-semibold break-words">{quote.createdBy || 'Buildify'}</p>
+                    <p className="mt-1 text-xs font-semibold break-words">{publicActorLabel(quote.createdBy)}</p>
                   </div>
                 </div>
 
@@ -3455,7 +3462,7 @@ function DevisTab({
                     />
                     <ConfirmActionDialog
                       title="Refuser ce devis ?"
-                      description={`Vous refusez ${quote.label}. L’administration sera informée pour reprendre le chiffrage, clarifier le périmètre ou proposer un ajustement.`}
+                      description={`Vous refusez ${quote.label}. L’équipe Buildify sera informée pour reprendre le chiffrage, clarifier le périmètre ou proposer un ajustement.`}
                       confirmLabel="Refuser"
                       confirmClassName="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onConfirm={() => handleAction(quote.id, 'refused')}
@@ -3613,7 +3620,7 @@ function PlanningTab({
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <ConfirmActionDialog
                         title="Confirmer votre présence ?"
-                        description={`Buildify sera informé que vous confirmez ${item.title}. Le dossier admin sera mis à jour et l’équipe pourra préparer la suite.`}
+                        description={`Buildify sera informé que vous confirmez ${item.title}. Le dossier sera mis à jour et l’équipe pourra préparer la suite.`}
                         confirmLabel="Confirmer"
                         onConfirm={() => onScheduleStatus?.(item.id, 'confirmed')}
                         trigger={(
@@ -3625,7 +3632,7 @@ function PlanningTab({
                       />
                       <ConfirmActionDialog
                         title="Demander un report ?"
-                        description="Votre demande sera transmise à l’administration avec la note saisie. Buildify pourra proposer une nouvelle date."
+                        description="Votre demande sera transmise à Buildify avec la note saisie. L’équipe pourra proposer une nouvelle date."
                         confirmLabel="Demander"
                         onConfirm={() => onScheduleStatus?.(item.id, 'reschedule_requested', rescheduleNote)}
                         trigger={(
@@ -3744,7 +3751,7 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
                       <Badge variant="outline" className="text-[10px]">{update.progress}%</Badge>
                     </div>
                     <p className="mt-1 text-[11px] text-muted-foreground">
-                      {new Date(update.createdAt).toLocaleString('fr-FR')} · {update.createdBy || 'Équipe Buildify'}
+                      {new Date(update.createdAt).toLocaleString('fr-FR')} · {publicActorLabel(update.createdBy)}
                     </p>
                     {update.report && <p className="mt-2 text-xs leading-5 text-muted-foreground">{update.report}</p>}
                   </div>
@@ -3762,6 +3769,110 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
 
 type TabValue = 'resume' | 'propositions' | 'financement' | 'planning' | 'documents' | 'messages' | 'devis' | 'chantier';
 
+function ClientDecisionCenter({
+  project,
+  onNavigate,
+}: {
+  project: ProjectData;
+  onNavigate: (target: string) => void;
+}) {
+  const center = useMemo(() => buildProjectDecisionCenter(project, 'client'), [project]);
+  const toneClass: Record<ProjectDecisionTone, string> = {
+    good: 'border-foreground/15 bg-muted/30',
+    active: 'border-foreground bg-foreground text-background',
+    warning: 'border-amber-500/35 bg-amber-500/10 text-amber-950 dark:text-amber-100',
+    blocked: 'border-destructive/35 bg-destructive/10 text-destructive',
+    muted: 'border-border bg-background',
+  };
+  const iconMap: Record<string, LucideIcon> = {
+    messages: MessageSquare,
+    proposal: Eye,
+    quote: Receipt,
+    finance: Wallet,
+    planning: Calendar,
+    documents: FolderArchive,
+    site: Camera,
+  };
+  const visibleItems = [
+    ...center.items.filter(item => ['blocked', 'active', 'warning'].includes(item.tone)),
+    ...center.items.filter(item => !['blocked', 'active', 'warning'].includes(item.tone)),
+  ].slice(0, 4);
+
+  return (
+    <Card className="mb-4 border-foreground/10 shadow-sm">
+      <CardContent className="p-4 sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Décision projet</p>
+            <h2 className="mt-1 break-words text-lg font-bold leading-tight">{center.headline}</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{center.summary}</p>
+          </div>
+          <div className="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3 rounded-xl border bg-muted/25 p-3 sm:min-w-64">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{center.scoreLabel}</p>
+              <Progress value={center.score} className="mt-2 h-2" />
+            </div>
+            <span className="text-xl font-bold tabular-nums">{center.score}%</span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {center.metrics.map(metric => (
+            <div key={metric.label} className={`min-w-0 rounded-xl border px-3 py-2 ${toneClass[metric.tone]}`}>
+              <p className="break-words text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{metric.label}</p>
+              <p className="mt-1 break-words text-sm font-bold leading-tight">{metric.value}</p>
+              <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground">{metric.helper}</p>
+            </div>
+          ))}
+        </div>
+
+        {center.blockers.length > 0 && (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {center.blockers.slice(0, 2).map(blocker => (
+              <div key={blocker} className="flex gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs leading-5 text-destructive">
+                <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+                <span className="min-w-0 break-words">{blocker}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          {visibleItems.map(item => {
+            const Icon = iconMap[item.id] || ClipboardCheck;
+            const isInverted = item.tone === 'active';
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onNavigate(item.target)}
+                className={`min-h-[132px] rounded-xl border p-3 text-left transition-colors hover:border-foreground/40 ${toneClass[item.tone]}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${isInverted ? 'bg-background/15' : 'bg-muted'}`}>
+                    <Icon className={`size-4 ${isInverted ? 'text-background' : 'text-muted-foreground'}`} />
+                  </span>
+                  <Badge variant={item.tone === 'good' ? 'default' : 'outline'} className={`shrink-0 text-[10px] ${isInverted ? 'border-background/30 text-background' : ''}`}>
+                    {item.status}
+                  </Badge>
+                </div>
+                <p className="mt-3 break-words text-sm font-bold leading-5">{item.title}</p>
+                <p className={`mt-2 line-clamp-2 text-xs leading-5 ${isInverted ? 'text-background/75' : 'text-muted-foreground'}`}>{item.description}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <Button className="h-11 rounded-xl" onClick={() => onNavigate(center.primaryTarget)}>
+            {center.primaryLabel}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ProjectDetailView() {
   const { goBack, navigate, viewParams, userProjects, teamMembers, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, updateProjectFinancing, updateProjectScheduleStatus, respondProjectInfo, sendProjectMessage, addToast } = useAppStore();
   const projectId = viewParams?.id || '';
@@ -3774,6 +3885,19 @@ export function ProjectDetailView() {
   const activeTab = activeTabsByProject[projectId] ?? preferredTab;
   const setActiveTab = (tab: TabValue) => {
     setActiveTabsByProject(prev => ({ ...prev, [projectId]: tab }));
+  };
+  const openDecisionTarget = (target: string) => {
+    const tabByTarget: Record<string, TabValue> = {
+      resume: 'resume',
+      propositions: 'propositions',
+      financement: 'financement',
+      planning: 'planning',
+      documents: 'documents',
+      messages: 'messages',
+      devis: 'devis',
+      chantier: 'chantier',
+    };
+    setActiveTab(tabByTarget[target] || 'resume');
   };
 
   const tabs = [
@@ -3857,6 +3981,9 @@ export function ProjectDetailView() {
 
       {/* Tab content */}
       <div className="max-w-6xl mx-auto px-4 pt-4 pb-28 md:pb-6">
+        {storedProject && (
+          <ClientDecisionCenter project={storedProject} onNavigate={openDecisionTarget} />
+        )}
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={activeTab}

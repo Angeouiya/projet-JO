@@ -48,6 +48,8 @@ import type { ProjectData, ProjectPaymentMilestoneData, ProjectScheduleItemData 
 import { formatProjectLocation } from '@/lib/project-format';
 import { buildProjectBrief } from '@/lib/project-brief';
 import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
+import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
+import type { ProjectDecisionTone } from '@/lib/project-decision-center';
 import type { ProjectBriefItemKey } from '@/lib/project-brief';
 import {
   PROJECT_SCHEDULE_MODE_LABELS,
@@ -404,6 +406,111 @@ interface AdminProjectAction {
   tone: AdminActionTone;
   targetId: string;
   actionLabel: string;
+}
+
+function AdminDecisionRegister({
+  project,
+  onFocus,
+}: {
+  project: ProjectData;
+  onFocus: (targetId: string) => void;
+}) {
+  const center = useMemo(() => buildProjectDecisionCenter(project, 'admin'), [project]);
+  const toneClass: Record<ProjectDecisionTone, string> = {
+    good: 'border-foreground/15 bg-muted/30',
+    active: 'border-foreground bg-foreground text-background',
+    warning: 'border-amber-500/35 bg-amber-500/10 text-amber-950 dark:text-amber-100',
+    blocked: 'border-destructive/35 bg-destructive/10 text-destructive',
+    muted: 'border-border bg-background',
+  };
+  const iconMap: Record<string, LucideIcon> = {
+    lead: UserCheck,
+    info: MessageSquareText,
+    proposal: ImageIcon,
+    quote: ReceiptText,
+    finance: HandCoins,
+    planning: CalendarDays,
+    site: Camera,
+  };
+  const visibleItems = [
+    ...center.items.filter(item => ['blocked', 'active', 'warning'].includes(item.tone)),
+    ...center.items.filter(item => !['blocked', 'active', 'warning'].includes(item.tone)),
+  ].slice(0, 6);
+
+  return (
+    <Card className="py-0 gap-0 border-foreground/10 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Registre de décision admin</p>
+            <h2 className="mt-1 break-words text-lg font-bold leading-tight">{center.headline}</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{center.summary}</p>
+          </div>
+          <div className="grid min-w-0 grid-cols-[1fr_auto] items-center gap-3 rounded-xl border bg-muted/25 p-3 xl:min-w-72">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{center.scoreLabel}</p>
+              <Progress value={center.score} className="mt-2 h-2" />
+            </div>
+            <span className="text-xl font-bold tabular-nums">{center.score}%</span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {center.metrics.map(metric => (
+            <div key={metric.label} className={`min-w-0 rounded-xl border px-3 py-2 ${toneClass[metric.tone]}`}>
+              <p className="break-words text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{metric.label}</p>
+              <p className="mt-1 break-words text-sm font-bold leading-tight">{metric.value}</p>
+              <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground">{metric.helper}</p>
+            </div>
+          ))}
+        </div>
+
+        {center.blockers.length > 0 && (
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
+            {center.blockers.slice(0, 3).map(blocker => (
+              <div key={blocker} className="flex gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs leading-5 text-destructive">
+                <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+                <span className="min-w-0 break-words">{blocker}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {visibleItems.map(item => {
+            const Icon = iconMap[item.id] || ClipboardCheck;
+            const isInverted = item.tone === 'active';
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onFocus(item.target)}
+                className={`min-h-[138px] rounded-xl border p-3 text-left transition-colors hover:border-foreground/40 ${toneClass[item.tone]}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${isInverted ? 'bg-background/15' : 'bg-muted'}`}>
+                    <Icon className={`size-4 ${isInverted ? 'text-background' : 'text-muted-foreground'}`} />
+                  </span>
+                  <Badge variant={item.tone === 'good' ? 'default' : 'outline'} className={`shrink-0 text-[10px] ${isInverted ? 'border-background/30 text-background' : ''}`}>
+                    {item.status}
+                  </Badge>
+                </div>
+                <p className="mt-3 break-words text-sm font-bold leading-5">{item.title}</p>
+                <p className={`mt-2 line-clamp-2 text-xs leading-5 ${isInverted ? 'text-background/75' : 'text-muted-foreground'}`}>{item.description}</p>
+                <p className={`mt-2 text-[10px] font-semibold uppercase tracking-wider ${isInverted ? 'text-background/65' : 'text-muted-foreground'}`}>Responsable · {item.owner}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <Button className="h-10 rounded-xl" onClick={() => onFocus(center.primaryTarget)}>
+            {center.primaryLabel}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 interface ProposalVariantTemplate {
@@ -1245,6 +1352,8 @@ export function AdminProjectDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <AdminDecisionRegister project={project} onFocus={focusAdminAction} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
