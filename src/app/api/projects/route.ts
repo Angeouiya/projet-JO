@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { normalizeEmail, normalizeText, parseJsonField, serverError, validationError } from '@/lib/api-utils';
 import { createStoredProject, hasExternalProjectStore, listStoredProjects } from '@/lib/project-store';
+import { getRequestUser } from '@/lib/auth-http';
 import type { ProjectDocumentData, ProjectFinancingData, ProjectMessageData, ProjectQuoteData, ProjectSiteUpdateData, ProjectVisualProposalData } from '@/types';
 
 const projectQuerySchema = z.object({
@@ -164,7 +165,11 @@ export async function GET(request: Request) {
   if (!parsed.success) return validationError(parsed.error);
 
   try {
-    const { userId, status, page, limit } = parsed.data;
+    const actor = await getRequestUser();
+    if (!actor) return NextResponse.json({ error: 'Session requise' }, { status: 401 });
+    const actorIsAdmin = actor.type === 'admin' || actor.type === 'employee';
+    const { status, page, limit } = parsed.data;
+    const userId = actorIsAdmin ? parsed.data.userId : actor.id;
     if (hasExternalProjectStore()) {
       const { projects, total } = await listStoredProjects({ userId, status, page, limit });
       return NextResponse.json({ projects, total, page, limit, store: 'external' });
@@ -216,17 +221,20 @@ export async function POST(request: Request) {
 
   try {
     const body = parsed.data;
+    const actor = await getRequestUser();
+    if (!actor) return NextResponse.json({ error: 'Session requise' }, { status: 401 });
+    const actorIsAdmin = actor.type === 'admin' || actor.type === 'employee';
     const incomingFormData = body.formData && typeof body.formData === 'object' ? body.formData : {};
-    const clientEmail = normalizeEmail(body.clientEmail);
-    const clientPhone = normalizeText(body.clientPhone);
-    const userId = normalizeText(body.userId);
+    const clientEmail = actorIsAdmin ? normalizeEmail(body.clientEmail) : normalizeEmail(actor.email);
+    const clientPhone = actorIsAdmin ? normalizeText(body.clientPhone) : normalizeText(actor.phone);
+    const userId = actorIsAdmin ? normalizeText(body.userId) : actor.id;
 
     if (!userId && !clientEmail && !clientPhone) return projectContactError();
 
     const country = normalizeText(body.country) || normalizeText(String(incomingFormData.country ?? '')) || "Côte d'Ivoire";
     const city = normalizeText(body.city) || normalizeText(String(incomingFormData.city ?? ''));
     const refNumber = body.referenceNumber || String(incomingFormData.referenceNumber ?? '') || projectReference();
-    const clientName = normalizeText(body.clientName) || 'Client Buildify';
+    const clientName = actorIsAdmin ? normalizeText(body.clientName) || 'Client Buildify' : actor.name;
     const resolvedCategoryIdFromPayload = body.categoryId || body.categorySlug || null;
     const clientPresence = normalizeText(body.clientPresence) || formText(incomingFormData, 'clientPresence');
     const clientResidenceCountry = normalizeText(body.clientResidenceCountry) || formText(incomingFormData, 'clientResidenceCountry');

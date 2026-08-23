@@ -25,6 +25,7 @@ import { PwaBootstrap } from '@/components/shared/PwaBootstrap';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { ViewName } from '@/types';
+import type { AppUser, ProjectData } from '@/types';
 
 type PlatformEntry = 'public' | 'client' | 'admin';
 
@@ -119,6 +120,128 @@ function useClientReady() {
   }, []);
 
   return clientReady;
+}
+
+function useServerSession(hasHydrated: boolean, clientReady: boolean) {
+  const { setUser, setUserProjects } = useAppStore();
+  const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    if (!hasHydrated || !clientReady) return;
+    let active = true;
+
+    const hydrateSession = async () => {
+      try {
+        const response = await fetch('/api/auth/session', { cache: 'no-store' });
+        const payload = await response.json().catch(() => null) as { user?: AppUser | null } | null;
+        if (!active) return;
+        if (response.ok && payload?.user) {
+          setUser(payload.user);
+        } else {
+          setUser(null);
+          setUserProjects([]);
+        }
+      } catch {
+        if (active) {
+          setUser(null);
+          setUserProjects([]);
+        }
+      } finally {
+        if (active) setSessionReady(true);
+      }
+    };
+
+    void hydrateSession();
+    return () => { active = false; };
+  }, [clientReady, hasHydrated, setUser, setUserProjects]);
+
+  return sessionReady;
+}
+
+function useServerProjects(sessionReady: boolean) {
+  const { user, setUserProjects, addToast } = useAppStore();
+  const userId = user?.id;
+
+  useEffect(() => {
+    if (!sessionReady || !userId) return;
+    let active = true;
+
+    const hydrateProjects = async () => {
+      try {
+        const response = await fetch('/api/projects?limit=100', { cache: 'no-store' });
+        const payload = await response.json().catch(() => null) as { projects?: ProjectData[]; message?: string; error?: string } | null;
+        if (!active) return;
+        if (!response.ok) {
+          addToast(payload?.message || payload?.error || 'Synchronisation des projets indisponible.', 'info');
+          return;
+        }
+        setUserProjects(payload?.projects || []);
+      } catch {
+        if (active) addToast('Connexion aux projets indisponible. Les données locales restent visibles.', 'info');
+      }
+    };
+
+    void hydrateProjects();
+    return () => { active = false; };
+  }, [addToast, sessionReady, setUserProjects, userId]);
+}
+
+function useProjectSync(sessionReady: boolean) {
+  const { user, isAdmin, addToast } = useAppStore();
+  const userId = user?.id;
+
+  useEffect(() => {
+    if (!sessionReady || !userId) return;
+    const timers = new Map<string, number>();
+    let lastErrorAt = 0;
+
+    const syncProject = async (project: ProjectData) => {
+      try {
+        let response = await fetch(`/api/projects/${encodeURIComponent(project.id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project }),
+        });
+        if (response.status === 404 && isAdmin) {
+          response = await fetch(`/api/projects/${encodeURIComponent(project.id)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project }),
+          });
+        }
+        if (!response.ok && Date.now() - lastErrorAt > 10000) {
+          lastErrorAt = Date.now();
+          const payload = await response.json().catch(() => null) as { message?: string; error?: string } | null;
+          addToast(payload?.message || payload?.error || 'Une modification reste à synchroniser.', 'info');
+        }
+      } catch {
+        if (Date.now() - lastErrorAt > 10000) {
+          lastErrorAt = Date.now();
+          addToast('Connexion perdue : la modification reste enregistrée sur cet appareil.', 'info');
+        }
+      }
+    };
+
+    const unsubscribe = useAppStore.subscribe((state, previous) => {
+      if (state.userProjects === previous.userProjects) return;
+      const previousProjects = new Map(previous.userProjects.map(project => [project.id, project]));
+      state.userProjects.forEach(project => {
+        if (previousProjects.get(project.id) === project) return;
+        const existingTimer = timers.get(project.id);
+        if (existingTimer) window.clearTimeout(existingTimer);
+        const timer = window.setTimeout(() => {
+          timers.delete(project.id);
+          void syncProject(project);
+        }, 600);
+        timers.set(project.id, timer);
+      });
+    });
+
+    return () => {
+      unsubscribe();
+      timers.forEach(timer => window.clearTimeout(timer));
+    };
+  }, [addToast, isAdmin, sessionReady, userId]);
 }
 
 function usePlatformEntry(platform: PlatformEntry, routedView: ViewName, hasHydrated: boolean) {
@@ -226,6 +349,9 @@ export function AppShell({ platform = 'public' }: { platform?: PlatformEntry }) 
   const { currentView, isAuthenticated, isAdmin, showAuthModal } = useAppStore();
   const hasHydrated = useStoreHydration();
   const clientReady = useClientReady();
+  const sessionReady = useServerSession(hasHydrated, clientReady);
+  useServerProjects(sessionReady);
+  useProjectSync(sessionReady);
   const routedView = useMemo(() => resolvePlatformView(platform, currentView), [currentView, platform]);
   const isDesktop = useDesktopViewport();
   const isFullscreen = FULLSCREEN_VIEWS.includes(routedView);
@@ -235,7 +361,7 @@ export function AppShell({ platform = 'public' }: { platform?: PlatformEntry }) 
     && !isAdmin
     && (isAuthenticated || !PUBLIC_VIEWS.includes(routedView));
 
-  usePlatformEntry(platform, routedView, hasHydrated && clientReady);
+  usePlatformEntry(platform, routedView, hasHydrated && clientReady && sessionReady);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

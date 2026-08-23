@@ -66,7 +66,8 @@ function computeScore(project: ProjectData, financing?: ProjectFinancingData): n
   const documentScore = Math.min(20, ((project.documents ?? []).length + (financeDocumentGap(financing) === 0 ? 2 : 0)) * 5);
   const communicationScore = Math.min(15, (project.projectMessages ?? []).length * 3 + (project.clientEmail || project.clientPhone ? 6 : 0));
   const operationScore = Math.min(20, (project.scheduleItems ?? []).length * 6 + (project.siteUpdates ?? []).length * 4);
-  const decisionScore = Math.min(20, (project.visualProposal ? 8 : 0) + ((project.quotes ?? []).some(q => q.status === 'accepted') ? 12 : 0));
+  const hasValidatedProposal = Boolean(project.visualProposal || project.visualProposals?.some(proposal => proposal.validatedAt));
+  const decisionScore = Math.min(20, (hasValidatedProposal ? 8 : 0) + ((project.quotes ?? []).some(q => q.status === 'accepted') ? 12 : 0));
   return Math.max(project.progress ?? 0, Math.min(100, Math.round((financeScore * 0.25) + documentScore + communicationScore + operationScore + decisionScore)));
 }
 
@@ -92,6 +93,7 @@ export function buildProjectDecisionCenter(project: ProjectData, audience: Proje
   const pendingQuote = (project.quotes ?? []).find(quoteIsPending);
   const acceptedQuote = (project.quotes ?? []).find(quote => quote.status === 'accepted');
   const visualProposalCount = (project.visualProposals ?? []).length;
+  const selectedProposal = project.visualProposal || project.visualProposals?.find(proposal => proposal.validatedAt);
   const hasPublishedProposal = Boolean(project.visualProposal || visualProposalCount);
   const latestInfoResponse = project.missingInfoResponses?.[0];
   const documentCount = (project.documents ?? []).length;
@@ -117,17 +119,17 @@ export function buildProjectDecisionCenter(project: ProjectData, audience: Proje
     },
     {
       id: 'proposal',
-      title: project.visualProposal ? 'Proposition visuelle validée' : hasPublishedProposal ? 'Choisir une proposition visuelle' : 'Proposition visuelle à venir',
-      description: project.visualProposal
+      title: selectedProposal ? 'Proposition visuelle validée' : hasPublishedProposal ? 'Choisir une proposition visuelle' : 'Proposition visuelle à venir',
+      description: selectedProposal
         ? 'L’orientation retenue sert de base au chiffrage et à la suite du projet.'
         : hasPublishedProposal
           ? 'Comparez les images, téléchargez la fiche et validez l’option retenue.'
           : 'Buildify publiera ici des images professionnelles adaptées au dossier.',
-      status: project.visualProposal ? 'Validée' : hasPublishedProposal ? `${visualProposalCount} option(s)` : 'À publier',
-      owner: project.visualProposal ? 'Buildify' : 'Client',
+      status: selectedProposal ? 'Validée' : hasPublishedProposal ? `${visualProposalCount} option(s)` : 'À publier',
+      owner: selectedProposal ? 'Buildify' : 'Client',
       actionLabel: 'Voir propositions',
       target: 'propositions',
-      tone: project.visualProposal ? 'good' : hasPublishedProposal ? 'active' : 'muted',
+      tone: selectedProposal ? 'good' : hasPublishedProposal ? 'active' : 'muted',
     },
     {
       id: 'quote',
@@ -315,8 +317,8 @@ export function buildProjectDecisionCenter(project: ProjectData, audience: Proje
       {
         label: 'Décision',
         value: statusLabel,
-        helper: pendingQuote ? 'Devis en attente' : project.visualProposal ? 'Visuel validé' : 'À piloter',
-        tone: pendingQuote || project.missingInfo ? 'active' : acceptedQuote || project.visualProposal ? 'good' : 'muted',
+        helper: pendingQuote ? 'Devis en attente' : selectedProposal ? 'Visuel validé' : 'À piloter',
+        tone: pendingQuote || project.missingInfo ? 'active' : acceptedQuote || selectedProposal ? 'good' : 'muted',
       },
     ],
   };

@@ -31,10 +31,6 @@ function passwordError(password: string): string | null {
   return null;
 }
 
-function isBuildifyAdminEmail(email: string): boolean {
-  return /^admin@buildify\.ci$/i.test(email.trim()) || /@(buildify|groupeebc)\.[a-z]{2,}$/i.test(email.trim());
-}
-
 export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) {
   const { showAuthModal, dismissAuth, login } = useAppStore();
   const isAdminPlatform = platform === 'admin';
@@ -83,16 +79,27 @@ export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) 
     }
 
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 650));
-    login({
-      id: `client-${identifier.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 32) || 'bati'}`,
-      name: form.name || 'Client Buildify',
-      email: identifierIsEmail ? identifier : undefined,
-      phone: identifierIsEmail ? form.phone || undefined : normalizedPhone,
-      type: 'client',
-      role: 'client',
-    });
-    setLoading(false);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: identifierIsEmail ? identifier : normalizedPhone,
+          password: form.password,
+          platform: 'client',
+        }),
+      });
+      const payload = await response.json().catch(() => null) as { user?: Parameters<typeof login>[0]; error?: string; message?: string } | null;
+      if (!response.ok || !payload?.user) {
+        setError(payload?.message || payload?.error || 'Connexion indisponible.');
+        return;
+      }
+      login(payload.user);
+    } catch {
+      setError('Connexion réseau indisponible. Réessayez.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRegister = async () => {
@@ -126,16 +133,23 @@ export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) 
     }
 
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    login({
-      id: `client-${(email || phone).toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 32) || 'bati'}`,
-      name: form.name.trim(),
-      email: email || undefined,
-      phone: phone || undefined,
-      type: 'client',
-      role: 'client',
-    });
-    setLoading(false);
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.name.trim(), email, phone, password: form.password }),
+      });
+      const payload = await response.json().catch(() => null) as { user?: Parameters<typeof login>[0]; error?: string; message?: string } | null;
+      if (!response.ok || !payload?.user) {
+        setError(payload?.message || payload?.error || "L'inscription n'a pas pu être finalisée.");
+        return;
+      }
+      login(payload.user);
+    } catch {
+      setError('Connexion réseau indisponible. Réessayez.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePasswordReset = async () => {
@@ -167,26 +181,29 @@ export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) 
       setError("Saisissez l'e-mail administrateur.");
       return;
     }
-    if (!isBuildifyAdminEmail(adminEmail)) {
-      setError("Utilisez un e-mail habilité Buildify ou Groupe EBC pour accéder à cette plateforme.");
-      return;
-    }
     if (passError) {
       setError(passError);
       return;
     }
 
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 650));
-    login({
-      id: 'admin-buildify-1',
-      name: 'Diabaté Ibrahim',
-      email: adminEmail,
-      phone: '+225 01 02 03 04',
-      type: 'admin',
-      role: 'super_admin',
-    });
-    setLoading(false);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: adminEmail, password: form.adminPassword, platform: 'admin' }),
+      });
+      const payload = await response.json().catch(() => null) as { user?: Parameters<typeof login>[0]; error?: string; message?: string } | null;
+      if (!response.ok || !payload?.user) {
+        setError(payload?.message || payload?.error || 'Connexion administrateur indisponible.');
+        return;
+      }
+      login(payload.user);
+    } catch {
+      setError('Connexion réseau indisponible. Réessayez.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -290,9 +307,7 @@ export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) 
                     className="h-12"
                     autoComplete="username"
                   />
-                  <p className="text-[11px] leading-4 text-muted-foreground">
-                    Exemple habilité : admin@buildify.ci, ou une adresse interne Buildify/Groupe EBC.
-                  </p>
+                  <p className="text-[11px] leading-4 text-muted-foreground">Seuls les comptes administrateurs actifs peuvent continuer.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="auth-admin-password" className="text-xs">Mot de passe</Label>

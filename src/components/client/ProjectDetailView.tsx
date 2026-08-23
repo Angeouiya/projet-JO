@@ -292,7 +292,7 @@ function detailFromStoredProject(project: ProjectData, teamMembers: TeamMemberDa
       status: quote.status === 'accepted' || quote.status === 'refused' ? quote.status : 'pending',
     })),
     visualProposals: project.visualProposals ?? [],
-    visualProposal: project.visualProposal,
+    visualProposal: project.visualProposal || project.visualProposals?.find(proposal => proposal.validatedAt),
     financing: project.financing || (project.formData?.financing as ProjectFinancingData | undefined),
     technicalBrief,
     scheduleItems,

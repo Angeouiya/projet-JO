@@ -102,7 +102,7 @@ interface AppState {
   // Actions - Auth
   setUser: (user: AppUser | null) => void;
   login: (user: AppUser) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   requireAuth: (redirectView?: ViewName, params?: Record<string, string>) => void;
   dismissAuth: () => void;
   setAuthResumeAction: (action: AuthResumeAction | null) => void;
@@ -344,23 +344,27 @@ export const useAppStore = create<AppState>()(
           }, 100);
         }
       },
-      logout: () => {
-        set({
-          user: null,
-          isAuthenticated: false,
-          isAdmin: false,
-          userProjects: [],
-          userFavorites: [],
-          notifications: [],
-          unreadNotificationCount: 0,
-          currentView: 'home',
-          navigationStack: ['home'],
-          viewParams: {},
-          previousView: null,
-          authRedirectView: null,
-          authRedirectParams: {},
-          authResumeAction: null,
-        });
+      logout: async () => {
+        try {
+          await fetch('/api/auth/logout', { method: 'POST' });
+        } finally {
+          set({
+            user: null,
+            isAuthenticated: false,
+            isAdmin: false,
+            userProjects: [],
+            userFavorites: [],
+            notifications: [],
+            unreadNotificationCount: 0,
+            currentView: 'home',
+            navigationStack: ['home'],
+            viewParams: {},
+            previousView: null,
+            authRedirectView: null,
+            authRedirectParams: {},
+            authResumeAction: null,
+          });
+        }
       },
       requireAuth: (redirectView, params = {}) => {
         set({
@@ -1477,10 +1481,15 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'btp-app-storage',
+      version: 2,
+      migrate: (persistedState) => {
+        const state = { ...(persistedState as Partial<AppState>) };
+        delete state.user;
+        delete state.isAuthenticated;
+        delete state.isAdmin;
+        return state as AppState;
+      },
       partialize: (state) => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-        isAdmin: state.isAdmin,
         userProjects: state.userProjects,
         userFavorites: state.userFavorites,
         notifications: state.notifications,

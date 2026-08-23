@@ -1,7 +1,7 @@
-import { createHmac, randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { validationError } from '@/lib/api-utils';
+import { createPasswordReset } from '@/lib/auth-store';
 
 const resetSchema = z.object({
   email: z.string().trim().email(),
@@ -12,16 +12,8 @@ function missingEmailConfig() {
     error: 'Service e-mail non configuré',
     code: 'SERVICE_NOT_CONFIGURED',
     message: "Service e-mail sécurisé non configuré. La récupération sera disponible après configuration de l'envoi par e-mail.",
-    requiredConfiguration: ['RESEND_API_KEY', 'BUILDIFY_EMAIL_FROM', 'BUILDIFY_AUTH_SECRET', 'BUILDIFY_PASSWORD_RESET_URL'],
+    requiredConfiguration: ['RESEND_API_KEY', 'BUILDIFY_EMAIL_FROM'],
   }, { status: 503 });
-}
-
-function buildToken(email: string, secret: string) {
-  const issuedAt = Date.now().toString();
-  const nonce = randomBytes(16).toString('hex');
-  const payload = `${email.toLowerCase()}.${issuedAt}.${nonce}`;
-  const signature = createHmac('sha256', secret).update(payload).digest('hex');
-  return Buffer.from(`${payload}.${signature}`).toString('base64url');
 }
 
 function buildResetLink(baseUrl: string, email: string, token: string) {
@@ -44,14 +36,14 @@ export async function POST(request: Request) {
 
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.BUILDIFY_EMAIL_FROM || process.env.RESEND_FROM_EMAIL;
-  const secret = process.env.BUILDIFY_AUTH_SECRET;
-  const resetBaseUrl = process.env.BUILDIFY_PASSWORD_RESET_URL;
+  const resetBaseUrl = process.env.BUILDIFY_PASSWORD_RESET_URL || new URL('/reset-password', request.url).toString();
 
-  if (!apiKey || !from || !secret || !resetBaseUrl) return missingEmailConfig();
+  if (!apiKey || !from) return missingEmailConfig();
 
   const email = parsed.data.email.toLowerCase();
-  const token = buildToken(email, secret);
-  const resetLink = buildResetLink(resetBaseUrl, email, token);
+  const reset = await createPasswordReset(email);
+  if (!reset) return NextResponse.json({ ok: true });
+  const resetLink = buildResetLink(resetBaseUrl, email, reset.token);
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
