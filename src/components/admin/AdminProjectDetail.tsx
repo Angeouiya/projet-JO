@@ -5,6 +5,8 @@ import { useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Camera,
+  CalendarCheck2,
+  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   Clock3,
@@ -15,8 +17,10 @@ import {
   HandCoins,
   Image as ImageIcon,
   Landmark,
+  MapPinned,
   MessageCircle,
   MessageSquareText,
+  NotebookTabs,
   ReceiptText,
   Send,
   ShieldCheck,
@@ -33,8 +37,17 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
 import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
-import type { ProjectData, ProjectPaymentMilestoneData } from '@/types';
+import type { ProjectData, ProjectPaymentMilestoneData, ProjectScheduleItemData } from '@/types';
 import { formatProjectLocation } from '@/lib/project-format';
+import {
+  PROJECT_SCHEDULE_MODE_LABELS,
+  PROJECT_SCHEDULE_TYPE_LABELS,
+  formatProjectScheduleDate,
+  projectScheduleModeLabel,
+  projectScheduleStatusLabel,
+  projectScheduleTypeLabel,
+  sortProjectSchedule,
+} from '@/lib/project-schedule';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 
 const TEAM_LEADS = ['Awa Kouadio', 'Moussa Traoré', 'Ibrahim Diarra', 'Fatou Koné'];
@@ -359,6 +372,14 @@ function criteriaFromText(value: string) {
   });
 }
 
+function dateTimeLocalAfter(days: number, hour = 9, minute = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  date.setHours(hour, minute, 0, 0);
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 export function AdminProjectDetail() {
   const {
     goBack,
@@ -372,6 +393,7 @@ export function AdminProjectDetail() {
     updateProjectPaymentMilestoneStatus,
     publishProjectVisualProposal,
     publishProjectSiteUpdate,
+    scheduleProjectEvent,
     addToast,
   } = useAppStore();
   const projectId = viewParams?.id || '';
@@ -417,6 +439,15 @@ export function AdminProjectDetail() {
   const [proposalRisksText, setProposalRisksText] = useState('Surfaces et limites de prestation à confirmer\nDocuments administratifs à contrôler\nBudget final après métrés et choix matériaux');
   const [proposalNextText, setProposalNextText] = useState('Client valide la proposition visuelle\nBuildify prépare le chiffrage détaillé\nAdmin transmet devis, planning et jalons');
   const [adminDirectMessage, setAdminDirectMessage] = useState('Bonjour, votre dossier avance. Vous pouvez nous écrire ici pour toute précision sur le périmètre, le financement ou le planning.');
+  const [scheduleType, setScheduleType] = useState<ProjectScheduleItemData['type']>('technical_visit');
+  const [scheduleTitle, setScheduleTitle] = useState('Visite technique et cadrage du dossier');
+  const [scheduleAt, setScheduleAt] = useState(dateTimeLocalAfter(1, 9, 30));
+  const [scheduleDuration, setScheduleDuration] = useState(60);
+  const [scheduleMode, setScheduleMode] = useState<ProjectScheduleItemData['mode']>('site');
+  const [scheduleTimeZone, setScheduleTimeZone] = useState(project ? projectText(project, 'clientTimeZone') || 'Africa/Abidjan' : 'Africa/Abidjan');
+  const [scheduleLocation, setScheduleLocation] = useState(project?.city || '');
+  const [schedulePreparation, setSchedulePreparation] = useState('Prévoir plan de situation, document foncier disponible, photos du terrain et contraintes connues.');
+  const [scheduleDecisionExpected, setScheduleDecisionExpected] = useState('Valider les prochaines informations nécessaires pour finaliser étude, devis et jalons.');
   const [sitePhase, setSitePhase] = useState(project?.siteUpdates?.[0]?.phase || 'Fondations et implantation');
   const [siteProgress, setSiteProgress] = useState(project?.siteUpdates?.[0]?.progress || Math.max(project?.progress || 25, 25));
   const [siteImageUrl, setSiteImageUrl] = useState(project?.siteUpdates?.[0]?.imageUrl || '/images/chantier-1.png');
@@ -529,6 +560,8 @@ export function AdminProjectDetail() {
     { label: 'Garanties paiement', done: Boolean(financing?.notaryContract || financing?.escrowRequested || financing?.bankSupportRequested) },
     { label: 'Proposition visuelle', done: Boolean(project.visualProposal) },
   ];
+  const projectScheduleItems = sortProjectSchedule(project.scheduleItems ?? []);
+  const nextScheduleItem = projectScheduleItems.find(item => new Date(item.scheduledAt).getTime() >= Date.now()) ?? projectScheduleItems[0];
   const projectWorkstreams = [
     {
       icon: UserCheck,
@@ -536,6 +569,13 @@ export function AdminProjectDetail() {
       status: project.clientEmail || project.clientPhone ? 'Contactable' : 'Contact incomplet',
       detail: optionalLabel(CLIENT_PRESENCE_LABELS, projectText(project, 'clientPresence')) || 'Présence à qualifier',
       done: Boolean(project.clientEmail || project.clientPhone),
+    },
+    {
+      icon: CalendarDays,
+      label: 'Planning',
+      status: projectScheduleItems.length ? `${projectScheduleItems.length} événement(s)` : 'À programmer',
+      detail: nextScheduleItem ? formatProjectScheduleDate(nextScheduleItem.scheduledAt, nextScheduleItem.timeZone) : 'Rendez-vous ou visite à créer',
+      done: projectScheduleItems.length > 0,
     },
     {
       icon: Landmark,
@@ -576,6 +616,13 @@ export function AdminProjectDetail() {
     .slice()
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 4);
+  const scheduleDisabled = !scheduleTitle.trim()
+    || !scheduleAt
+    || Number.isNaN(new Date(scheduleAt).getTime())
+    || !Number.isFinite(Number(scheduleDuration))
+    || Number(scheduleDuration) < 15
+    || !scheduleMode
+    || !scheduleType;
 
   const handleAssign = () => {
     if (!leadName.trim()) return;
@@ -648,6 +695,23 @@ export function AdminProjectDetail() {
   const handlePlanning = () => {
     updateProjectStatus(project.id, 'planning', 'Projet passé en planification');
     addToast('Projet passé en planification.', 'success');
+  };
+
+  const handleScheduleProjectEvent = () => {
+    if (scheduleDisabled) return;
+    scheduleProjectEvent(project.id, {
+      type: scheduleType,
+      title: scheduleTitle.trim(),
+      scheduledAt: new Date(scheduleAt).toISOString(),
+      durationMinutes: Number(scheduleDuration),
+      mode: scheduleMode,
+      timeZone: scheduleTimeZone || undefined,
+      location: scheduleLocation,
+      preparation: schedulePreparation,
+      decisionExpected: scheduleDecisionExpected,
+      createdBy: 'Administration Buildify',
+    });
+    addToast('Planning publié dans l’espace projet client.', 'success');
   };
 
   const siteUpdateDisabled = !sitePhase.trim()
@@ -773,7 +837,7 @@ export function AdminProjectDetail() {
                 <Badge variant="outline">{missingDocumentCount} pièce{missingDocumentCount > 1 ? 's' : ''} à sécuriser</Badge>
               </div>
 
-              <div className="mt-4 grid gap-2 md:grid-cols-5">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {projectWorkstreams.map(stream => (
                   <div key={stream.label} className="rounded-lg border p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -1046,6 +1110,152 @@ export function AdminProjectDetail() {
                     )}
                   />
                 </div>
+              </div>
+
+              <Separator className="my-4" />
+
+              <div className="rounded-lg border p-3">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">Programmer rendez-vous ou visite</h3>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      L’événement apparaît dans l’onglet Planning du client, dans le fil de messages et dans les modules admin.
+                    </p>
+                  </div>
+                  <Badge variant="outline">{projectScheduleItems.length} événement{projectScheduleItems.length > 1 ? 's' : ''}</Badge>
+                </div>
+
+                {nextScheduleItem && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <div className="flex items-start gap-2">
+                        <CalendarCheck2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Prochain événement</p>
+                          <p className="mt-1 text-sm font-semibold break-words">{nextScheduleItem.title}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatProjectScheduleDate(nextScheduleItem.scheduledAt, nextScheduleItem.timeZone)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <div className="flex items-start gap-2">
+                        <MapPinned className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mode et statut</p>
+                          <p className="mt-1 text-sm font-semibold break-words">
+                            {projectScheduleTypeLabel(nextScheduleItem.type)} · {projectScheduleModeLabel(nextScheduleItem.mode)}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">{projectScheduleStatusLabel(nextScheduleItem.status)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="scheduleType">
+                      Type
+                    </label>
+                    <select
+                      id="scheduleType"
+                      value={scheduleType}
+                      onChange={event => setScheduleType(event.target.value as ProjectScheduleItemData['type'])}
+                      className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    >
+                      {Object.entries(PROJECT_SCHEDULE_TYPE_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="scheduleMode">
+                      Mode
+                    </label>
+                    <select
+                      id="scheduleMode"
+                      value={scheduleMode}
+                      onChange={event => setScheduleMode(event.target.value as ProjectScheduleItemData['mode'])}
+                      className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    >
+                      {Object.entries(PROJECT_SCHEDULE_MODE_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="scheduleTitle">
+                      Objet clair
+                    </label>
+                    <Input id="scheduleTitle" value={scheduleTitle} onChange={event => setScheduleTitle(event.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="scheduleAt">
+                      Date et heure
+                    </label>
+                    <Input id="scheduleAt" type="datetime-local" value={scheduleAt} onChange={event => setScheduleAt(event.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="scheduleDuration">
+                      Durée minutes
+                    </label>
+                    <Input
+                      id="scheduleDuration"
+                      type="number"
+                      min={15}
+                      step={15}
+                      value={scheduleDuration}
+                      onChange={event => setScheduleDuration(Number(event.target.value || 0))}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="scheduleTimeZone">
+                      Fuseau client
+                    </label>
+                    <select
+                      id="scheduleTimeZone"
+                      value={scheduleTimeZone}
+                      onChange={event => setScheduleTimeZone(event.target.value)}
+                      className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                    >
+                      {Object.entries(TIME_ZONE_LABELS).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="scheduleLocation">
+                      Lieu ou lien
+                    </label>
+                    <Input id="scheduleLocation" value={scheduleLocation} onChange={event => setScheduleLocation(event.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="schedulePreparation">
+                      Préparation attendue
+                    </label>
+                    <Textarea id="schedulePreparation" value={schedulePreparation} onChange={event => setSchedulePreparation(event.target.value)} rows={4} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="scheduleDecision">
+                      Décision attendue
+                    </label>
+                    <Textarea id="scheduleDecision" value={scheduleDecisionExpected} onChange={event => setScheduleDecisionExpected(event.target.value)} rows={4} />
+                  </div>
+                </div>
+                <ConfirmActionDialog
+                  title="Publier cet événement au client ?"
+                  description={`${projectScheduleTypeLabel(scheduleType)} : ${scheduleTitle.trim() || 'événement'} sera visible dans le Planning, les Messages et les Notifications du dossier ${project.referenceNumber}.`}
+                  confirmLabel="Programmer"
+                  onConfirm={handleScheduleProjectEvent}
+                  trigger={(
+                    <Button className="mt-3 w-full gap-2 sm:w-auto" disabled={scheduleDisabled}>
+                      <NotebookTabs className="size-4" />
+                      Programmer
+                    </Button>
+                  )}
+                />
               </div>
 
               <Separator className="my-4" />

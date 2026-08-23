@@ -24,7 +24,23 @@ import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { formatProjectLocation } from '@/lib/project-format';
-import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectPaymentMilestoneData, ProjectQuoteData, ProjectSiteUpdateData, ProjectVisualProposalData } from '@/types';
+import {
+  formatProjectScheduleDate,
+  projectScheduleModeLabel,
+  projectScheduleStatusLabel,
+  projectScheduleTypeLabel,
+  sortProjectSchedule,
+} from '@/lib/project-schedule';
+import type {
+  ProjectData,
+  ProjectDocumentData,
+  ProjectFinancingData,
+  ProjectPaymentMilestoneData,
+  ProjectQuoteData,
+  ProjectScheduleItemData,
+  ProjectSiteUpdateData,
+  ProjectVisualProposalData,
+} from '@/types';
 
 // ── Types dossier client ───────────────────────────────────
 
@@ -51,6 +67,7 @@ type ProjectDetailData = {
   visualProposals?: ProjectVisualProposalData[];
   visualProposal?: ProjectVisualProposalData;
   financing?: ProjectFinancingData;
+  scheduleItems: ProjectScheduleItemData[];
   clientPresence?: string;
   clientResidenceCountry?: string;
   clientTimeZone?: string;
@@ -169,6 +186,7 @@ function getDocumentIcon(type: string, name = ''): LucideIcon {
 function detailFromStoredProject(project: ProjectData): ProjectDetailData {
   const startDate = project.createdAt?.slice(0, 10) || 'Non défini';
   const siteUpdates = project.siteUpdates ?? [];
+  const scheduleItems = sortProjectSchedule(project.scheduleItems ?? []);
   const latestSiteUpdate = siteUpdates[0];
   const projectMessages = (project.projectMessages ?? []).slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const missingInfoDate = project.missingInfoRequestedAt
@@ -236,6 +254,7 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
     visualProposals: project.visualProposals ?? [],
     visualProposal: project.visualProposal,
     financing: project.financing || (project.formData?.financing as ProjectFinancingData | undefined),
+    scheduleItems,
     clientPresence: labelFromMap(CLIENT_PRESENCE_LABELS, projectText(project, 'clientPresence')),
     clientResidenceCountry: projectText(project, 'clientResidenceCountry'),
     clientTimeZone: labelFromMap(TIME_ZONE_LABELS, projectText(project, 'clientTimeZone')),
@@ -1473,6 +1492,7 @@ function ResumeTab({
   data,
   onOpenProposals,
   onOpenFinancing,
+  onOpenPlanning,
   onOpenDocuments,
   onOpenMessages,
   onOpenSite,
@@ -1480,6 +1500,7 @@ function ResumeTab({
   data: ProjectDetailData;
   onOpenProposals?: () => void;
   onOpenFinancing?: () => void;
+  onOpenPlanning?: () => void;
   onOpenDocuments?: () => void;
   onOpenMessages?: () => void;
   onOpenSite?: () => void;
@@ -1516,9 +1537,17 @@ function ResumeTab({
           : data.status === 'in_progress'
             ? 'Suivi chantier'
             : 'Pilotage dossier';
+  const nextScheduleItem = data.scheduleItems.find(item => new Date(item.scheduledAt).getTime() >= Date.now()) ?? data.scheduleItems[0];
   const commandItems = [
     { icon: ClipboardCheck, label: 'Étape prioritaire', value: nextAction },
     { icon: Wallet, label: 'Score finance', value: score ? `${score}% - ${riskLabel}` : riskLabel },
+    {
+      icon: Calendar,
+      label: 'Planning',
+      value: nextScheduleItem
+        ? `${projectScheduleTypeLabel(nextScheduleItem.type)} · ${formatProjectScheduleDate(nextScheduleItem.scheduledAt, nextScheduleItem.timeZone)}`
+        : 'Aucun rendez-vous',
+    },
     { icon: FolderArchive, label: 'Pièces dossier', value: `${data.documents.length} pièce(s)` },
     { icon: MessageSquare, label: 'Communication', value: data.messages.length ? `${data.messages.length} échange(s)` : 'Canal ouvert' },
   ];
@@ -1548,7 +1577,7 @@ function ResumeTab({
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {commandItems.map(item => (
               <div key={item.label} className="flex min-w-0 items-start gap-2 rounded-lg border p-3">
                 <item.icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -1560,10 +1589,14 @@ function ResumeTab({
             ))}
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-5">
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-6">
             <Button variant="outline" className="h-11 gap-2" onClick={onOpenFinancing}>
               <Wallet className="size-4" />
               Finance
+            </Button>
+            <Button variant="outline" className="h-11 gap-2" onClick={onOpenPlanning}>
+              <Calendar className="size-4" />
+              Planning
             </Button>
             <Button variant="outline" className="h-11 gap-2" onClick={onOpenDocuments}>
               <FolderArchive className="size-4" />
@@ -1577,7 +1610,7 @@ function ResumeTab({
               <Eye className="size-4" />
               Visuels
             </Button>
-            <Button variant="outline" className="col-span-2 h-11 gap-2 lg:col-span-1" onClick={onOpenSite}>
+            <Button variant="outline" className="h-11 gap-2" onClick={onOpenSite}>
               <Camera className="size-4" />
               Chantier
             </Button>
@@ -1611,6 +1644,39 @@ function ResumeTab({
             <div className={`size-2 rounded-full ${data.terrainStatus.includes('Acquis') ? 'bg-foreground' : 'bg-muted-foreground/40'}`} />
             <span className="text-xs text-muted-foreground">{data.terrainStatus}</span>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="py-0 gap-0">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Planning</h4>
+              <p className="mt-1 text-sm font-semibold">
+                {nextScheduleItem ? nextScheduleItem.title : 'Aucun rendez-vous programmé'}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={onOpenPlanning}>
+              <Calendar className="size-3.5" />
+              Ouvrir
+            </Button>
+          </div>
+          {nextScheduleItem ? (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-lg border p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Date</p>
+                <p className="mt-1 text-xs font-semibold">{formatProjectScheduleDate(nextScheduleItem.scheduledAt, nextScheduleItem.timeZone)}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mode</p>
+                <p className="mt-1 text-xs font-semibold">{projectScheduleModeLabel(nextScheduleItem.mode)}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 rounded-lg border border-dashed p-3 text-sm leading-6 text-muted-foreground">
+              Buildify publiera ici les rendez-vous, visites techniques, réunions chantier et validations à distance.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -3049,6 +3115,111 @@ function DevisTab({
   );
 }
 
+function PlanningTab({ data }: { data: ProjectDetailData }) {
+  const upcoming = data.scheduleItems.filter(item => new Date(item.scheduledAt).getTime() >= Date.now());
+  const past = data.scheduleItems.filter(item => new Date(item.scheduledAt).getTime() < Date.now());
+  const visibleItems = [...upcoming, ...past];
+
+  if (visibleItems.length === 0) {
+    return (
+      <Card className="border-dashed py-0 gap-0">
+        <CardContent className="flex min-h-60 flex-col items-center justify-center p-6 text-center">
+          <Calendar className="size-9 text-muted-foreground/40" />
+          <h3 className="mt-4 text-base font-semibold">Aucun événement programmé</h3>
+          <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+            Les rendez-vous, visites techniques, réunions chantier et validations à distance apparaîtront ici dès publication par Buildify.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="py-0 gap-0 border-foreground/10">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Planning projet</p>
+              <h3 className="mt-1 text-lg font-bold">{upcoming.length ? `${upcoming.length} événement(s) à venir` : 'Historique planning'}</h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Chaque événement précise l’heure, le canal, ce qu’il faut préparer et la décision attendue.
+              </p>
+            </div>
+            <Badge variant="outline">{visibleItems.length} total</Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        {visibleItems.map(item => {
+          const isPast = new Date(item.scheduledAt).getTime() < Date.now();
+
+          return (
+            <Card key={item.id} className="py-0 gap-0">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={isPast ? 'secondary' : 'default'} className="text-[10px]">
+                        {projectScheduleStatusLabel(item.status)}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px]">
+                        {projectScheduleTypeLabel(item.type)}
+                      </Badge>
+                    </div>
+                    <h4 className="mt-3 text-sm font-semibold leading-5">{item.title}</h4>
+                  </div>
+                  <Calendar className="size-5 shrink-0 text-muted-foreground" />
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Date</p>
+                    <p className="mt-1 text-xs font-semibold">{formatProjectScheduleDate(item.scheduledAt, item.timeZone)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mode</p>
+                    <p className="mt-1 text-xs font-semibold">{projectScheduleModeLabel(item.mode)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Durée</p>
+                    <p className="mt-1 text-xs font-semibold">{item.durationMinutes} min</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Lieu</p>
+                    <p className="mt-1 text-xs font-semibold break-words">{item.location || data.city}</p>
+                  </div>
+                </div>
+
+                {(item.preparation || item.decisionExpected || item.note) && (
+                  <div className="mt-3 space-y-2">
+                    {item.preparation && (
+                      <div className="rounded-lg border bg-muted/30 p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Préparation</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.preparation}</p>
+                      </div>
+                    )}
+                    {item.decisionExpected && (
+                      <div className="rounded-lg border bg-muted/30 p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Décision attendue</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.decisionExpected}</p>
+                      </div>
+                    )}
+                    {item.note && (
+                      <p className="rounded-lg border p-3 text-xs leading-5 text-muted-foreground">{item.note}</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ChantierTab({ data }: { data: ProjectDetailData }) {
   return (
     <div className="space-y-6">
@@ -3162,7 +3333,7 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
 
 // ── Main View ──────────────────────────────────────────────
 
-type TabValue = 'resume' | 'propositions' | 'financement' | 'documents' | 'messages' | 'devis' | 'chantier';
+type TabValue = 'resume' | 'propositions' | 'financement' | 'planning' | 'documents' | 'messages' | 'devis' | 'chantier';
 
 export function ProjectDetailView() {
   const { goBack, navigate, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, updateProjectFinancing, respondProjectInfo, sendProjectMessage, addToast } = useAppStore();
@@ -3182,6 +3353,7 @@ export function ProjectDetailView() {
     { value: 'resume' as const, label: 'Résumé' },
     { value: 'propositions' as const, label: 'Propositions' },
     { value: 'financement' as const, label: 'Financement' },
+    { value: 'planning' as const, label: 'Planning' },
     { value: 'documents' as const, label: 'Documents' },
     { value: 'messages' as const, label: 'Messages' },
     { value: 'devis' as const, label: 'Devis' },
@@ -3271,6 +3443,7 @@ export function ProjectDetailView() {
                 data={data}
                 onOpenProposals={() => setActiveTab('propositions')}
                 onOpenFinancing={() => setActiveTab('financement')}
+                onOpenPlanning={() => setActiveTab('planning')}
                 onOpenDocuments={() => setActiveTab('documents')}
                 onOpenMessages={() => setActiveTab('messages')}
                 onOpenSite={() => setActiveTab('chantier')}
@@ -3291,6 +3464,7 @@ export function ProjectDetailView() {
                 } : undefined}
               />
             )}
+            {activeTab === 'planning' && <PlanningTab data={data} />}
             {activeTab === 'documents' && (
               <DocumentsTab
                 data={data}

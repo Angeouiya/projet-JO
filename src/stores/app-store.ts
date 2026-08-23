@@ -18,6 +18,7 @@ import type {
   ProjectMessageData,
   ProjectQuoteData,
   ProjectPaymentMilestoneData,
+  ProjectScheduleItemData,
   NotificationData,
   TeamMemberData,
 } from '@/types';
@@ -25,6 +26,12 @@ import {
   isNotificationForRole,
   unreadNotificationsForRole,
 } from '@/lib/notification-audience';
+import {
+  formatProjectScheduleDate,
+  projectScheduleModeLabel,
+  projectScheduleStatusLabel,
+  projectScheduleTypeLabel,
+} from '@/lib/project-schedule';
 import { DEFAULT_TEAM_MEMBERS } from '@/data/team';
 
 type ProjectRequestInput = Partial<ProjectData> & Pick<ProjectData, 'referenceNumber'>;
@@ -35,6 +42,7 @@ type ProjectMessageInput = Omit<ProjectMessageData, 'id' | 'createdAt' | 'sender
 type ProjectQuoteInput = Partial<Omit<ProjectQuoteData, 'amount' | 'status' | 'date'>>;
 type ProjectPaymentMilestoneStatus = ProjectPaymentMilestoneData['status'];
 type ProjectVisualProposalInput = Omit<ProjectVisualProposalData, 'id' | 'publishedAt' | 'publishedBy' | 'validatedAt' | 'validatedBy'> & Partial<Pick<ProjectVisualProposalData, 'id' | 'publishedAt' | 'publishedBy'>>;
+type ProjectScheduleInput = Omit<ProjectScheduleItemData, 'id' | 'createdAt' | 'createdBy' | 'status'> & Partial<Pick<ProjectScheduleItemData, 'id' | 'createdAt' | 'createdBy' | 'status'>>;
 
 interface AppState {
   // Navigation
@@ -130,6 +138,7 @@ interface AppState {
   validateProjectVisualProposal: (projectId: string, proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
   updateProjectFinancing: (projectId: string, financing: ProjectFinancingData) => void;
   updateProjectPaymentMilestoneStatus: (projectId: string, milestoneId: string, status: ProjectPaymentMilestoneStatus, note?: string) => void;
+  scheduleProjectEvent: (projectId: string, event: ProjectScheduleInput) => void;
   publishProjectSiteUpdate: (projectId: string, update: ProjectSiteUpdateInput) => void;
   updateProjectStatus: (projectId: string, status: string, label?: string) => void;
   toggleFavorite: (modelId: string) => void;
@@ -451,6 +460,7 @@ export const useAppStore = create<AppState>()(
           visualProposals: input.visualProposals ?? [],
           visualProposal: input.visualProposal,
           financing: input.financing,
+          scheduleItems: input.scheduleItems ?? [],
           siteUpdates: input.siteUpdates ?? [],
           activityLog: [
             activity(
@@ -1040,6 +1050,85 @@ export const useAppStore = create<AppState>()(
             link: 'project-detail',
             projectId,
             actionLabel: 'Voir finance',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications, s.isAdmin) };
+      }),
+      scheduleProjectEvent: (projectId, input) => set(s => {
+        const now = new Date().toISOString();
+        const actor = input.createdBy || s.user?.name || 'Administration Buildify';
+        const title = input.title.trim();
+        const scheduledAt = input.scheduledAt;
+        const scheduleItem: ProjectScheduleItemData = {
+          ...input,
+          id: input.id || uniqueId('schedule'),
+          title,
+          status: input.status || 'scheduled',
+          scheduledAt,
+          durationMinutes: Math.max(15, Math.round(Number(input.durationMinutes) || 45)),
+          location: input.location?.trim() || undefined,
+          preparation: input.preparation?.trim() || undefined,
+          decisionExpected: input.decisionExpected?.trim() || undefined,
+          note: input.note?.trim() || undefined,
+          createdAt: input.createdAt || now,
+          createdBy: actor,
+          updatedAt: now,
+        };
+        let projectRef = '';
+        let projectTitle = '';
+        const scheduleMessage: ProjectMessageData = {
+          id: uniqueId('msg'),
+          senderName: actor,
+          senderRole: 'admin',
+          message: `${projectScheduleTypeLabel(scheduleItem.type)} programmé : ${scheduleItem.title}. ${formatProjectScheduleDate(scheduleItem.scheduledAt, scheduleItem.timeZone)} · ${projectScheduleModeLabel(scheduleItem.mode)}.${scheduleItem.location ? ` Lieu : ${scheduleItem.location}.` : ''}${scheduleItem.preparation ? ` Préparation : ${scheduleItem.preparation}` : ''}`,
+          createdAt: now,
+        };
+
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          projectRef = project.referenceNumber;
+          projectTitle = project.title || project.modelName || project.categoryName || project.referenceNumber;
+          const shouldPlanVisit = scheduleItem.type === 'technical_visit'
+            && ['submitted', 'verifying', 'info_required', 'studying', 'estimating'].includes(project.status);
+          const shouldMovePlanning = ['site_meeting', 'client_validation'].includes(scheduleItem.type)
+            && ['accepted', 'contract_prep', 'payment_pending'].includes(project.status);
+
+          return {
+            ...project,
+            status: shouldPlanVisit ? 'visit_planned' : shouldMovePlanning ? 'planning' : project.status,
+            progress: Math.max(project.progress ?? 0, scheduleItem.type === 'technical_visit' ? 15 : 12),
+            scheduleItems: [
+              scheduleItem,
+              ...(project.scheduleItems ?? []).filter(item => item.id !== scheduleItem.id),
+            ],
+            projectMessages: [
+              ...(project.projectMessages ?? []),
+              scheduleMessage,
+            ],
+            activityLog: [
+              activity(`${projectScheduleTypeLabel(scheduleItem.type)} programmé : ${scheduleItem.title}`, actor, 'schedule'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        if (!projectRef) return { userProjects: projects };
+
+        const notifications: NotificationData[] = [
+          {
+            id: uniqueId('notif'),
+            title: `${projectScheduleTypeLabel(scheduleItem.type)} ${projectScheduleStatusLabel(scheduleItem.status).toLowerCase()}`,
+            message: `${projectRef} (${projectTitle}) : ${scheduleItem.title}, ${formatProjectScheduleDate(scheduleItem.scheduledAt, scheduleItem.timeZone)} · ${projectScheduleModeLabel(scheduleItem.mode)}.${scheduleItem.decisionExpected ? ` Décision attendue : ${scheduleItem.decisionExpected}` : ''}`,
+            type: 'schedule',
+            audience: 'client',
+            link: 'project-detail',
+            projectId,
+            actionLabel: 'Voir planning',
             isRead: false,
             createdAt: now,
           },

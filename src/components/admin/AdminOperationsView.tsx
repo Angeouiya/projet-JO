@@ -12,6 +12,11 @@ import {
 import { FORMAT_XOF } from '@/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { useAppStore } from '@/stores/app-store';
+import {
+  projectScheduleModeLabel,
+  projectScheduleStatusLabel,
+  projectScheduleTypeLabel,
+} from '@/lib/project-schedule';
 import { AdminCreateProjectDialog } from './AdminCreateProjectDialog';
 import type { NotificationData, ProjectData } from '@/types';
 
@@ -322,6 +327,33 @@ function workflowRows(tab: string, projects: ProjectData[], notifications: Notif
       project.id,
       'workflow'
     )));
+  }
+
+  if (tab === 'appointments' || tab === 'visits') {
+    const allowedTypes = tab === 'visits'
+      ? ['technical_visit', 'site_meeting']
+      : ['appointment', 'bank_meeting', 'client_validation'];
+
+    return projects.flatMap(project => (project.scheduleItems ?? [])
+      .filter(item => allowedTypes.includes(item.type))
+      .map(item => row(
+        item.id,
+        item.title,
+        project.referenceNumber,
+        item.createdBy || project.assignedTo || 'Administration Buildify',
+        projectScheduleStatusLabel(item.status),
+        item.scheduledAt,
+        undefined,
+        item.location || project.city,
+        [
+          projectScheduleTypeLabel(item.type),
+          projectScheduleModeLabel(item.mode),
+          item.durationMinutes ? `${item.durationMinutes} min` : 'Durée à confirmer',
+          project.categoryName || 'BTP',
+        ],
+        project.id,
+        'workflow'
+      )));
   }
 
   if (tab === 'sites') {

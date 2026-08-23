@@ -135,6 +135,7 @@ export interface ProjectData {
   visualProposals?: ProjectVisualProposalData[];
   visualProposal?: ProjectVisualProposalData;
   financing?: ProjectFinancingData;
+  scheduleItems?: ProjectScheduleItemData[];
   siteUpdates?: ProjectSiteUpdateData[];
   activityLog?: ProjectActivityData[];
   createdAt: string;
@@ -213,6 +214,24 @@ export interface ProjectSiteUpdateData {
   createdBy?: string;
 }
 
+export interface ProjectScheduleItemData {
+  id: string;
+  type: 'appointment' | 'technical_visit' | 'site_meeting' | 'bank_meeting' | 'client_validation';
+  title: string;
+  status: 'scheduled' | 'confirmed' | 'completed' | 'postponed' | 'cancelled';
+  scheduledAt: string;
+  durationMinutes: number;
+  mode: 'phone' | 'video' | 'whatsapp' | 'site' | 'office' | 'bank';
+  timeZone?: string;
+  location?: string;
+  preparation?: string;
+  decisionExpected?: string;
+  note?: string;
+  createdAt: string;
+  createdBy?: string;
+  updatedAt?: string;
+}
+
 export interface ProjectFinancingData {
   mode: string;
   readiness: 'confirmed' | 'bank_review' | 'to_structure' | 'unknown';
@@ -281,7 +300,7 @@ export interface ProjectActivityData {
   id: string;
   label: string;
   actor: string;
-  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status' | 'proposal' | 'site' | 'message' | 'payment';
+  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status' | 'proposal' | 'site' | 'message' | 'payment' | 'schedule';
   createdAt: string;
 }
 
