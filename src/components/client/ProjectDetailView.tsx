@@ -1724,6 +1724,66 @@ function ResumeTab({
       onClick: onOpenSite,
     },
   ];
+  const remoteSummaryItems = [
+    {
+      icon: Globe2,
+      label: 'Pays / fuseau',
+      value: data.clientResidenceCountry || 'À préciser',
+      helper: data.clientTimeZone || 'Fuseau à confirmer pour les rendez-vous',
+    },
+    {
+      icon: MessageCircle,
+      label: 'Canal officiel',
+      value: data.clientPreferredContactChannel || 'E-mail recommandé',
+      helper: data.clientContactWindow || 'Téléphone accepté avec indicatif pays',
+    },
+    {
+      icon: UserRoundCheck,
+      label: 'Relais terrain',
+      value: data.representativeName || 'Mandataire à renseigner',
+      helper: data.representativePhone || 'Contact local utile pour visite, photos et contrôle',
+    },
+    {
+      icon: ShieldCheck,
+      label: 'Mode de validation',
+      value: data.remoteDecisionMode || 'Validation écrite conseillée',
+      helper: 'Chaque décision importante reste confirmée avant action',
+    },
+  ];
+  const remoteActionItems = [
+    {
+      icon: MessageSquare,
+      label: 'Coordonnées',
+      detail: data.clientPreferredContactChannel ? 'Canal de contact disponible.' : 'Précisez e-mail, téléphone et canal préféré.',
+      actionLabel: 'Écrire',
+      onClick: onOpenMessages,
+      done: Boolean(data.clientPreferredContactChannel),
+    },
+    {
+      icon: Calendar,
+      label: 'Rendez-vous',
+      detail: nextScheduleItem ? formatProjectScheduleDate(nextScheduleItem.scheduledAt, nextScheduleItem.timeZone) : 'Programmer une visio, un appel ou une visite terrain.',
+      actionLabel: 'Planning',
+      onClick: onOpenPlanning,
+      done: Boolean(nextScheduleItem),
+    },
+    {
+      icon: FolderArchive,
+      label: 'Pièces utiles',
+      detail: documentsReady ? 'Les premières pièces sont disponibles.' : 'Ajoutez plans, titre, photos et justificatifs financiers.',
+      actionLabel: 'Pièces',
+      onClick: onOpenDocuments,
+      done: documentsReady,
+    },
+    {
+      icon: Wallet,
+      label: 'Finance diaspora',
+      detail: financeReady ? 'Capacité lisible pour préparer banque et jalons.' : 'Complétez revenus, charges, apport et banque.',
+      actionLabel: 'Finance',
+      onClick: onOpenFinancing,
+      done: financeReady,
+    },
+  ];
 
   return (
     <div className="space-y-4">
@@ -1835,6 +1895,58 @@ function ResumeTab({
                     className="mt-3 h-9 w-full gap-1.5 text-xs"
                     onClick={item.onClick}
                   >
+                    {item.actionLabel}
+                    <ArrowLeft className="size-3 rotate-180" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="py-0 gap-0 border-foreground/10">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Coordination multi-pays</h4>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Un dossier peut être suivi depuis l’étranger avec e-mail recommandé, téléphone à indicatif pays, mandataire local et validations écrites.
+              </p>
+            </div>
+            <Badge variant="outline" className="w-fit">
+              {remoteActionItems.filter(item => item.done).length}/4 sécurisé
+            </Badge>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {remoteSummaryItems.map(item => {
+              const Icon = item.icon;
+              return (
+                <div key={item.label} className="rounded-lg border bg-background p-3">
+                  <Icon className="size-4 text-muted-foreground" />
+                  <p className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                  <p className="mt-1 break-words text-sm font-bold">{item.value}</p>
+                  <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{item.helper}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {remoteActionItems.map(item => {
+              const Icon = item.icon;
+              return (
+                <div key={item.label} className="flex min-h-[132px] flex-col rounded-lg border p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <Icon className="size-4 shrink-0 text-muted-foreground" />
+                    <Badge variant={item.done ? 'default' : 'outline'} className="text-[10px]">
+                      {item.done ? 'OK' : 'À compléter'}
+                    </Badge>
+                  </div>
+                  <p className="mt-3 text-sm font-semibold">{item.label}</p>
+                  <p className="mt-1 flex-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                  <Button type="button" variant="outline" size="sm" className="mt-3 h-9 gap-1.5 text-xs" onClick={item.onClick}>
                     {item.actionLabel}
                     <ArrowLeft className="size-3 rotate-180" />
                   </Button>

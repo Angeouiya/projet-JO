@@ -1156,6 +1156,66 @@ export function AdminProjectDetail() {
       actionLabel: 'Ouvrir chantier',
     },
   ];
+  const remoteAdminSummaryItems = [
+    {
+      icon: Globe2,
+      label: 'Pays / fuseau',
+      value: projectText(project, 'clientResidenceCountry') || project.country || 'À qualifier',
+      detail: optionalLabel(TIME_ZONE_LABELS, projectText(project, 'clientTimeZone')) || 'Fuseau à demander avant rendez-vous',
+    },
+    {
+      icon: MessageCircle,
+      label: 'Canal officiel',
+      value: optionalLabel(CONTACT_CHANNEL_LABELS, projectText(project, 'clientPreferredContactChannel')) || 'E-mail recommandé',
+      detail: optionalLabel(CONTACT_WINDOW_LABELS, projectText(project, 'clientContactWindow')) || 'Téléphone accepté avec indicatif pays',
+    },
+    {
+      icon: UserRoundCheck,
+      label: 'Mandataire terrain',
+      value: projectText(project, 'representativeName') || 'À renseigner',
+      detail: projectText(project, 'representativePhone') || 'Contact local utile pour visite, photos et contrôle',
+    },
+    {
+      icon: ShieldCheck,
+      label: 'Validation',
+      value: optionalLabel(REMOTE_DECISION_LABELS, projectText(project, 'remoteDecisionMode')) || 'Validation écrite conseillée',
+      detail: 'Toujours confirmer avant devis, contrat, jalon ou chantier',
+    },
+  ];
+  const remoteAdminChecks = [
+    {
+      icon: MessageSquareText,
+      label: 'Contact client complet',
+      detail: project.clientEmail && project.clientPhone ? 'E-mail et téléphone disponibles.' : 'Demander e-mail, téléphone et indicatif pays.',
+      done: Boolean(project.clientEmail && project.clientPhone),
+      targetId: 'infoMessage',
+      actionLabel: 'Demander contact',
+    },
+    {
+      icon: UserRoundCheck,
+      label: 'Relais local identifié',
+      detail: projectText(project, 'representativeName') ? 'Mandataire ou relais terrain disponible.' : 'Identifier une personne locale avant visite ou démarrage.',
+      done: Boolean(projectText(project, 'representativeName')),
+      targetId: 'infoMessage',
+      actionLabel: 'Demander relais',
+    },
+    {
+      icon: CalendarDays,
+      label: 'Rendez-vous adapté au fuseau',
+      detail: nextScheduleItem ? formatProjectScheduleDate(nextScheduleItem.scheduledAt, nextScheduleItem.timeZone) : 'Planifier visio, appel, banque ou visite technique.',
+      done: Boolean(nextScheduleItem),
+      targetId: 'scheduleTitle',
+      actionLabel: 'Planifier',
+    },
+    {
+      icon: Landmark,
+      label: 'Finance exploitable',
+      detail: financingScore ? `${financingScore}% · ${financeRisk}` : 'Compléter revenus, charges, apport, banque et pièces.',
+      done: financingScore >= 70 || financing?.readiness === 'confirmed',
+      targetId: 'paymentMilestone',
+      actionLabel: 'Ouvrir finance',
+    },
+  ];
   const recentProjectMessages = (project.projectMessages ?? [])
     .slice()
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -1481,6 +1541,63 @@ export function AdminProjectDetail() {
                     <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{item.help}</p>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="py-0 gap-0 border-foreground/10">
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Coordination multi-pays</p>
+                  <h2 className="mt-1 text-lg font-bold">Client à distance, mandataire, banque et validations</h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    L’administration doit sécuriser le bon canal, le fuseau, le relais terrain et la preuve écrite avant toute décision importante.
+                  </p>
+                </div>
+                <Badge variant="outline">{remoteAdminChecks.filter(item => item.done).length}/4 point(s) sécurisé(s)</Badge>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
+                {remoteAdminSummaryItems.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="rounded-lg border bg-background p-3">
+                      <Icon className="size-4 text-muted-foreground" />
+                      <p className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                      <p className="mt-1 break-words text-sm font-bold">{item.value}</p>
+                      <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{item.detail}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                {remoteAdminChecks.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className="flex min-h-[148px] flex-col rounded-lg border p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <Icon className="size-4 shrink-0 text-muted-foreground" />
+                        <Badge variant={item.done ? 'default' : 'outline'} className="text-[10px]">
+                          {item.done ? 'OK' : 'À compléter'}
+                        </Badge>
+                      </div>
+                      <p className="mt-3 text-sm font-semibold">{item.label}</p>
+                      <p className="mt-1 flex-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 h-9 gap-1.5 text-xs"
+                        onClick={() => focusAdminAction(item.targetId)}
+                      >
+                        {item.actionLabel}
+                        <ArrowLeft className="size-3 rotate-180" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
