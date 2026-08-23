@@ -18,6 +18,7 @@ import {
   Download,
   FileCheck2,
   FileChartColumn,
+  FilePlus2,
   FileText,
   FolderArchive,
   FolderKanban,
@@ -507,6 +508,14 @@ export function AdminView() {
               </div>
 
               <div className="ml-auto flex items-center gap-1 lg:hidden">
+                <AdminCreateProjectDialog
+                  trigger={(
+                    <Button size="sm" className="h-9 gap-1.5 rounded-lg px-2.5 text-xs">
+                      <FilePlus2 className="size-4" />
+                      Nouveau
+                    </Button>
+                  )}
+                />
                 <button type="button" onClick={() => openAdminTab('messages')} className="relative rounded-lg p-2 hover:bg-muted" aria-label="Messages">
                   <MessageSquare className="size-5" />
                   {missingInfoCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] text-background">{missingInfoCount}</span>}
