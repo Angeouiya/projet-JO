@@ -4,15 +4,18 @@ import NextImage from 'next/image';
 import { useMemo, useState } from 'react';
 import {
   ArrowLeft,
+  AlertCircle,
   Camera,
   CalendarCheck2,
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   Clock3,
+  Calculator,
   Download,
   FileText,
   FolderSearch,
+  Gauge,
   Globe2,
   HandCoins,
   Image as ImageIcon,
@@ -25,6 +28,9 @@ import {
   Ruler,
   Send,
   ShieldCheck,
+  PiggyBank,
+  Route,
+  Scale,
   UserCheck,
   UserRoundCheck,
 } from 'lucide-react';
@@ -41,6 +47,7 @@ import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
 import type { ProjectData, ProjectPaymentMilestoneData, ProjectScheduleItemData } from '@/types';
 import { formatProjectLocation } from '@/lib/project-format';
 import { buildProjectBrief } from '@/lib/project-brief';
+import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
 import type { ProjectBriefItemKey } from '@/lib/project-brief';
 import {
   PROJECT_SCHEDULE_MODE_LABELS,
@@ -813,6 +820,8 @@ export function AdminProjectDetail() {
     || !proposalDuration.trim()
     || !proposalDeliverable.trim();
   const financing = project.financing || (project.formData?.financing as typeof project.financing);
+  const financingDecisionPlan = financing ? buildFinancingDecisionPlan(financing, project.budgetMax || project.budgetMin) : undefined;
+  const adminDecisionIcons: LucideIcon[] = [Calculator, PiggyBank, Gauge, Scale, Landmark, Route];
   const selectedLead = activeTeamMembers.find(member => member.name === leadName);
   const assignedMember = activeTeamMembers.find(member => member.name === project.assignedTo);
   const leadRoleLabel = selectedLead ? ROLE_LABELS[selectedLead.role] || selectedLead.role : 'Rôle à définir';
@@ -2146,6 +2155,54 @@ export function AdminProjectDetail() {
                     <Badge variant="outline" className="text-[10px]">{labelFrom(EMPLOYMENT_STATUS_LABELS, financing?.employmentStatus)}</Badge>
                   </div>
                 </div>
+                {financingDecisionPlan && (
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <Badge variant={financingDecisionPlan.tone === 'ready' ? 'default' : 'outline'} className="text-[10px]">
+                          {financingDecisionPlan.label}
+                        </Badge>
+                        <h3 className="mt-2 text-sm font-semibold leading-5">{financingDecisionPlan.title}</h3>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{financingDecisionPlan.advisory}</p>
+                      </div>
+                      <Calculator className="size-4 shrink-0 text-muted-foreground" />
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {financingDecisionPlan.metrics.slice(0, 4).map((metric, index) => {
+                        const MetricIcon = adminDecisionIcons[index] || Calculator;
+                        return (
+                          <div key={metric.label} className="rounded-lg border bg-background p-2">
+                            <MetricIcon className="size-3.5 text-muted-foreground" />
+                            <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{metric.label}</p>
+                            <p className="mt-1 text-xs font-bold break-words">{metric.value}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {financingDecisionPlan.actions.slice(0, 4).map(action => {
+                        const ActionIcon = action.status === 'ok' ? CheckCircle2 : action.status === 'watch' ? Clock3 : AlertCircle;
+                        return (
+                          <div key={action.label} className="flex items-start gap-2 rounded-lg border bg-background p-2">
+                            <ActionIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold">{action.label}</p>
+                              <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{action.detail}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {financingDecisionPlan.warnings.length > 0 && (
+                      <div className="mt-3 rounded-lg border border-dashed bg-background p-2 text-[11px] leading-4 text-muted-foreground">
+                        {financingDecisionPlan.warnings[0]}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="rounded-lg border p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mode</p>
                   <p className="mt-1 text-sm font-semibold">{financingModeLabel(financing?.mode)}</p>

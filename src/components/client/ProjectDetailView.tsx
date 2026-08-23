@@ -10,7 +10,7 @@ import {
   ClipboardCheck, AlertCircle, Building2, Eye, Download,
   ShieldCheck, CheckCircle2, FolderArchive, ClipboardList, Home,
   Globe2, Clock3, MessageCircle, UserRoundCheck, Gauge,
-  Ruler,
+  Ruler, Calculator, Scale, PiggyBank, Route,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { formatProjectLocation } from '@/lib/project-format';
 import { buildProjectBrief, projectBriefLabel } from '@/lib/project-brief';
+import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
 import type { ProjectBrief, ProjectBriefItemKey } from '@/lib/project-brief';
 import {
   formatProjectScheduleDate,
@@ -2691,6 +2692,14 @@ function FinancingTab({
     { label: 'Effort projeté', value: percentOrTodo(financing.projectedDebtRatioPercent), help: 'Charges totales projetées par rapport au revenu net.' },
     { label: 'Écart à sécuriser', value: amountOrTodo(fundingGap), help: 'Budget non couvert par l’apport et le financement déclaré.' },
   ];
+  const decisionPlan = buildFinancingDecisionPlan(financing, data.budgetMax || data.budgetMin);
+  const decisionToneClass = {
+    ready: 'border-foreground bg-foreground text-background',
+    structure: 'border-foreground/30 bg-muted/40',
+    risk: 'border-destructive/40 bg-destructive/5',
+    missing: 'border-dashed bg-muted/20',
+  }[decisionPlan.tone];
+  const decisionMetricIcons: LucideIcon[] = [Calculator, PiggyBank, Gauge, Scale, Wallet, Route];
   const projectedFinancing = buildFinancingFromDraft(financing, draft, data);
   const projectedScore = projectedFinancing.affordabilityScore ?? 0;
   const requiredFinancialFieldsMissing = !draft.employmentStatus
@@ -2862,6 +2871,85 @@ function FinancingTab({
                 {flag.label}
               </Badge>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className={`py-0 gap-0 border ${decisionToneClass}`}>
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <Badge variant={decisionPlan.tone === 'ready' ? 'secondary' : 'outline'} className="w-fit">
+                {decisionPlan.label}
+              </Badge>
+              <h3 className="mt-3 text-lg font-semibold">{decisionPlan.title}</h3>
+              <p className={`mt-2 text-sm leading-6 ${decisionPlan.tone === 'ready' ? 'text-background/75' : 'text-muted-foreground'}`}>
+                {decisionPlan.summary}
+              </p>
+            </div>
+            <div className={`rounded-lg border p-3 ${decisionPlan.tone === 'ready' ? 'border-background/25 bg-background/10' : 'bg-background'}`}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider ${decisionPlan.tone === 'ready' ? 'text-background/65' : 'text-muted-foreground'}`}>
+                Décision Buildify
+              </p>
+              <p className="mt-1 text-sm font-semibold">{decisionPlan.advisory}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-6">
+            {decisionPlan.metrics.map((metric, index) => {
+              const MetricIcon = decisionMetricIcons[index] || Calculator;
+              return (
+                <div key={metric.label} className={`rounded-lg border p-3 ${decisionPlan.tone === 'ready' ? 'border-background/20 bg-background/10' : 'bg-background'}`}>
+                  <MetricIcon className={`size-4 ${decisionPlan.tone === 'ready' ? 'text-background/70' : 'text-muted-foreground'}`} />
+                  <p className={`mt-3 text-[10px] font-semibold uppercase tracking-wider ${decisionPlan.tone === 'ready' ? 'text-background/65' : 'text-muted-foreground'}`}>
+                    {metric.label}
+                  </p>
+                  <p className="mt-1 text-sm font-bold break-words">{metric.value}</p>
+                  <p className={`mt-2 text-[11px] leading-4 ${decisionPlan.tone === 'ready' ? 'text-background/65' : 'text-muted-foreground'}`}>
+                    {metric.help}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+            <div className={`rounded-lg border p-3 ${decisionPlan.tone === 'ready' ? 'border-background/20 bg-background/10' : 'bg-background'}`}>
+              <h4 className="text-sm font-semibold">Actions avant engagement</h4>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {decisionPlan.actions.map(action => {
+                  const ActionIcon = action.status === 'ok' ? CheckCircle2 : action.status === 'watch' ? Clock3 : AlertCircle;
+                  return (
+                    <div key={action.label} className={`flex min-w-0 items-start gap-2 rounded-lg border p-3 ${decisionPlan.tone === 'ready' ? 'border-background/20' : ''}`}>
+                      <ActionIcon className={`mt-0.5 size-4 shrink-0 ${decisionPlan.tone === 'ready' ? 'text-background/70' : 'text-muted-foreground'}`} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold">{action.label}</p>
+                        <p className={`mt-1 text-[11px] leading-4 ${decisionPlan.tone === 'ready' ? 'text-background/65' : 'text-muted-foreground'}`}>
+                          {action.detail}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className={`rounded-lg border p-3 ${decisionPlan.tone === 'ready' ? 'border-background/20 bg-background/10' : 'bg-background'}`}>
+              <h4 className="text-sm font-semibold">Points de vigilance</h4>
+              {decisionPlan.warnings.length > 0 ? (
+                <div className="mt-3 space-y-2">
+                  {decisionPlan.warnings.slice(0, 4).map(warning => (
+                    <div key={warning} className={`rounded-lg border p-3 text-xs leading-5 ${decisionPlan.tone === 'ready' ? 'border-background/20 text-background/75' : 'text-muted-foreground'}`}>
+                      {warning}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className={`mt-3 rounded-lg border p-3 text-xs leading-5 ${decisionPlan.tone === 'ready' ? 'border-background/20 text-background/75' : 'text-muted-foreground'}`}>
+                  Aucun blocage majeur détecté avec les données déclarées. Les montants restent à confirmer par devis, banque et pièces justificatives.
+                </p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
