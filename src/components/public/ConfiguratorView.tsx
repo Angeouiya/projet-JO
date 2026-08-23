@@ -3561,27 +3561,12 @@ export function ConfiguratorView() {
     {
       label: 'Contrôle professionnel',
       icon: ShieldCheck,
-      items: [
-        `Catégorie : ${categoryControlLabel}`,
-        `Pays : ${countryControlLabel}`,
-        `Ville : ${cityControlLabel}`,
-        `Budget : ${budgetControlLabel}`,
-        'Points : ouvrage, localisation, accès et pièces disponibles',
-      ],
+      summary: `Catégorie ${categoryControlLabel} | Pays ${countryControlLabel} | Ville ${cityControlLabel} | Budget ${budgetControlLabel} | Points : famille d’ouvrage, localisation, accès, pièces et financement.`,
     },
     {
       label: 'Finance',
       icon: Wallet,
-      items: [
-        `Score : ${financeScoreMetric?.value || 'À compléter'}`,
-        `Risque : ${financeRiskLabel}`,
-        `Endettement : ${debtMetric?.value || 'À calculer'} (charges + mensualité)`,
-        `Apport / budget : ${equityMetric?.value || 'À calculer'}`,
-        equityMetric?.helper || 'Apport déclaré : À saisir',
-        `Réserve : ${reserveMetric?.value || 'À saisir'} (épargne nette / revenu)`,
-        'Financement structuré avant transmission',
-        'Aucun engagement sans catégorie, lieu et budget',
-      ],
+      summary: `Score ${financeScoreMetric?.value || 'À compléter'} | Risque ${financeRiskLabel} | Endettement ${debtMetric?.value || 'À calculer'} | Apport ${equityMetric?.value || 'À calculer'} | Réserve ${reserveMetric?.value || 'À saisir'} | Aucun engagement sans catégorie, lieu et budget.`,
     },
   ];
   const professionalControlLabel = [
@@ -3594,24 +3579,21 @@ export function ConfiguratorView() {
       <section
         className="min-w-0 overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm"
         aria-label={professionalControlLabel}
+        data-testid="professional-control-strip"
       >
-        <div className="overflow-x-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="grid min-w-max gap-0.5">
-            {professionalControlRows.map(({ label, icon: RowIcon, items }, rowIndex) => (
-              <p
-                key={label}
-                className={`flex min-w-max items-center whitespace-nowrap text-[10px] leading-4 sm:text-xs sm:leading-5 ${rowIndex === 0 ? 'text-foreground' : 'text-muted-foreground'}`}
-              >
-                <RowIcon className="mr-1.5 size-3.5 shrink-0" aria-hidden="true" />
-                <strong className="font-semibold text-foreground">{label}</strong>
-                {items.map(item => (
-                  <span key={item} className="before:mx-1.5 before:text-border before:content-['•'] sm:before:mx-2">
-                    {item}
-                  </span>
-                ))}
-              </p>
-            ))}
-          </div>
+        <div className="grid gap-1 px-3 py-2">
+          {professionalControlRows.map(({ label, icon: RowIcon, summary }, rowIndex) => (
+            <p
+              key={label}
+              title={`${label} : ${summary}`}
+              className={`flex min-w-0 max-w-full items-center overflow-hidden whitespace-nowrap text-[10px] leading-4 sm:text-xs sm:leading-5 ${rowIndex === 0 ? 'text-foreground' : 'text-muted-foreground'}`}
+            >
+              <RowIcon className="mr-1.5 size-3.5 shrink-0" aria-hidden="true" />
+              <strong className="font-semibold text-foreground">{label}</strong>
+              <span className="mx-1 shrink-0 text-border">•</span>
+              <span className="min-w-0 flex-1 truncate">{summary}</span>
+            </p>
+          ))}
         </div>
       </section>
     );
