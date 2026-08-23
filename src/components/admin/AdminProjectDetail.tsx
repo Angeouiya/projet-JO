@@ -44,6 +44,20 @@ function formatBudget(min?: number, max?: number) {
   return 'À estimer';
 }
 
+function formatBudgetSummary(min?: number, max?: number) {
+  const compact = (amount: number) => {
+    if (amount >= 1_000_000) {
+      const value = Math.round((amount / 1_000_000) * 10) / 10;
+      return `${new Intl.NumberFormat('fr-FR').format(value)} M`;
+    }
+    return new Intl.NumberFormat('fr-FR').format(amount);
+  };
+  if (min && max) return `${compact(min)} - ${compact(max)} XOF`;
+  if (max) return `${compact(max)} XOF`;
+  if (min) return `${compact(min)} XOF`;
+  return 'À estimer';
+}
+
 function quoteStatusLabel(status: string) {
   if (status === 'sent') return 'Transmis';
   if (status === 'accepted') return 'Accepté';
@@ -334,6 +348,23 @@ export function AdminProjectDetail() {
   const latestInfoResponse = project.missingInfoResponses?.[0];
   const financingScore = financing?.affordabilityScore ?? 0;
   const financeRisk = labelFrom(FINANCIAL_RISK_LABELS, financing?.financialRiskLevel);
+  const milestoneTotal = paymentMilestones.reduce((total, item) => total + (item.expectedAmount ?? 0), 0);
+  const paidAmount = paymentMilestones
+    .filter(item => item.status === 'paid')
+    .reduce((total, item) => total + (item.expectedAmount ?? 0), 0);
+  const dueAmount = paymentMilestones
+    .filter(item => item.status === 'due')
+    .reduce((total, item) => total + (item.expectedAmount ?? 0), 0);
+  const blockedCount = paymentMilestones.filter(item => item.status === 'blocked').length;
+  const residualAfterDebt = financing?.monthlyIncome !== undefined
+    ? financing.monthlyIncome - (financing.existingMonthlyDebt ?? 0)
+    : undefined;
+  const residualAfterProject = financing?.monthlyIncome !== undefined
+    ? financing.monthlyIncome - (financing.existingMonthlyDebt ?? 0) - (financing.monthlyPaymentCapacity ?? 0)
+    : undefined;
+  const fundingGap = financing?.estimatedBudget !== undefined
+    ? Math.max(0, financing.estimatedBudget - (financing.ownContribution ?? 0) - (financing.requestedLoanAmount ?? 0))
+    : undefined;
   const missingDocumentCount = (financing?.documentReadiness ?? []).includes('none-yet')
     ? 4
     : Math.max(0, 4 - (financing?.documentReadiness ?? []).filter(item => ['id', 'income-proof', 'bank-statements', 'quote-or-plans'].includes(item)).length);
@@ -373,6 +404,49 @@ export function AdminProjectDetail() {
     { label: 'Pièces banque', done: missingDocumentCount === 0 },
     { label: 'Garanties paiement', done: Boolean(financing?.notaryContract || financing?.escrowRequested || financing?.bankSupportRequested) },
     { label: 'Proposition visuelle', done: Boolean(project.visualProposal) },
+  ];
+  const projectWorkstreams = [
+    {
+      icon: UserCheck,
+      label: 'Client',
+      status: project.clientEmail || project.clientPhone ? 'Contactable' : 'Contact incomplet',
+      detail: optionalLabel(CLIENT_PRESENCE_LABELS, projectText(project, 'clientPresence')) || 'Présence à qualifier',
+      done: Boolean(project.clientEmail || project.clientPhone),
+    },
+    {
+      icon: Landmark,
+      label: 'Finance',
+      status: financingReadinessLabel(financing?.readiness),
+      detail: financingScore ? `${financingScore}% · ${financeRisk}` : financeRisk,
+      done: financingScore >= 70 || financing?.readiness === 'confirmed',
+    },
+    {
+      icon: ReceiptText,
+      label: 'Devis',
+      status: (project.quotes ?? []).length ? `${project.quotes?.length} transmis` : 'À préparer',
+      detail: project.visualProposal ? 'Proposition validée' : 'Base visuelle à valider',
+      done: ['quote_sent', 'accepted', 'contract_prep', 'planning', 'in_progress', 'delivered'].includes(project.status),
+    },
+    {
+      icon: HandCoins,
+      label: 'Jalons',
+      status: paymentMilestones.length ? `${paymentMilestones.length} échéances` : 'À cadrer',
+      detail: dueAmount ? `${FORMAT_XOF(dueAmount)} à régler` : blockedCount ? `${blockedCount} blocage(s)` : 'Aucun appel ouvert',
+      done: paymentMilestones.length > 0 && blockedCount === 0,
+    },
+    {
+      icon: Camera,
+      label: 'Chantier',
+      status: (project.siteUpdates ?? []).length ? `${project.siteUpdates?.length} publication(s)` : 'Non démarré',
+      detail: project.progress ? `${project.progress}% global` : 'Planning à construire',
+      done: ['in_progress', 'delivered'].includes(project.status),
+    },
+  ];
+  const adminFinancialReadings = [
+    { label: 'Après charges', value: amountOrTodo(residualAfterDebt), help: 'Revenu disponible avant la mensualité projet.' },
+    { label: 'Après projet', value: amountOrTodo(residualAfterProject), help: 'Marge client après mensualité cible.' },
+    { label: 'Écart à couvrir', value: amountOrTodo(fundingGap), help: 'Budget non couvert par apport + financement déclaré.' },
+    { label: 'Jalons cadrés', value: milestoneTotal ? FORMAT_XOF(milestoneTotal) : 'À calculer', help: `${paymentMilestones.length} échéance(s), ${blockedCount} blocage(s).` },
   ];
   const recentProjectMessages = (project.projectMessages ?? [])
     .slice()
@@ -490,7 +564,7 @@ export function AdminProjectDetail() {
         <Card className="py-0 gap-0">
           <CardContent className="p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Budget</p>
-            <p className="mt-2 text-sm font-semibold">{formatBudget(project.budgetMin, project.budgetMax)}</p>
+            <p className="mt-2 text-sm font-semibold">{formatBudgetSummary(project.budgetMin, project.budgetMax)}</p>
           </CardContent>
         </Card>
         <Card className="py-0 gap-0">
@@ -556,6 +630,47 @@ export function AdminProjectDetail() {
                       <Clock3 className="size-4 shrink-0 text-muted-foreground" />
                     )}
                     <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="py-0 gap-0">
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Espace projet avancé</p>
+                  <h2 className="mt-1 text-lg font-bold">Dossier, finance, devis et jalons liés</h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Lecture opérationnelle pour décider quoi faire avant de lancer un contrat ou un appel de paiement.
+                  </p>
+                </div>
+                <Badge variant="outline">{missingDocumentCount} pièce{missingDocumentCount > 1 ? 's' : ''} à sécuriser</Badge>
+              </div>
+
+              <div className="mt-4 grid gap-2 md:grid-cols-5">
+                {projectWorkstreams.map(stream => (
+                  <div key={stream.label} className="rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <stream.icon className="size-4 shrink-0 text-muted-foreground" />
+                      <Badge variant={stream.done ? 'default' : 'outline'} className="text-[10px]">
+                        {stream.done ? 'OK' : 'À suivre'}
+                      </Badge>
+                    </div>
+                    <p className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{stream.label}</p>
+                    <p className="mt-1 text-sm font-semibold break-words">{stream.status}</p>
+                    <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{stream.detail}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {adminFinancialReadings.map(item => (
+                  <div key={item.label} className="rounded-lg border bg-muted/30 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                    <p className="mt-1 text-sm font-bold">{item.value}</p>
+                    <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{item.help}</p>
                   </div>
                 ))}
               </div>

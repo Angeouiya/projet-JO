@@ -1009,9 +1009,11 @@ type FinancingDraft = {
   availableSavings: number | '';
   householdDependents: number | '';
   bankName: string;
+  bankContact: string;
   bankAgreementStage: string;
   financingPurpose: string;
   downPaymentSource: string;
+  documentReadiness: string[];
   notaryContract: boolean;
   escrowRequested: boolean;
   bankSupportRequested: boolean;
@@ -1036,14 +1038,14 @@ type FinancingBooleanField =
   | 'landSupportRequested';
 
 const FINANCING_NUMBER_FIELDS: Array<{ key: FinancingNumberField; label: string; placeholder: string }> = [
-  { key: 'monthlyIncome', label: 'Revenu net', placeholder: '1500000' },
-  { key: 'existingMonthlyDebt', label: 'Charges', placeholder: '250000' },
-  { key: 'monthlyPaymentCapacity', label: 'Capacité', placeholder: '500000' },
-  { key: 'ownContribution', label: 'Apport', placeholder: '5000000' },
+  { key: 'monthlyIncome', label: 'Salaire / revenu net mensuel', placeholder: '1500000' },
+  { key: 'existingMonthlyDebt', label: 'Charges mensuelles existantes', placeholder: '250000' },
+  { key: 'monthlyPaymentCapacity', label: 'Mensualité supportable', placeholder: '500000' },
+  { key: 'ownContribution', label: 'Apport disponible sécurisé', placeholder: '5000000' },
   { key: 'requestedLoanAmount', label: 'À financer', placeholder: '35000000' },
   { key: 'desiredLoanDurationYears', label: 'Durée an(s)', placeholder: '10' },
-  { key: 'availableSavings', label: 'Épargne', placeholder: '3000000' },
-  { key: 'householdDependents', label: 'Charges foyer', placeholder: '2' },
+  { key: 'availableSavings', label: 'Épargne de sécurité', placeholder: '3000000' },
+  { key: 'householdDependents', label: 'Personnes à charge', placeholder: '2' },
 ];
 
 const FINANCING_BOOLEAN_FIELDS: Array<{ key: FinancingBooleanField; label: string }> = [
@@ -1079,9 +1081,11 @@ function financingDraftFrom(financing: ProjectFinancingData): FinancingDraft {
     availableSavings: financing.availableSavings ?? '',
     householdDependents: financing.householdDependents ?? '',
     bankName: financing.bankName || '',
+    bankContact: financing.bankContact || '',
     bankAgreementStage: financing.bankAgreementStage || '',
     financingPurpose: financing.financingPurpose || '',
     downPaymentSource: financing.downPaymentSource || '',
+    documentReadiness: financing.documentReadiness ?? [],
     notaryContract: financing.notaryContract,
     escrowRequested: financing.escrowRequested,
     bankSupportRequested: financing.bankSupportRequested,
@@ -1223,9 +1227,11 @@ function buildFinancingFromDraft(
     equityRatioPercent,
     cashReserveMonths,
     bankName: draft.bankName.trim() || undefined,
+    bankContact: draft.bankContact.trim() || undefined,
     bankAgreementStage: draft.bankAgreementStage || undefined,
     financingPurpose: draft.financingPurpose || undefined,
     downPaymentSource: draft.downPaymentSource || undefined,
+    documentReadiness: draft.documentReadiness.length ? draft.documentReadiness : ['none-yet'],
     currentDebtRatioPercent,
     projectedDebtRatioPercent,
     notaryContract: draft.notaryContract,
@@ -2012,6 +2018,43 @@ function FinancingTab({
     .filter(item => item.status === 'due')
     .reduce((total, item) => total + (item.expectedAmount ?? 0), 0);
   const blockedCount = financing.milestones.filter(item => item.status === 'blocked').length;
+  const residualAfterDebt = financing.monthlyIncome !== undefined
+    ? financing.monthlyIncome - (financing.existingMonthlyDebt ?? 0)
+    : undefined;
+  const residualAfterProject = financing.monthlyIncome !== undefined
+    ? financing.monthlyIncome - (financing.existingMonthlyDebt ?? 0) - (financing.monthlyPaymentCapacity ?? 0)
+    : undefined;
+  const fundingGap = financing.estimatedBudget !== undefined
+    ? Math.max(0, financing.estimatedBudget - (financing.ownContribution ?? 0) - (financing.requestedLoanAmount ?? 0))
+    : undefined;
+  const financeReadinessSteps = [
+    {
+      label: 'Revenus documentés',
+      done: Boolean(financing.monthlyIncome && financing.employmentStatus && financing.incomeStability),
+      detail: financing.monthlyIncome ? amountOrTodo(financing.monthlyIncome) : 'Salaire ou revenu net à saisir',
+    },
+    {
+      label: 'Banque cadrée',
+      done: ['under-review', 'pre-approved', 'funds-available'].includes(financing.bankAgreementStage || ''),
+      detail: financing.bankName || financingReadinessLabel(financing.readiness),
+    },
+    {
+      label: 'Protection client',
+      done: Boolean(financing.notaryContract || financing.escrowRequested),
+      detail: financing.notaryContract ? 'Contrat notarié prévu' : financing.escrowRequested ? 'Séquestre demandé' : 'Garantie à confirmer',
+    },
+    {
+      label: 'Paiements par jalons',
+      done: financing.milestones.length > 0,
+      detail: financing.milestones.length ? `${financing.milestones.length} échéances liées au planning` : 'Échéancier à créer',
+    },
+  ];
+  const financialReadingItems = [
+    { label: 'Disponible après charges', value: amountOrTodo(residualAfterDebt), help: 'Revenu moins dettes et charges déjà connues.' },
+    { label: 'Reste après projet', value: amountOrTodo(residualAfterProject), help: 'Marge mensuelle après la mensualité cible du projet.' },
+    { label: 'Effort projeté', value: percentOrTodo(financing.projectedDebtRatioPercent), help: 'Charges totales projetées par rapport au revenu net.' },
+    { label: 'Écart à sécuriser', value: amountOrTodo(fundingGap), help: 'Budget non couvert par l’apport et le financement déclaré.' },
+  ];
   const projectedFinancing = buildFinancingFromDraft(financing, draft, data);
   const projectedScore = projectedFinancing.affordabilityScore ?? 0;
   const requiredFinancialFieldsMissing = !draft.employmentStatus
@@ -2030,6 +2073,16 @@ function FinancingTab({
 
   function setDraftNumber(key: FinancingNumberField, value: string) {
     setDraft(prev => ({ ...prev, [key]: value === '' ? '' : Number(value) }));
+  }
+
+  function toggleDocumentReadiness(value: string) {
+    setDraft(prev => {
+      const withoutNone = prev.documentReadiness.filter(item => item !== 'none-yet');
+      const documentReadiness = withoutNone.includes(value)
+        ? withoutNone.filter(item => item !== value)
+        : [...withoutNone, value];
+      return { ...prev, documentReadiness };
+    });
   }
 
   function handleUpdateFinancing() {
@@ -2151,6 +2204,63 @@ function FinancingTab({
         </CardContent>
       </Card>
 
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <Card className="py-0 gap-0">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold">Lecture financière Buildify</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Le but est de vérifier la capacité réelle avant contrat, sans demander d’avance non sécurisée.
+                </p>
+              </div>
+              <Wallet className="size-4 shrink-0 text-muted-foreground" />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {financialReadingItems.map(item => (
+                <div key={item.label} className="rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                  <p className="mt-1 text-sm font-bold">{item.value}</p>
+                  <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{item.help}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="py-0 gap-0">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold">Parcours de sécurisation</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Chaque point prépare le devis, la banque, le notaire et le paiement par niveau d’avancement.
+                </p>
+              </div>
+              <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+            </div>
+            <div className="mt-4 space-y-2">
+              {financeReadinessSteps.map((step, index) => (
+                <div key={step.label} className="flex gap-3 rounded-lg border p-3">
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/30 text-xs font-bold">
+                    {index + 1}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold">{step.label}</p>
+                      <Badge variant={step.done ? 'default' : 'outline'} className="text-[10px]">
+                        {step.done ? 'Prêt' : 'À compléter'}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="py-0 gap-0">
         <CardContent className="p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -2240,13 +2350,17 @@ function FinancingTab({
                   <Input id="finance-bank-name" value={draft.bankName} onChange={event => setDraftField('bankName', event.target.value)} placeholder="Ex : Banque partenaire diaspora" />
                 </div>
                 <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-bank-contact">Contact banque</label>
+                  <Input id="finance-bank-contact" value={draft.bankContact} onChange={event => setDraftField('bankContact', event.target.value)} placeholder="Nom, téléphone ou e-mail du conseiller" />
+                </div>
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-purpose">Objet du financement</label>
                   <select id="finance-purpose" value={draft.financingPurpose} onChange={event => setDraftField('financingPurpose', event.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
                     <option value="">Choisir</option>
                     {Object.entries(FINANCING_PURPOSE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
                 </div>
-                <div className="space-y-1.5 md:col-span-2">
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-down-source">Origine de l’apport</label>
                   <select id="finance-down-source" value={draft.downPaymentSource} onChange={event => setDraftField('downPaymentSource', event.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm">
                     <option value="">Choisir</option>
@@ -2267,6 +2381,28 @@ function FinancingTab({
                     {label}
                   </label>
                 ))}
+              </div>
+
+              <div className="rounded-lg border p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pièces disponibles</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Cochez uniquement les documents réellement prêts. Buildify s’en sert pour préparer la banque, le notaire et les jalons.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {Object.entries(FINANCING_DOCUMENT_LABELS)
+                    .filter(([value]) => value !== 'none-yet')
+                    .map(([value, label]) => (
+                      <label key={value} className="flex min-h-12 items-center gap-2 rounded-lg border p-3 text-xs font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={draft.documentReadiness.includes(value)}
+                          onChange={() => toggleDocumentReadiness(value)}
+                          className="size-4 shrink-0"
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -2304,6 +2440,10 @@ function FinancingTab({
                   Complétez au minimum la situation, la devise, le porteur, le co-emprunteur, le revenu net, les charges, la capacité, l’apport et le montant à financer.
                 </p>
               )}
+
+              <div className="rounded-lg border bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
+                En envoyant ces données, vous ne payez pas une avance de démarrage. Vous permettez à Buildify de structurer votre capacité, d’échanger avec votre banque si demandé, de préparer le contrat sécurisé et de déclencher les paiements uniquement après contrôle des étapes.
+              </div>
 
               <ConfirmActionDialog
                 title="Envoyer ces informations financières ?"
