@@ -9,7 +9,7 @@ import {
   Send, MessageSquare, Check, X, Clock, Camera,
   ClipboardCheck, AlertCircle, Building2, Eye, Download,
   ShieldCheck, CheckCircle2, FolderArchive, ClipboardList, Home,
-  Globe2, Clock3, MessageCircle, UserRoundCheck,
+  Globe2, Clock3, MessageCircle, UserRoundCheck, Gauge,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -360,6 +360,8 @@ function buildProposalHtml(proposal: VisualProposal, data: ProjectDetailData) {
   const risks = proposalRiskControls(proposal, data);
   const nextSteps = proposalNextSteps(proposal);
   const commitment = proposalClientCommitment(proposal, data);
+  const decisionScore = proposalDecisionScore(proposal, data);
+  const decisionLabel = proposalDecisionLabel(decisionScore);
 
   return `<!doctype html>
 <html lang="fr">
@@ -374,8 +376,11 @@ function buildProposalHtml(proposal: VisualProposal, data: ProjectDetailData) {
     .brand { font-size: 24px; font-weight: 800; }
     .ref { text-align: right; font-size: 12px; line-height: 1.6; color: #555; }
     h1 { margin: 28px 0 12px; font-size: 32px; line-height: 1.15; }
+    .hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; align-items: stretch; margin: 22px 0; }
     .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 24px 0; }
     .box { border: 1px solid #ddd; border-radius: 8px; padding: 14px; }
+    .score { border: 2px solid #111; border-radius: 10px; padding: 18px; }
+    .score-number { font-size: 44px; line-height: 1; font-weight: 900; letter-spacing: 0; }
     .label { font-size: 10px; text-transform: uppercase; color: #666; letter-spacing: .08em; font-weight: 700; }
     .value { margin-top: 8px; font-size: 14px; font-weight: 700; }
     img { width: 100%; border-radius: 10px; margin: 20px 0; }
@@ -383,7 +388,7 @@ function buildProposalHtml(proposal: VisualProposal, data: ProjectDetailData) {
     ul { margin: 10px 0 0; padding-left: 20px; line-height: 1.7; }
     .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
     .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
-    @media (max-width: 720px) { .sheet { padding: 22px; } .top, .split { display: block; } .ref { margin-top: 12px; text-align: left; } .meta { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) { .sheet { padding: 22px; } .top, .split, .hero { display: block; } .ref { margin-top: 12px; text-align: left; } .meta { grid-template-columns: 1fr; } }
     @media print { .sheet { padding: 24px; } }
   </style>
 </head>
@@ -402,6 +407,19 @@ function buildProposalHtml(proposal: VisualProposal, data: ProjectDetailData) {
     </div>
     <h1>${escapeHtml(proposal.title)}</h1>
     <p>${escapeHtml(proposal.description)}</p>
+    <section class="hero">
+      <div class="score">
+        <div class="label">Lecture décisionnelle Buildify</div>
+        <div class="score-number">${decisionScore}%</div>
+        <div class="value">${escapeHtml(decisionLabel)}</div>
+        <p>Score interne calculé à partir de la clarté du budget, du délai, du périmètre, des vigilances et des points forts. Il sert à décider quoi cadrer avant devis.</p>
+      </div>
+      <div class="box">
+        <div class="label">Synthèse client</div>
+        <div class="value">${escapeHtml(proposal.estimate)} · ${escapeHtml(proposal.duration)}</div>
+        <p>${escapeHtml(proposal.confidence)}</p>
+      </div>
+    </section>
     <img src="${imageUrl}" alt="${escapeHtml(proposal.title)}" />
     <section class="meta">
       ${renderCriteria(criteria)}
@@ -434,6 +452,7 @@ function buildProposalPortfolioHtml(proposals: VisualProposal[], selectedProposa
       <td>${escapeHtml(proposal.category)}</td>
       <td>${escapeHtml(proposal.estimate)}</td>
       <td>${escapeHtml(proposal.duration)}</td>
+      <td>${proposalDecisionScore(proposal, data)}% · ${escapeHtml(proposalDecisionLabel(proposalDecisionScore(proposal, data)))}</td>
       <td>${escapeHtml(proposal.confidence)}</td>
     </tr>
   `).join('');
@@ -445,6 +464,7 @@ function buildProposalPortfolioHtml(proposals: VisualProposal[], selectedProposa
         <img src="${imageUrl}" alt="${escapeHtml(proposal.title)}" />
         <div>
           <h2>${escapeHtml(proposal.title)}</h2>
+          <p><strong>Lecture Buildify :</strong> ${proposalDecisionScore(proposal, data)}% · ${escapeHtml(proposalDecisionLabel(proposalDecisionScore(proposal, data)))}</p>
           <p>${escapeHtml(proposal.description)}</p>
           <ul>${renderList(proposal.strengths)}</ul>
         </div>
@@ -484,7 +504,7 @@ function buildProposalPortfolioHtml(proposals: VisualProposal[], selectedProposa
     <h1>${escapeHtml(data.title)}</h1>
     <p>Dossier ${escapeHtml(data.referenceNumber)} · ${escapeHtml(data.categoryName)} · ${escapeHtml(data.city)}</p>
     <table>
-      <thead><tr><th>Proposition</th><th>Catégorie</th><th>Budget indicatif</th><th>Délai</th><th>Lecture décisionnelle</th></tr></thead>
+      <thead><tr><th>Proposition</th><th>Catégorie</th><th>Budget indicatif</th><th>Délai</th><th>Score</th><th>Lecture décisionnelle</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     ${proposalBlocks}
@@ -889,6 +909,42 @@ function percentRatio(part?: number, total?: number) {
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function proposalDecisionScore(proposal: VisualProposal, data?: ProjectDetailData) {
+  const criteriaCount = proposal.decisionCriteria?.length ?? 0;
+  const scopeCount = proposal.technicalScope?.length ?? 0;
+  const riskCount = proposal.riskControls?.length ?? 0;
+  const hasBudget = /\d/.test(proposal.estimate);
+  const hasDuration = /\d/.test(proposal.duration);
+  const hasLocation = Boolean(data?.city && proposalTechnicalScope(proposal, data).some(item => item.includes(data.city)));
+  const confidence = proposal.confidence.toLowerCase();
+  const confidenceScore = confidence.includes('solide') || confidence.includes('maîtris')
+    ? 12
+    : confidence.includes('cadr')
+      ? 9
+      : confidence.includes('confirmer')
+        ? 5
+        : 7;
+
+  return clampPercent(
+    48
+    + Math.min(16, proposal.strengths.length * 4)
+    + Math.min(12, criteriaCount * 3)
+    + Math.min(10, scopeCount * 2)
+    + Math.min(8, riskCount * 2)
+    + (hasBudget ? 5 : 0)
+    + (hasDuration ? 4 : 0)
+    + (hasLocation ? 3 : 0)
+    + confidenceScore
+  );
+}
+
+function proposalDecisionLabel(score: number) {
+  if (score >= 86) return 'Très lisible';
+  if (score >= 74) return 'Bonne base';
+  if (score >= 62) return 'À cadrer';
+  return 'À compléter';
 }
 
 function paymentMilestoneStatusLabel(status: ProjectPaymentMilestoneData['status']) {
@@ -1808,6 +1864,8 @@ function ProposalsTab({
   const selectedRisks = proposalRiskControls(selectedProposal, data);
   const selectedNextSteps = proposalNextSteps(selectedProposal);
   const selectedCommitment = proposalClientCommitment(selectedProposal, data);
+  const selectedDecisionScore = proposalDecisionScore(selectedProposal, data);
+  const selectedDecisionLabel = proposalDecisionLabel(selectedDecisionScore);
 
   return (
     <div className="space-y-4">
@@ -1828,6 +1886,9 @@ function ProposalsTab({
               <span className="rounded-md border border-white/35 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/85">
                 {selectedProposal.confidence}
               </span>
+              <span className="rounded-md bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-black">
+                Score {selectedDecisionScore}% · {selectedDecisionLabel}
+              </span>
             </div>
             <h3 className="text-lg sm:text-2xl font-semibold leading-tight">{selectedProposal.title}</h3>
             <p className="mt-2 max-w-3xl text-xs sm:text-sm text-white/82 leading-relaxed">
@@ -1836,7 +1897,15 @@ function ProposalsTab({
           </div>
         </div>
         <CardContent className="p-4 sm:p-5">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="rounded-lg border bg-foreground p-3 text-background">
+              <div className="flex items-center gap-2">
+                <Gauge className="size-4" />
+                <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">Lecture</p>
+              </div>
+              <p className="mt-2 text-lg font-bold">{selectedDecisionScore}%</p>
+              <p className="mt-1 text-xs opacity-80">{selectedDecisionLabel}</p>
+            </div>
             {selectedCriteria.map(item => (
               <div key={item.label} className="rounded-lg border bg-muted/30 p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
@@ -1946,42 +2015,75 @@ function ProposalsTab({
                 key={proposal.id}
                 type="button"
                 onClick={() => setSelectedId(proposal.id)}
-                className={`w-full rounded-lg border p-3 text-left ${
+                className={`grid w-full grid-cols-[96px_minmax(0,1fr)] gap-3 rounded-lg border p-2 text-left ${
                   proposal.id === selectedProposal.id ? 'border-foreground bg-muted/35' : 'bg-background'
                 }`}
               >
-                <p className="text-sm font-semibold leading-tight">{proposal.title}</p>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground">{proposal.estimate}</span>
-                  <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground">{proposal.duration}</span>
-                </div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">{proposal.confidence}</p>
+                <span className="relative aspect-[4/3] overflow-hidden rounded-md bg-muted">
+                  <NextImage
+                    src={proposal.image}
+                    alt={proposal.title}
+                    fill
+                    className="object-cover"
+                    sizes="96px"
+                  />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold leading-tight">{proposal.title}</span>
+                  <span className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground">{proposal.estimate}</span>
+                    <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground">{proposal.duration}</span>
+                  </span>
+                  <span className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    <Gauge className="size-3.5" />
+                    {proposalDecisionScore(proposal, data)}% · {proposalDecisionLabel(proposalDecisionScore(proposal, data))}
+                  </span>
+                </span>
               </button>
             ))}
           </div>
           <div className="mt-4 hidden overflow-x-auto md:block">
-            <div className="min-w-[620px] rounded-lg border">
-              <div className="grid grid-cols-[1.4fr_0.9fr_0.9fr_0.9fr] border-b bg-muted/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="min-w-[760px] rounded-lg border">
+              <div className="grid grid-cols-[1.55fr_0.75fr_0.75fr_0.7fr_0.95fr] border-b bg-muted/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <span>Proposition</span>
                 <span>Budget</span>
                 <span>Délai</span>
+                <span>Score</span>
                 <span>Décision</span>
               </div>
-              {proposals.map(proposal => (
-                <button
-                  key={proposal.id}
-                  type="button"
-                  onClick={() => setSelectedId(proposal.id)}
-                  className={`grid w-full grid-cols-[1.4fr_0.9fr_0.9fr_0.9fr] gap-3 border-b px-3 py-3 text-left text-xs last:border-b-0 ${
-                    proposal.id === selectedProposal.id ? 'bg-muted/40' : 'hover:bg-muted/25'
-                  }`}
-                >
-                  <span className="font-semibold">{proposal.title}</span>
-                  <span className="text-muted-foreground">{proposal.estimate}</span>
-                  <span className="text-muted-foreground">{proposal.duration}</span>
-                  <span className="text-muted-foreground">{proposal.confidence}</span>
-                </button>
-              ))}
+              {proposals.map(proposal => {
+                const proposalScore = proposalDecisionScore(proposal, data);
+                return (
+                  <button
+                    key={proposal.id}
+                    type="button"
+                    onClick={() => setSelectedId(proposal.id)}
+                    className={`grid w-full grid-cols-[1.55fr_0.75fr_0.75fr_0.7fr_0.95fr] items-center gap-3 border-b px-3 py-3 text-left text-xs last:border-b-0 ${
+                      proposal.id === selectedProposal.id ? 'bg-muted/40' : 'hover:bg-muted/25'
+                    }`}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="relative size-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                        <NextImage
+                          src={proposal.image}
+                          alt={proposal.title}
+                          fill
+                          className="object-cover"
+                          sizes="48px"
+                        />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold">{proposal.title}</span>
+                        <span className="mt-1 block truncate text-muted-foreground">{proposal.category}</span>
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground">{proposal.estimate}</span>
+                    <span className="text-muted-foreground">{proposal.duration}</span>
+                    <span className="font-semibold">{proposalScore}%</span>
+                    <span className="text-muted-foreground">{proposalDecisionLabel(proposalScore)}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </CardContent>
@@ -1991,6 +2093,7 @@ function ProposalsTab({
         {proposals.map((proposal) => {
           const isSelected = proposal.id === selectedProposal.id;
           const isValidated = proposal.id === validatedId;
+          const proposalScore = proposalDecisionScore(proposal, data);
 
           return (
             <Card
@@ -2028,10 +2131,17 @@ function ProposalsTab({
                       </Badge>
                     )}
                   </div>
+                  <div className="absolute bottom-2 right-2 rounded-md bg-white px-2 py-1 text-[10px] font-bold text-black shadow-sm">
+                    {proposalScore}%
+                  </div>
                 </div>
                 <CardContent className="p-3">
                   <p className="text-xs text-muted-foreground">{proposal.category}</p>
                   <h4 className="mt-1 text-sm font-semibold leading-tight">{proposal.title}</h4>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                    <span className="rounded-md bg-muted px-2 py-1">{proposal.estimate}</span>
+                    <span className="rounded-md bg-muted px-2 py-1">{proposal.duration}</span>
+                  </div>
                   <div className="mt-3 hidden flex-wrap gap-1.5 sm:flex">
                     {proposal.strengths.map((strength) => (
                       <span
