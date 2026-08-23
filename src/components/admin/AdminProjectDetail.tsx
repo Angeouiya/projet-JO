@@ -48,6 +48,7 @@ import type { ProjectData, ProjectPaymentMilestoneData, ProjectScheduleItemData,
 import { formatProjectLocation } from '@/lib/project-format';
 import { buildProjectBrief } from '@/lib/project-brief';
 import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
+import { buildPaymentSecurityPlan } from '@/lib/project-payment-security';
 import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
 import { downloadProjectDossier } from '@/lib/project-dossier-export';
 import type { ProjectDecisionTone } from '@/lib/project-decision-center';
@@ -1024,6 +1025,15 @@ export function AdminProjectDetail() {
     || !proposalDeliverable.trim();
   const financing = project.financing || (project.formData?.financing as typeof project.financing);
   const financingDecisionPlan = financing ? buildFinancingDecisionPlan(financing, project.budgetMax || project.budgetMin) : undefined;
+  const adminClientIsRemote = Boolean(
+    projectText(project, 'clientPresence')?.includes('abroad')
+    || (projectText(project, 'clientResidenceCountry') && !/c[oô]te|ivoire|ci/i.test(projectText(project, 'clientResidenceCountry') || ''))
+  );
+  const paymentSecurityPlan = financing ? buildPaymentSecurityPlan(financing, {
+    projectBudget: project.budgetMax || project.budgetMin,
+    clientIsRemote: adminClientIsRemote,
+    remoteValidationReady: Boolean(projectText(project, 'remoteDecisionMode') || projectText(project, 'representativeName')),
+  }) : undefined;
   const adminDecisionIcons: LucideIcon[] = [Calculator, PiggyBank, Gauge, Scale, Landmark, Route];
   const selectedLead = activeTeamMembers.find(member => member.name === leadName);
   const assignedMember = activeTeamMembers.find(member => member.name === project.assignedTo);
@@ -2759,6 +2769,57 @@ export function AdminProjectDetail() {
                         {financingDecisionPlan.warnings[0]}
                       </div>
                     )}
+                  </div>
+                )}
+                {paymentSecurityPlan && (
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <Badge variant={paymentSecurityPlan.tone === 'ready' ? 'default' : 'outline'} className="text-[10px]">
+                          {paymentSecurityPlan.label}
+                        </Badge>
+                        <h3 className="mt-2 text-sm font-semibold leading-5">{paymentSecurityPlan.title}</h3>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{paymentSecurityPlan.summary}</p>
+                      </div>
+                      <HandCoins className="size-4 shrink-0 text-muted-foreground" />
+                    </div>
+
+                    <div className="mt-3 rounded-lg border bg-background p-2 text-[11px] leading-4 text-muted-foreground">
+                      {paymentSecurityPlan.releaseRule}
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {paymentSecurityPlan.metrics.slice(0, 4).map(metric => (
+                        <div key={metric.label} className="rounded-lg border bg-background p-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{metric.label}</p>
+                          <p className="mt-1 text-xs font-bold break-words">{metric.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {paymentSecurityPlan.controls.slice(0, 4).map(control => {
+                        const ControlIcon = control.status === 'ok' ? CheckCircle2 : control.status === 'blocked' ? AlertCircle : Clock3;
+                        return (
+                          <div key={control.label} className="flex items-start gap-2 rounded-lg border bg-background p-2">
+                            <ControlIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold">{control.label}</p>
+                              <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{control.detail}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3 rounded-lg border border-dashed bg-background p-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Actions admin</p>
+                      <div className="mt-2 space-y-1.5">
+                        {paymentSecurityPlan.adminNextActions.slice(0, 3).map(action => (
+                          <p key={action} className="text-[11px] leading-4 text-muted-foreground">{action}</p>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
                 <div className="rounded-lg border p-3">

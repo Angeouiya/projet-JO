@@ -27,6 +27,7 @@ import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { formatProjectLocation } from '@/lib/project-format';
 import { buildProjectBrief, projectBriefLabel } from '@/lib/project-brief';
 import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
+import { buildPaymentSecurityPlan } from '@/lib/project-payment-security';
 import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
 import { downloadProjectDossier } from '@/lib/project-dossier-export';
 import type { ProjectDecisionTone } from '@/lib/project-decision-center';
@@ -3068,6 +3069,15 @@ function FinancingTab({
     },
   ];
   const decisionPlan = buildFinancingDecisionPlan(financing, data.budgetMax || data.budgetMin);
+  const clientIsRemote = Boolean(
+    data.clientPresence?.includes('abroad')
+    || (data.clientResidenceCountry && !/c[oô]te|ivoire|ci/i.test(data.clientResidenceCountry))
+  );
+  const paymentSecurityPlan = buildPaymentSecurityPlan(financing, {
+    projectBudget: data.budgetMax || data.budgetMin,
+    clientIsRemote,
+    remoteValidationReady: Boolean(data.remoteDecisionMode || data.representativeName),
+  });
   const decisionToneClass = {
     ready: 'border-foreground bg-foreground text-background',
     structure: 'border-foreground/30 bg-muted/40',
@@ -3373,6 +3383,69 @@ function FinancingTab({
                   </div>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="py-0 gap-0 border-foreground/10 lg:col-span-2">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Plan de paiement sécurisé</p>
+                <h3 className="mt-1 text-lg font-bold">{paymentSecurityPlan.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{paymentSecurityPlan.summary}</p>
+              </div>
+              <Badge variant={paymentSecurityPlan.tone === 'ready' ? 'default' : 'outline'} className="w-fit">
+                {paymentSecurityPlan.label}
+              </Badge>
+            </div>
+
+            <div className="mt-4 rounded-lg border bg-muted/30 p-3">
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <p className="text-xs leading-5 text-muted-foreground">{paymentSecurityPlan.releaseRule}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-6">
+              {paymentSecurityPlan.metrics.map(metric => (
+                <div key={metric.label} className="rounded-lg border bg-background p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{metric.label}</p>
+                  <p className="mt-1 text-sm font-bold break-words">{metric.value}</p>
+                  <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{metric.help}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+              <div className="rounded-lg border p-3">
+                <h4 className="text-sm font-semibold">Contrôles avant paiement</h4>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {paymentSecurityPlan.controls.map(control => {
+                    const ControlIcon = control.status === 'ok' ? CheckCircle2 : control.status === 'blocked' ? AlertCircle : Clock3;
+                    return (
+                      <div key={control.label} className="flex min-w-0 items-start gap-2 rounded-lg border bg-muted/20 p-3">
+                        <ControlIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold">{control.label}</p>
+                          <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{control.detail}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-lg border p-3">
+                <h4 className="text-sm font-semibold">Principes client</h4>
+                <div className="mt-3 space-y-2">
+                  {paymentSecurityPlan.clientPrinciples.map(principle => (
+                    <div key={principle} className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
+                      {principle}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
