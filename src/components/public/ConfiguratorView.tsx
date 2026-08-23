@@ -3360,83 +3360,41 @@ export function ConfiguratorView() {
     { label: 'Accès', value: fieldValueToString({ key: 'siteAccess', label: 'Accès', type: 'select', options: SITE_ACCESS_OPTIONS }, responses.siteAccess) || 'À renseigner' },
     { label: 'Éléments saisis', value: `${answeredCount}` },
   ];
-  const renderControlProfileCard = (variant: 'mobile' | 'desktop') => {
-    const compact = variant === 'mobile';
-    const ControlIcon = controlProfile.icon;
-    const metricToneClass: Record<ControlTone, string> = {
-      neutral: 'border-border bg-background',
-      good: 'border-foreground/15 bg-muted/30',
-      warn: 'border-amber-500/35 bg-amber-500/10 text-amber-950 dark:text-amber-100',
-      critical: 'border-destructive/35 bg-destructive/10 text-destructive',
-    };
-    const metrics = compact ? controlProfile.metrics.slice(0, 4) : controlProfile.metrics;
-    const checks = compact ? controlProfile.checks.slice(0, 2) : controlProfile.checks;
-    const risks = compact ? controlProfile.risks.slice(0, 2) : controlProfile.risks;
-    const finance = compact ? controlProfile.finance.slice(0, 2) : controlProfile.finance;
+  const categoryControlLabel = selectedProjectLabel || 'À choisir';
+  const countryControlLabel = getSubmittedCountry(responses) || "Côte d'Ivoire";
+  const cityControlLabel = getSubmittedCity(responses) || 'À sélectionner';
+  const budgetControlValue = stringResponse(responses, 'budget');
+  const budgetControlLabel = budgetControlValue ? getBudgetLabel(budgetControlValue) : 'À choisir';
+  const financeMetric = (label: string) => controlProfile.finance.find(item => item.label === label);
+  const financeScoreMetric = financeMetric('Score finance');
+  const debtMetric = financeMetric('Endettement projeté');
+  const equityMetric = financeMetric('Apport / budget');
+  const reserveMetric = financeMetric('Réserve après apport');
+  const financeRiskLabel = financeScoreMetric?.helper?.replace('Lecture risque : ', '') || 'À qualifier';
+  const countryControlDisplay = countryControlLabel === "Côte d'Ivoire" ? 'CI' : countryControlLabel;
+  const professionalControlLines = [
+    `Contrôle professionnel : Cat. ${categoryControlLabel} · Pays ${countryControlDisplay} · Ville ${cityControlLabel} · Budget ${budgetControlLabel}`,
+    `Finance : ${financeScoreMetric?.value || 'À compléter'} · Risque ${financeRiskLabel} · Dette ${debtMetric?.value || 'À calculer'} · Apport ${equityMetric?.value || 'À calculer'} · Réserve ${reserveMetric?.value || 'À saisir'} · Engagement après catégorie, lieu et budget.`,
+  ];
+  const professionalControlLabel = [
+    `Contrôle professionnel : Catégorie ${categoryControlLabel}, pays ${countryControlLabel}, ville ${cityControlLabel}, budget ${budgetControlLabel}.`,
+    `Finance : score ${financeScoreMetric?.value || 'À compléter'}, risque ${financeRiskLabel}, endettement ${debtMetric?.value || 'À calculer'}, apport ${equityMetric?.value || 'À calculer'}, réserve ${reserveMetric?.value || 'À saisir'}. Aucun engagement sans catégorie, lieu et budget.`,
+  ].join(' ');
 
+  const renderProfessionalControlStrip = () => {
     return (
       <Card className="border-border/70 shadow-sm">
-        <CardContent className={compact ? 'p-4' : 'p-5'}>
-          <div className="flex items-start gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
-              <ControlIcon className="size-5" />
-            </span>
-            <div className="min-w-0">
-              <p className="break-words text-sm font-semibold">{controlProfile.title}</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{controlProfile.subtitle}</p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {metrics.map(item => (
-              <div key={item.label} className={`min-w-0 rounded-xl border px-3 py-2 ${metricToneClass[item.tone || 'neutral']}`}>
-                <p className="break-words text-[11px] font-medium text-muted-foreground">{item.label}</p>
-                <p className="mt-1 break-words text-sm font-bold leading-tight">{item.value}</p>
-                {item.helper && !compact && (
-                  <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground">{item.helper}</p>
-                )}
-              </div>
+        <CardContent className="flex min-w-0 items-start gap-3 p-3 sm:p-4">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
+            <ShieldCheck className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1 space-y-1" aria-label={professionalControlLabel}>
+            {professionalControlLines.map(line => (
+              <p key={line} title={line} className="truncate text-[11px] leading-4 text-muted-foreground sm:text-xs sm:leading-5">
+                {line}
+              </p>
             ))}
           </div>
-
-          {checks.length > 0 && (
-            <div className="mt-4 rounded-xl border border-border bg-muted/25 p-3">
-              <p className="text-xs font-semibold">Points de contrôle</p>
-              <div className="mt-2 space-y-2">
-                {checks.map(item => (
-                  <div key={item} className="flex gap-2 text-xs leading-5 text-muted-foreground">
-                    <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-foreground" />
-                    <span className="min-w-0 break-words">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {finance.length > 0 && (
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {finance.map(item => (
-                <div key={item.label} className={`min-w-0 rounded-xl border px-3 py-2 ${metricToneClass[item.tone || 'neutral']}`}>
-                  <p className="break-words text-[11px] font-medium text-muted-foreground">{item.label}</p>
-                  <p className="mt-1 break-words text-sm font-bold leading-tight">{item.value}</p>
-                  {item.helper && !compact && (
-                    <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground">{item.helper}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {risks.length > 0 && (
-            <div className="mt-4 space-y-2">
-              {risks.map(item => (
-                <div key={item} className="flex gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs leading-5 text-destructive">
-                  <ShieldPlus className="mt-0.5 size-3.5 shrink-0" />
-                  <span className="min-w-0 break-words">{item}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
     );
@@ -3489,9 +3447,15 @@ export function ConfiguratorView() {
         {!isConfirmation && <Progress value={progressPercent} className="h-1 rounded-none" />}
       </header>
 
-      <main className="flex flex-1 flex-col items-center justify-start overflow-y-auto px-4 py-6 md:py-10">
-        <div className="grid w-full max-w-6xl gap-6 lg:grid-cols-[minmax(0,760px)_minmax(300px,1fr)]">
-          <div key={activeStep.id} className="w-full">
+      <main className="flex flex-1 flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-4 py-6 md:py-10">
+        <div className="grid w-full min-w-0 max-w-6xl gap-6 lg:grid-cols-[minmax(0,760px)_minmax(300px,1fr)]">
+          <div key={activeStep.id} className="w-full min-w-0 max-w-full">
+              {!isConfirmation && (
+                <div className="mb-4">
+                  {renderProfessionalControlStrip()}
+                </div>
+              )}
+
               {!isConfirmation && (
                 <div className="mb-6 text-center">
                   <h2 className="text-xl font-bold md:text-2xl">{activeStep.title}</h2>
@@ -3510,12 +3474,6 @@ export function ConfiguratorView() {
                       {activeStep.insight}
                     </p>
                   )}
-                </div>
-              )}
-
-              {selectedProjectLabel && activeStep.id !== 'project-type' && !isConfirmation && (
-                <div className="mb-4 lg:hidden">
-                  {renderControlProfileCard('mobile')}
                 </div>
               )}
 
@@ -3575,8 +3533,6 @@ export function ConfiguratorView() {
                     </div>
                   </CardContent>
                 </Card>
-
-                {renderControlProfileCard('desktop')}
               </div>
             </aside>
           )}

@@ -2303,6 +2303,28 @@ function MessagesTab({ data, onSend }: { data: ProjectDetailData; onSend?: (mess
   const [newMessage, setNewMessage] = useState('');
   const [localMessages, setLocalMessages] = useState(data.messages);
   const hasActiveInfoRequest = data.status === 'info_required' && data.messages.some(message => !message.isOwn);
+  const messageTopics = [
+    {
+      label: 'Finance',
+      icon: Wallet,
+      text: 'Bonjour, je souhaite préciser mon financement : revenus, apport, banque et capacité de paiement.',
+    },
+    {
+      label: 'Devis',
+      icon: Receipt,
+      text: 'Bonjour, j’ai une question sur le devis, le périmètre, les exclusions ou les modalités de paiement.',
+    },
+    {
+      label: 'Documents',
+      icon: FolderArchive,
+      text: 'Bonjour, je vais transmettre ou compléter les documents utiles au dossier.',
+    },
+    {
+      label: 'Planning',
+      icon: Calendar,
+      text: 'Bonjour, je souhaite confirmer ou ajuster le planning, le rendez-vous ou une validation à distance.',
+    },
+  ];
 
   const handleSend = () => {
     if (!newMessage.trim()) return;
@@ -2324,7 +2346,39 @@ function MessagesTab({ data, onSend }: { data: ProjectDetailData; onSend?: (mess
   };
 
   return (
-    <div className="flex flex-col h-[60vh]">
+    <div className="flex h-[68vh] flex-col gap-3">
+      <div className="rounded-xl border bg-muted/25 p-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Communication projet
+            </p>
+            <p className="mt-1 text-sm font-semibold">
+              {hasActiveInfoRequest ? 'Répondez à la demande Buildify' : 'Écrivez un message clair au dossier'}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Chaque message reste rattaché au projet, aux décisions, au financement et au planning.
+            </p>
+          </div>
+          <Badge variant={hasActiveInfoRequest ? 'default' : 'outline'} className="w-fit">
+            {hasActiveInfoRequest ? 'Info attendue' : `${localMessages.length} échange${localMessages.length > 1 ? 's' : ''}`}
+          </Badge>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {messageTopics.map(topic => (
+            <button
+              key={topic.label}
+              type="button"
+              onClick={() => setNewMessage(topic.text)}
+              className="flex min-h-20 flex-col items-start rounded-lg border bg-background p-3 text-left transition-colors hover:bg-muted/50"
+            >
+              <topic.icon className="size-4 text-muted-foreground" />
+              <span className="mt-2 text-xs font-semibold">{topic.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Messages list */}
       <div className="flex-1 overflow-y-auto space-y-3 pb-3">
         {localMessages.length === 0 ? (

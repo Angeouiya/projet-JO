@@ -1415,6 +1415,50 @@ export function AdminProjectDetail() {
     || Number(scheduleDuration) < 15
     || !scheduleMode
     || !scheduleType;
+  const infoRequestTemplates = [
+    {
+      label: 'Terrain',
+      icon: MapPinned,
+      text: 'Merci de préciser la surface exacte du terrain, la situation foncière, les limites connues et les documents disponibles.',
+    },
+    {
+      label: 'Finance',
+      icon: Calculator,
+      text: 'Merci de compléter vos revenus nets, charges mensuelles, apport disponible, banque contactée et pièces financières prêtes.',
+    },
+    {
+      label: 'Pièces',
+      icon: FileText,
+      text: 'Merci de joindre ou confirmer les pièces disponibles : document terrain, plans, photos, identité, justificatifs de revenus et relevés bancaires.',
+    },
+    {
+      label: 'Planning',
+      icon: CalendarDays,
+      text: 'Merci de confirmer votre disponibilité, votre fuseau horaire, le canal de rendez-vous et la personne habilitée à valider sur place.',
+    },
+  ];
+  const directMessageTemplates = [
+    {
+      label: 'Point dossier',
+      icon: NotebookTabs,
+      text: `Bonjour, votre dossier ${project.referenceNumber} est en cours de pilotage. Nous vérifions le périmètre, les documents, le financement et les prochaines décisions.`,
+    },
+    {
+      label: 'Devis',
+      icon: ReceiptText,
+      text: 'Bonjour, nous préparons le devis détaillé. Il précisera le périmètre, les hypothèses, les exclusions, la validité et les modalités de paiement par jalons.',
+    },
+    {
+      label: 'Banque',
+      icon: Landmark,
+      text: 'Bonjour, pour sécuriser le financement, nous allons rapprocher vos revenus, votre apport, votre banque et le budget du projet avant tout engagement.',
+    },
+    {
+      label: 'Validation',
+      icon: ShieldCheck,
+      text: 'Bonjour, avant toute action importante, nous conserverons une validation écrite sur le devis, le contrat, le planning ou le jalon concerné.',
+    },
+  ];
 
   const handleAssign = () => {
     if (!leadName.trim()) return;
@@ -2479,6 +2523,19 @@ export function AdminProjectDetail() {
               <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="infoMessage">
                 Information complémentaire
               </label>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {infoRequestTemplates.map(template => (
+                  <button
+                    key={template.label}
+                    type="button"
+                    onClick={() => setInfoMessage(template.text)}
+                    className="flex min-h-20 flex-col items-start rounded-lg border bg-muted/20 p-3 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <template.icon className="size-4 text-muted-foreground" />
+                    <span className="mt-2 text-xs font-semibold">{template.label}</span>
+                  </button>
+                ))}
+              </div>
               <Textarea
                 id="infoMessage"
                 value={infoMessage}
@@ -2517,6 +2574,19 @@ export function AdminProjectDetail() {
               <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="adminDirectMessage">
                 Message direct au client
               </label>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {directMessageTemplates.map(template => (
+                  <button
+                    key={template.label}
+                    type="button"
+                    onClick={() => setAdminDirectMessage(template.text)}
+                    className="flex min-h-20 flex-col items-start rounded-lg border bg-muted/20 p-3 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <template.icon className="size-4 text-muted-foreground" />
+                    <span className="mt-2 text-xs font-semibold">{template.label}</span>
+                  </button>
+                ))}
+              </div>
               <Textarea
                 id="adminDirectMessage"
                 value={adminDirectMessage}
