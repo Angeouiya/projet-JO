@@ -164,6 +164,12 @@ export interface ProjectDocumentData {
   date: string;
   url?: string;
   size?: number;
+  storagePath?: string;
+  contentType?: string;
+  etag?: string;
+  uploadedAt?: string;
+  uploadedBy?: string;
+  uploadedByRole?: 'client' | 'admin';
 }
 
 export interface ProjectQuoteData {

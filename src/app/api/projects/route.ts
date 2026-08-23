@@ -49,6 +49,12 @@ const projectCreateSchema = z.object({
     date: z.string().trim().min(1),
     url: z.string().trim().optional(),
     size: z.coerce.number().optional(),
+    storagePath: z.string().trim().optional(),
+    contentType: z.string().trim().optional(),
+    etag: z.string().trim().optional(),
+    uploadedAt: z.string().trim().optional(),
+    uploadedBy: z.string().trim().optional(),
+    uploadedByRole: z.enum(['client', 'admin']).optional(),
   })).optional(),
   quotes: z.array(z.object({
     id: z.string().trim().min(1),

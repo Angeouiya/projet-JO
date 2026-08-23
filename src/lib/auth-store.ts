@@ -1,8 +1,10 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
+import { del } from '@vercel/blob';
 import { ensureTursoProjectStore } from '@/lib/project-store';
+import { hasPrivateDocumentStore } from '@/lib/project-documents';
 import { getTursoClient, hasTursoDatabase } from '@/lib/turso';
-import type { AppUser } from '@/types';
+import type { AppUser, ProjectData } from '@/types';
 
 const scryptAsync = promisify(scrypt);
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -435,6 +437,22 @@ export async function deleteClientAccount(userId: string, password: string): Pro
   }
 
   await ensureTursoProjectStore();
+  const projectRows = await db.execute({
+    sql: 'SELECT payload FROM buildify_project_requests WHERE user_id = ?',
+    args: [userId],
+  });
+  const storagePaths = projectRows.rows.flatMap(row => {
+    if (typeof row.payload !== 'string') return [];
+    try {
+      const project = JSON.parse(row.payload) as ProjectData;
+      return (project.documents ?? []).map(document => document.storagePath).filter((path): path is string => Boolean(path));
+    } catch {
+      return [];
+    }
+  });
+  if (storagePaths.length && hasPrivateDocumentStore()) {
+    await del(Array.from(new Set(storagePaths)));
+  }
   const countResult = await db.execute({
     sql: 'SELECT COUNT(*) AS total FROM buildify_project_requests WHERE user_id = ?',
     args: [userId],

@@ -1,6 +1,7 @@
 'use client';
 
 import NextImage from 'next/image';
+import { upload } from '@vercel/blob/client';
 import { useMemo, useState, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,6 +12,7 @@ import {
   ShieldCheck, CheckCircle2, FolderArchive, ClipboardList, Home,
   Globe2, Clock3, MessageCircle, UserRoundCheck, Gauge,
   Ruler, Calculator, Scale, PiggyBank, Route, Landmark,
+  LoaderCircle, Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -79,7 +81,7 @@ type ProjectDetailData = {
     phone?: string;
     bio?: string;
   }[];
-  documents: { id?: string; type: string; name: string; date: string; icon: LucideIcon; url?: string; size?: number }[];
+  documents: (ProjectDocumentData & { icon: LucideIcon })[];
   messages: { id: string; sender: string; senderRole: string; text: string; time: string; isOwn: boolean }[];
   infoResponses?: ProjectData['missingInfoResponses'];
   quotes: ProjectQuoteViewData[];
@@ -256,6 +258,12 @@ function detailFromStoredProject(project: ProjectData, teamMembers: TeamMemberDa
       date: document.date,
       url: document.url,
       size: document.size,
+      storagePath: document.storagePath,
+      contentType: document.contentType,
+      etag: document.etag,
+      uploadedAt: document.uploadedAt,
+      uploadedBy: document.uploadedBy,
+      uploadedByRole: document.uploadedByRole,
       icon: getDocumentIcon(document.type, document.name),
     })),
     messages: [
@@ -855,8 +863,10 @@ function downloadDocumentReceipt(document: ClientDocumentView, data: ProjectDeta
 
 function downloadOriginalDocument(document: ClientDocumentView) {
   if (!document.url) return;
+  const downloadUrl = new URL(document.url, window.location.href);
+  downloadUrl.searchParams.set('download', '1');
   const anchor = window.document.createElement('a');
-  anchor.href = document.url;
+  anchor.href = downloadUrl.toString();
   anchor.download = document.name;
   anchor.target = '_blank';
   anchor.rel = 'noreferrer';
@@ -2221,11 +2231,23 @@ function ResumeTab({
   );
 }
 
-function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: (documents: ProjectDocumentData[]) => void }) {
-  const [uploadedByProject, setUploadedByProject] = useState<Record<string, ProjectDetailData['documents']>>({});
+function DocumentsTab({
+  data,
+  projectId,
+  onUpload,
+  onDelete,
+}: {
+  data: ProjectDetailData;
+  projectId?: string;
+  onUpload?: (documents: ProjectDocumentData[]) => void;
+  onDelete?: (documentId: string) => void;
+}) {
+  const addToast = useAppStore(state => state.addToast);
+  const [uploading, setUploading] = useState(false);
+  const [uploadName, setUploadName] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const inputId = `document-upload-${data.referenceNumber.replace(/[^a-z0-9]/gi, '-')}`;
-  const uploadedDocuments = uploadedByProject[data.referenceNumber] ?? [];
-  const documents = [...uploadedDocuments, ...data.documents];
+  const documents = data.documents;
 
   const docTypeLabels: Record<string, string> = {
     plan: 'Plans',
@@ -2235,38 +2257,80 @@ function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: 
     document: 'Documents importés',
   };
 
-  const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.currentTarget.files ?? []);
-    if (files.length === 0) return;
-
-    const uploadDate = new Date().toISOString().slice(0, 10);
-    const uploadedRecords: ProjectDocumentData[] = files.map((file) => ({
-      id: `upload-${data.referenceNumber}-${file.name}-${Date.now()}`,
-      type: file.type.startsWith('image/') ? 'photo' : 'document',
-      name: file.name,
-      date: uploadDate,
-      url: URL.createObjectURL(file),
-      size: file.size,
-    }));
-    const uploadedDocs: ProjectDetailData['documents'] = uploadedRecords.map((document) => ({
-      id: document.id,
-      type: document.type,
-      name: document.name,
-      date: document.date,
-      size: document.size,
-      url: document.url,
-      icon: getDocumentIcon(document.type, document.name),
-    }));
-
-    if (onUpload) {
-      onUpload(uploadedRecords);
-    } else {
-      setUploadedByProject(prev => ({
-        ...prev,
-        [data.referenceNumber]: [...uploadedDocs, ...(prev[data.referenceNumber] ?? [])],
-      }));
-    }
     event.currentTarget.value = '';
+    if (files.length === 0) return;
+    if (!projectId || !onUpload) {
+      addToast('Enregistrez d’abord le projet avant de joindre un document.', 'error');
+      return;
+    }
+    if (files.length > 5) {
+      addToast('Importez au maximum 5 documents à la fois.', 'error');
+      return;
+    }
+
+    const uploadedRecords: ProjectDocumentData[] = [];
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      for (const file of files) {
+        if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} dépasse la limite de 25 Mo.`);
+        const safeName = file.name
+          .normalize('NFKD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-zA-Z0-9._-]+/g, '-')
+          .slice(-120) || 'document';
+        setUploadName(file.name);
+        const blob = await upload(`projects/${projectId}/${crypto.randomUUID()}-${safeName}`, file, {
+          access: 'private',
+          handleUploadUrl: `/api/projects/${encodeURIComponent(projectId)}/documents/upload`,
+          contentType: file.type || undefined,
+          multipart: file.size > 5 * 1024 * 1024,
+          onUploadProgress: progress => setUploadProgress(Math.round(progress.percentage)),
+        });
+        const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/documents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            blobUrl: blob.url,
+            pathname: blob.pathname,
+            name: file.name,
+            type: file.type.startsWith('image/') ? 'photo' : 'document',
+            size: file.size,
+            contentType: blob.contentType,
+          }),
+        });
+        const payload = await response.json().catch(() => null) as { document?: ProjectDocumentData; error?: string; message?: string } | null;
+        if (!response.ok || !payload?.document) {
+          throw new Error(payload?.message || payload?.error || `Impossible de rattacher ${file.name}.`);
+        }
+        uploadedRecords.push(payload.document);
+      }
+      addToast(`${uploadedRecords.length} document${uploadedRecords.length > 1 ? 's' : ''} sécurisé${uploadedRecords.length > 1 ? 's' : ''}.`, 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Le transfert du document a échoué.', 'error');
+    } finally {
+      if (uploadedRecords.length) onUpload(uploadedRecords);
+      setUploading(false);
+      setUploadName('');
+      setUploadProgress(0);
+    }
+  };
+
+  const handleDelete = async (document: ClientDocumentView) => {
+    if (!projectId || !document.id || !onDelete) return;
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(document.id)}`, {
+        method: 'DELETE',
+      });
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || 'Le document ne peut pas être retiré.');
+      onDelete(document.id);
+      addToast('Document retiré du dossier et du stockage privé.', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'La suppression du document a échoué.', 'error');
+    }
   };
 
   const grouped = documents.reduce<Record<string, ProjectDetailData['documents']>>((acc, doc) => {
@@ -2287,12 +2351,26 @@ function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: 
         className="sr-only"
         onChange={handleUpload}
       />
-      <Button variant="outline" className="w-full gap-2 border-dashed cursor-pointer" asChild>
-        <label htmlFor={inputId}>
-          <Upload className="size-4" />
-          Importer un document
-        </label>
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full gap-2 border-dashed"
+        onClick={() => document.getElementById(inputId)?.click()}
+        disabled={uploading}
+      >
+        {uploading ? <LoaderCircle className="size-4 animate-spin" /> : <Upload className="size-4" />}
+        {uploading ? `Transfert ${uploadProgress}%` : 'Importer un document'}
       </Button>
+
+      {uploading && (
+        <div className="rounded-lg border bg-muted/30 p-3" role="status" aria-live="polite">
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <span className="min-w-0 truncate font-medium">{uploadName}</span>
+            <span className="shrink-0 tabular-nums">{uploadProgress}%</span>
+          </div>
+          <Progress value={uploadProgress} className="mt-2 h-1.5" />
+        </div>
+      )}
 
       {Object.keys(grouped).length === 0 ? (
         <div className="flex flex-col items-center py-12 text-center">
@@ -2319,10 +2397,11 @@ function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: 
                           <span className="rounded-md bg-muted px-2 py-1">{doc.date}</span>
                           <span className="rounded-md bg-muted px-2 py-1">{documentTypeLabel(doc.type)}</span>
                           <span className="rounded-md bg-muted px-2 py-1">{formatDocumentSize(doc.size)}</span>
+                          {doc.uploadedBy && <span className="rounded-md bg-muted px-2 py-1">Par {doc.uploadedBy}</span>}
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="mt-3 grid grid-cols-2 gap-2">
                       <Button variant="outline" size="sm" className="gap-2" onClick={() => downloadDocumentReceipt(doc, data)}>
                         <Download className="size-3.5" />
                         Télécharger la fiche
@@ -2331,6 +2410,20 @@ function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: 
                         <FolderArchive className="size-3.5" />
                         Original
                       </Button>
+                      {doc.id && doc.storagePath && doc.uploadedByRole === 'client' && onDelete && (
+                        <ConfirmActionDialog
+                          title="Retirer ce document ?"
+                          description={`${doc.name} sera supprimé du dossier ${data.referenceNumber} et du stockage privé. Cette action est irréversible.`}
+                          confirmLabel="Retirer"
+                          onConfirm={() => void handleDelete(doc)}
+                          trigger={(
+                            <Button variant="outline" size="sm" className="col-span-2 gap-2">
+                              <Trash2 className="size-3.5" />
+                              Retirer du dossier
+                            </Button>
+                          )}
+                        />
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -4378,7 +4471,7 @@ function ClientDecisionCenter({
 }
 
 export function ProjectDetailView() {
-  const { goBack, navigate, viewParams, userProjects, teamMembers, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, updateProjectFinancing, updateProjectScheduleStatus, respondProjectInfo, sendProjectMessage, addToast } = useAppStore();
+  const { goBack, navigate, viewParams, userProjects, teamMembers, addProjectDocuments, removeProjectDocument, updateProjectQuoteStatus, validateProjectVisualProposal, updateProjectFinancing, updateProjectScheduleStatus, respondProjectInfo, sendProjectMessage, addToast } = useAppStore();
   const projectId = viewParams?.id || '';
   const storedProject = userProjects.find(project => project.id === projectId || project.referenceNumber === projectId);
   const data = storedProject ? detailFromStoredProject(storedProject, teamMembers) : null;
@@ -4548,7 +4641,9 @@ export function ProjectDetailView() {
             {activeTab === 'documents' && (
               <DocumentsTab
                 data={data}
+                projectId={storedProject?.id}
                 onUpload={storedProject ? (documents) => addProjectDocuments(storedProject.id, documents) : undefined}
+                onDelete={storedProject ? (documentId) => removeProjectDocument(storedProject.id, documentId) : undefined}
               />
             )}
             {activeTab === 'messages' && (

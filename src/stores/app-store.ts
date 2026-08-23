@@ -134,6 +134,7 @@ interface AppState {
   setUserProjects: (projects: ProjectData[]) => void;
   createProjectRequest: (project: ProjectRequestInput) => ProjectData;
   addProjectDocuments: (projectId: string, documents: ProjectDocumentData[]) => void;
+  removeProjectDocument: (projectId: string, documentId: string) => void;
   assignProjectLead: (projectId: string, leadName: string) => void;
   requestProjectInfo: (projectId: string, message: string) => void;
   respondProjectInfo: (projectId: string, message: string) => void;
@@ -588,6 +589,15 @@ export const useAppStore = create<AppState>()(
 
         return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications, s.isAdmin) };
       }),
+      removeProjectDocument: (projectId, documentId) => set(s => ({
+        userProjects: s.userProjects.map(project => project.id === projectId
+          ? {
+              ...project,
+              documents: (project.documents ?? []).filter(document => document.id !== documentId),
+              updatedAt: new Date().toISOString(),
+            }
+          : project),
+      })),
       assignProjectLead: (projectId, leadName) => set(s => {
         const now = new Date().toISOString();
         let projectRef = '';
