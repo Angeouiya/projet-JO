@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/stores/app-store';
 import { BrandLogo } from '@/components/shared/BrandLogo';
 import { FORMAT_SHORT_XOF } from '@/types';
-import type { CatalogModelData } from '@/types';
+import type { CatalogModelData, TeamMemberData } from '@/types';
 import { DEPARTMENT_LABELS, ROLE_LABELS } from '@/data/team';
 
 const fadeUp: Variants = {
@@ -132,10 +132,11 @@ export function HomeView() {
   const navigate = useAppStore(s => s.navigate);
   const teamMembers = useAppStore(s => s.teamMembers);
   const [homeModels, setHomeModels] = useState<CatalogModelData[]>(popularModels);
-  const publicTeam = useMemo(
+  const fallbackPublicTeam = useMemo(
     () => teamMembers.filter(member => member.active && member.publicVisible).slice(0, 6),
     [teamMembers]
   );
+  const [publicTeam, setPublicTeam] = useState<TeamMemberData[]>(fallbackPublicTeam);
 
   useEffect(() => {
     let active = true;
@@ -152,6 +153,26 @@ export function HomeView() {
     void loadFeaturedModels();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    setPublicTeam(fallbackPublicTeam);
+  }, [fallbackPublicTeam]);
+
+  useEffect(() => {
+    let active = true;
+    const loadPublicTeam = async () => {
+      try {
+        const response = await fetch('/api/team?limit=6', { cache: 'no-store' });
+        const payload = await response.json().catch(() => null) as { members?: TeamMemberData[] } | null;
+        if (!active) return;
+        if (response.ok && payload?.members?.length) setPublicTeam(payload.members);
+      } catch {
+        if (active) setPublicTeam(fallbackPublicTeam);
+      }
+    };
+    void loadPublicTeam();
+    return () => { active = false; };
+  }, [fallbackPublicTeam]);
 
   return (
     <main className="min-h-screen bg-background">

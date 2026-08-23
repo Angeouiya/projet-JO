@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -99,6 +99,7 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
   const {
     addToast,
     teamMembers,
+    setTeamMembers,
     addTeamMember,
     updateTeamMember,
     removeTeamMember,
@@ -118,6 +119,9 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMemberData | null>(null);
   const [memberDraft, setMemberDraft] = useState<MemberDraft>(EMPTY_MEMBER);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamSavingId, setTeamSavingId] = useState<string | null>(null);
+  const [teamStoreLabel, setTeamStoreLabel] = useState('Local');
 
   const activeMembers = teamMembers.filter(member => member.active);
   const publicMembers = teamMembers.filter(member => member.active && member.publicVisible);
@@ -158,7 +162,48 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
     setInviteOpen(true);
   };
 
-  const saveMember = () => {
+  useEffect(() => {
+    let active = true;
+    const loadTeam = async () => {
+      setTeamLoading(true);
+      try {
+        const response = await fetch('/api/team?admin=true&limit=80', { cache: 'no-store' });
+        const payload = await response.json().catch(() => null) as { members?: TeamMemberData[]; store?: string; message?: string; error?: string } | null;
+        if (!active) return;
+        if (!response.ok || !payload?.members) throw new Error(payload?.message || payload?.error || 'Chargement équipe impossible');
+        setTeamMembers(payload.members);
+        setTeamStoreLabel(payload.store === 'external' ? 'Synchronisé serveur' : 'Démo locale');
+      } catch {
+        if (active) setTeamStoreLabel('Local navigateur');
+      } finally {
+        if (active) setTeamLoading(false);
+      }
+    };
+    void loadTeam();
+    return () => { active = false; };
+  }, [setTeamMembers]);
+
+  const saveRemoteMember = async (member: TeamMemberData | MemberDraft, mode: 'create' | 'update') => {
+    const memberId = 'id' in member && member.id ? member.id : 'new';
+    setTeamSavingId(memberId);
+    try {
+      const response = await fetch('/api/team', {
+        method: mode === 'create' ? 'POST' : 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(member),
+      });
+      const payload = await response.json().catch(() => null) as { member?: TeamMemberData; message?: string; error?: string } | null;
+      if (!response.ok || !payload?.member) throw new Error(payload?.message || payload?.error || 'Sauvegarde équipe impossible');
+      updateTeamMember(payload.member.id, payload.member);
+      if (mode === 'create') addTeamMember(payload.member);
+      setTeamStoreLabel('Synchronisé serveur');
+      return payload.member;
+    } finally {
+      setTeamSavingId(null);
+    }
+  };
+
+  const saveMember = async () => {
     const email = memberDraft.email.trim().toLowerCase();
     const name = memberDraft.name.trim();
     if (!name || !email) {
@@ -184,17 +229,21 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
       bio: memberDraft.bio.trim() || 'Membre de l’équipe Buildify.',
     };
 
-    if (editingMember) {
-      updateTeamMember(editingMember.id, payload);
-      addToast('Membre mis à jour.', 'success');
-    } else {
-      addTeamMember(payload);
-      addToast('Membre ajouté à l’équipe.', 'success');
+    try {
+      if (editingMember) {
+        await saveRemoteMember({ ...editingMember, ...payload }, 'update');
+        addToast('Membre mis à jour et synchronisé.', 'success');
+      } else {
+        await saveRemoteMember(payload, 'create');
+        addToast('Membre ajouté à l’équipe et publié côté serveur.', 'success');
+      }
+      setInviteOpen(false);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Impossible de synchroniser ce membre.', 'error');
     }
-    setInviteOpen(false);
   };
 
-  const deleteMember = (memberId: string) => {
+  const deleteMember = async (memberId: string) => {
     const target = teamMembers.find(member => member.id === memberId);
     if (!target) return;
     const activeSuperAdmins = teamMembers.filter(member => member.role === 'super_admin' && member.active).length;
@@ -202,8 +251,29 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
       addToast('Impossible de retirer le dernier super admin actif.', 'error');
       return;
     }
-    removeTeamMember(memberId);
-    addToast('Membre retiré de l’équipe.', 'success');
+    setTeamSavingId(memberId);
+    try {
+      const response = await fetch(`/api/team?id=${encodeURIComponent(memberId)}`, { method: 'DELETE' });
+      const payload = await response.json().catch(() => null) as { message?: string; error?: string } | null;
+      if (!response.ok) throw new Error(payload?.message || payload?.error || 'Suppression équipe impossible');
+      removeTeamMember(memberId);
+      setTeamStoreLabel('Synchronisé serveur');
+      addToast('Membre retiré de l’équipe serveur.', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Impossible de retirer ce membre.', 'error');
+    } finally {
+      setTeamSavingId(null);
+    }
+  };
+
+  const patchMember = async (member: TeamMemberData, patch: Partial<Omit<TeamMemberData, 'id' | 'createdAt'>>, successMessage: string) => {
+    try {
+      const saved = await saveRemoteMember({ ...member, ...patch }, 'update');
+      updateTeamMember(saved.id, saved);
+      addToast(successMessage, 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Impossible de synchroniser ce changement.', 'error');
+    }
   };
 
   const toggleMemberActive = (member: TeamMemberData, active: boolean) => {
@@ -212,8 +282,12 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
       addToast('Gardez au moins un super admin actif.', 'error');
       return;
     }
-    updateTeamMember(member.id, { active });
-    addToast(`${member.name} ${active ? 'activé' : 'désactivé'}.`, 'success');
+    void patchMember(member, { active }, `${member.name} ${active ? 'activé' : 'désactivé'} et synchronisé.`);
+  };
+
+  const toggleMemberPublic = (member: TeamMemberData) => {
+    const publicVisible = !member.publicVisible;
+    void patchMember(member, { publicVisible }, `${member.name} ${publicVisible ? 'visible sur l’accueil' : 'retiré de l’accueil public'}.`);
   };
 
   const updateNotificationChannel = (channelId: string, enabled: boolean) => {
@@ -256,6 +330,7 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
           <p className="mt-1 text-sm text-muted-foreground">Entreprise, équipe, notifications et paiements.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">{teamLoading ? 'Synchronisation...' : teamStoreLabel}</Badge>
           <Badge variant="outline">{activeMembers.length} actif{activeMembers.length > 1 ? 's' : ''}</Badge>
           <Badge variant="outline">{publicMembers.length} public{publicMembers.length > 1 ? 's' : ''}</Badge>
         </div>
@@ -333,11 +408,11 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
                       <p className="mt-2 truncate text-xs text-muted-foreground">{member.email}</p>
                     </div>
                     <div className="flex items-center gap-1 sm:flex-col sm:items-end">
-                      <Switch checked={member.active} onCheckedChange={checked => toggleMemberActive(member, checked)} aria-label={`Activer ${member.name}`} />
-                      <button type="button" onClick={() => updateTeamMember(member.id, { publicVisible: !member.publicVisible })} className="rounded p-2 hover:bg-muted" aria-label={`Visibilité publique ${member.name}`}>
+                      <Switch checked={member.active} onCheckedChange={checked => toggleMemberActive(member, checked)} disabled={teamSavingId === member.id} aria-label={`Activer ${member.name}`} />
+                      <button type="button" onClick={() => toggleMemberPublic(member)} disabled={teamSavingId === member.id} className="rounded p-2 hover:bg-muted disabled:pointer-events-none disabled:opacity-50" aria-label={`Visibilité publique ${member.name}`}>
                         {member.publicVisible ? <Eye className="size-4 text-muted-foreground" /> : <EyeOff className="size-4 text-muted-foreground" />}
                       </button>
-                      <button type="button" onClick={() => openMemberEdit(member)} className="rounded p-2 hover:bg-muted" aria-label={`Modifier ${member.name}`}>
+                      <button type="button" onClick={() => openMemberEdit(member)} disabled={teamSavingId === member.id} className="rounded p-2 hover:bg-muted disabled:pointer-events-none disabled:opacity-50" aria-label={`Modifier ${member.name}`}>
                         <Pencil className="size-4 text-muted-foreground" />
                       </button>
                       <ConfirmActionDialog
@@ -345,9 +420,9 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
                         description={`${member.name} sera retiré de l’équipe Buildify et de la vitrine publique si visible.`}
                         confirmLabel="Retirer"
                         confirmClassName="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onConfirm={() => deleteMember(member.id)}
+                        onConfirm={() => { void deleteMember(member.id); }}
                         trigger={(
-                          <button type="button" className="rounded p-2 hover:bg-muted" aria-label={`Retirer ${member.name}`}>
+                          <button type="button" disabled={teamSavingId === member.id} className="rounded p-2 hover:bg-muted disabled:pointer-events-none disabled:opacity-50" aria-label={`Retirer ${member.name}`}>
                             <Trash2 className="size-4 text-muted-foreground" />
                           </button>
                         )}
@@ -478,9 +553,9 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>Annuler</Button>
-            <Button onClick={saveMember}>
+            <Button onClick={() => { void saveMember(); }} disabled={teamSavingId !== null}>
               <UserRoundCheck className="size-4" />
-              {editingMember ? 'Enregistrer' : 'Ajouter'}
+              {teamSavingId ? 'Synchronisation...' : editingMember ? 'Enregistrer' : 'Ajouter'}
             </Button>
           </DialogFooter>
         </DialogContent>

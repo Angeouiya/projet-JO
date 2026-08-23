@@ -132,6 +132,7 @@ interface AppState {
   setFeaturedModels: (models: CatalogModelData[]) => void;
   setSelectedModel: (model: CatalogModelData | null) => void;
   setUserProjects: (projects: ProjectData[]) => void;
+  setTeamMembers: (members: TeamMemberData[]) => void;
   createProjectRequest: (project: ProjectRequestInput) => ProjectData;
   addProjectDocuments: (projectId: string, documents: ProjectDocumentData[]) => void;
   removeProjectDocument: (projectId: string, documentId: string) => void;
@@ -438,6 +439,7 @@ export const useAppStore = create<AppState>()(
       setFeaturedModels: (models) => set({ featuredModels: models }),
       setSelectedModel: (model) => set({ selectedModel: model }),
       setUserProjects: (projects) => set({ userProjects: projects }),
+      setTeamMembers: (members) => set({ teamMembers: members }),
       createProjectRequest: (input) => {
         const now = new Date().toISOString();
         const user = get().user;
