@@ -10,6 +10,7 @@ import {
   Clock3,
   FolderSearch,
   Globe2,
+  HandCoins,
   Image as ImageIcon,
   Landmark,
   MessageCircle,
@@ -30,7 +31,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
 import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
-import type { ProjectData } from '@/types';
+import type { ProjectData, ProjectPaymentMilestoneData } from '@/types';
 import { formatProjectLocation } from '@/lib/project-format';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 
@@ -123,6 +124,20 @@ const FINANCIAL_RISK_LABELS: Record<string, string> = {
   unknown: 'À analyser',
 };
 
+const PAYMENT_MILESTONE_STATUS_OPTIONS: Array<{ value: ProjectPaymentMilestoneData['status']; label: string }> = [
+  { value: 'planned', label: 'Planifié' },
+  { value: 'due', label: 'À régler' },
+  { value: 'paid', label: 'Payé' },
+  { value: 'blocked', label: 'Bloqué' },
+];
+
+function paymentMilestoneStatusLabel(status?: ProjectPaymentMilestoneData['status']) {
+  if (status === 'due') return 'À régler';
+  if (status === 'paid') return 'Payé';
+  if (status === 'blocked') return 'Bloqué';
+  return 'Planifié';
+}
+
 function labelFrom(labels: Record<string, string>, value?: string) {
   if (!value) return 'À compléter';
   return labels[value] || value;
@@ -210,6 +225,7 @@ export function AdminProjectDetail() {
     sendProjectMessage,
     sendProjectQuote,
     updateProjectStatus,
+    updateProjectPaymentMilestoneStatus,
     publishProjectSiteUpdate,
     addToast,
   } = useAppStore();
@@ -240,6 +256,9 @@ export function AdminProjectDetail() {
   ].join('\n'));
   const [quotePaymentTerms, setQuotePaymentTerms] = useState('Paiement par jalons vérifiés : acompte de sécurisation, lancement, avancements documentés, réception et solde après contrôle.');
   const [quoteValidityDays, setQuoteValidityDays] = useState(15);
+  const [paymentMilestoneId, setPaymentMilestoneId] = useState(project?.financing?.milestones?.[0]?.id || '');
+  const [paymentMilestoneStatus, setPaymentMilestoneStatus] = useState<ProjectPaymentMilestoneData['status']>('due');
+  const [paymentMilestoneNote, setPaymentMilestoneNote] = useState('Jalon contrôlé par l’administration Buildify. Le client peut suivre le statut dans son espace projet.');
   const [adminDirectMessage, setAdminDirectMessage] = useState('Bonjour, votre dossier avance. Vous pouvez nous écrire ici pour toute précision sur le périmètre, le financement ou le planning.');
   const [sitePhase, setSitePhase] = useState(project?.siteUpdates?.[0]?.phase || 'Fondations et implantation');
   const [siteProgress, setSiteProgress] = useState(project?.siteUpdates?.[0]?.progress || Math.max(project?.progress || 25, 25));
@@ -281,12 +300,15 @@ export function AdminProjectDetail() {
   const financing = project.financing || (project.formData?.financing as typeof project.financing);
   const visualProposal = project.visualProposal;
   const locationLabel = formatProjectLocation(project);
+  const paymentMilestones = financing?.milestones ?? [];
+  const selectedPaymentMilestone = paymentMilestones.find(item => item.id === paymentMilestoneId) ?? paymentMilestones[0];
   const latestInfoResponse = project.missingInfoResponses?.[0];
   const financingScore = financing?.affordabilityScore ?? 0;
   const financeRisk = labelFrom(FINANCIAL_RISK_LABELS, financing?.financialRiskLevel);
   const missingDocumentCount = (financing?.documentReadiness ?? []).includes('none-yet')
     ? 4
     : Math.max(0, 4 - (financing?.documentReadiness ?? []).filter(item => ['id', 'income-proof', 'bank-statements', 'quote-or-plans'].includes(item)).length);
+  const paymentMilestoneDisabled = !selectedPaymentMilestone || !paymentMilestoneStatus;
   const nextAdminAction = project.status === 'submitted'
     ? 'Qualifier le dossier'
     : project.status === 'info_required'
@@ -361,6 +383,17 @@ export function AdminProjectDetail() {
       createdBy: 'Administration Buildify',
     });
     addToast('Devis transmis au client.', 'success');
+  };
+
+  const handlePaymentMilestone = () => {
+    if (!selectedPaymentMilestone) return;
+    updateProjectPaymentMilestoneStatus(
+      project.id,
+      selectedPaymentMilestone.id,
+      paymentMilestoneStatus,
+      paymentMilestoneNote
+    );
+    addToast('Jalon financier mis à jour.', 'success');
   };
 
   const handlePlanning = () => {
@@ -929,6 +962,88 @@ export function AdminProjectDetail() {
                     <CheckCircle2 className="size-3" />
                     Séquestre
                   </Badge>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <div className="flex items-start gap-2">
+                    <HandCoins className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <div>
+                      <h3 className="text-sm font-semibold">Pilotage des jalons</h3>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Publiez un statut financier clair dans l’espace client.
+                      </p>
+                    </div>
+                  </div>
+                  {paymentMilestones.length === 0 ? (
+                    <p className="mt-3 rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                      Aucun échéancier financier défini.
+                    </p>
+                  ) : (
+                    <div className="mt-3 space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="paymentMilestone">
+                          Jalon
+                        </label>
+                        <select
+                          id="paymentMilestone"
+                          value={selectedPaymentMilestone?.id || ''}
+                          onChange={(event) => setPaymentMilestoneId(event.target.value)}
+                          className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                        >
+                          {paymentMilestones.map(milestone => (
+                            <option key={milestone.id} value={milestone.id}>
+                              {milestone.label} · {milestone.expectedAmount ? FORMAT_XOF(milestone.expectedAmount) : `${milestone.percent}%`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="paymentStatus">
+                            Statut
+                          </label>
+                          <select
+                            id="paymentStatus"
+                            value={paymentMilestoneStatus}
+                            onChange={(event) => setPaymentMilestoneStatus(event.target.value as ProjectPaymentMilestoneData['status'])}
+                            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                          >
+                            {PAYMENT_MILESTONE_STATUS_OPTIONS.map(option => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="rounded-lg border bg-muted/30 p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Actuel</p>
+                          <p className="mt-1 text-xs font-semibold">
+                            {paymentMilestoneStatusLabel(selectedPaymentMilestone?.status)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="paymentNote">
+                          Note client
+                        </label>
+                        <Textarea
+                          id="paymentNote"
+                          value={paymentMilestoneNote}
+                          onChange={(event) => setPaymentMilestoneNote(event.target.value)}
+                          rows={3}
+                        />
+                      </div>
+                      <ConfirmActionDialog
+                        title="Mettre à jour ce jalon financier ?"
+                        description={`${selectedPaymentMilestone?.label || 'Ce jalon'} passera au statut ${paymentMilestoneStatusLabel(paymentMilestoneStatus).toLowerCase()} dans l’espace client. Une notification sera envoyée au client.`}
+                        confirmLabel="Mettre à jour"
+                        onConfirm={handlePaymentMilestone}
+                        trigger={(
+                          <Button className="w-full gap-2" disabled={paymentMilestoneDisabled}>
+                            <HandCoins className="size-4" />
+                            Mettre à jour
+                          </Button>
+                        )}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>

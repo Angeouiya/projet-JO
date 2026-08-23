@@ -17,6 +17,7 @@ import type {
   ProjectSiteUpdateData,
   ProjectMessageData,
   ProjectQuoteData,
+  ProjectPaymentMilestoneData,
   NotificationData,
   TeamMemberData,
 } from '@/types';
@@ -32,6 +33,7 @@ type TeamMemberInput = Omit<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'> & 
 type ProjectSiteUpdateInput = Omit<ProjectSiteUpdateData, 'id' | 'createdAt' | 'createdBy'> & Partial<Pick<ProjectSiteUpdateData, 'id' | 'createdAt' | 'createdBy'>>;
 type ProjectMessageInput = Omit<ProjectMessageData, 'id' | 'createdAt' | 'senderName' | 'senderRole'> & Partial<Pick<ProjectMessageData, 'id' | 'createdAt' | 'senderName' | 'senderRole'>>;
 type ProjectQuoteInput = Partial<Omit<ProjectQuoteData, 'amount' | 'status' | 'date'>>;
+type ProjectPaymentMilestoneStatus = ProjectPaymentMilestoneData['status'];
 
 interface AppState {
   // Navigation
@@ -125,6 +127,7 @@ interface AppState {
   updateProjectQuoteStatus: (projectId: string, quoteId: string, status: 'accepted' | 'refused') => void;
   validateProjectVisualProposal: (projectId: string, proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
   updateProjectFinancing: (projectId: string, financing: ProjectFinancingData) => void;
+  updateProjectPaymentMilestoneStatus: (projectId: string, milestoneId: string, status: ProjectPaymentMilestoneStatus, note?: string) => void;
   publishProjectSiteUpdate: (projectId: string, update: ProjectSiteUpdateInput) => void;
   updateProjectStatus: (projectId: string, status: string, label?: string) => void;
   toggleFavorite: (modelId: string) => void;
@@ -200,6 +203,13 @@ function defaultQuoteAssumptions(project: ProjectData) {
       : 'Budget client à confirmer avant contractualisation.',
     'Le démarrage dépend de la validation du devis, des pièces administratives, du financement et du calendrier chantier.',
   ];
+}
+
+function paymentMilestoneStatusLabel(status: ProjectPaymentMilestoneStatus) {
+  if (status === 'due') return 'à régler';
+  if (status === 'paid') return 'payé';
+  if (status === 'blocked') return 'bloqué';
+  return 'planifié';
 }
 
 export const useAppStore = create<AppState>()(
@@ -903,6 +913,72 @@ export const useAppStore = create<AppState>()(
             link: s.isAdmin ? 'project-detail' : 'admin-project-detail',
             projectId,
             actionLabel: s.isAdmin ? 'Consulter' : 'Analyser',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications, s.isAdmin) };
+      }),
+      updateProjectPaymentMilestoneStatus: (projectId, milestoneId, status, note) => set(s => {
+        const now = new Date().toISOString();
+        let projectRef = '';
+        let milestoneLabel = '';
+        let milestoneAmount: number | undefined;
+        const actor = s.user?.name || 'Administration Buildify';
+        const cleanNote = note?.trim() || undefined;
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId || !project.financing) return project;
+          const milestones = project.financing.milestones.map(milestone => {
+            if (milestone.id !== milestoneId) return milestone;
+            projectRef = project.referenceNumber;
+            milestoneLabel = milestone.label;
+            milestoneAmount = milestone.expectedAmount;
+            return {
+              ...milestone,
+              status,
+              note: cleanNote,
+              updatedAt: now,
+              updatedBy: actor,
+            };
+          });
+
+          return {
+            ...project,
+            status: status === 'due' ? 'payment_pending' : project.status,
+            financing: {
+              ...project.financing,
+              milestones,
+              updatedAt: now,
+            },
+            activityLog: [
+              activity(`Jalon financier ${paymentMilestoneStatusLabel(status)} : ${milestoneLabel || 'paiement'}`, actor, 'payment'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        if (!projectRef) return { userProjects: projects };
+
+        const amountLabel = milestoneAmount ? ` (${new Intl.NumberFormat('fr-FR').format(milestoneAmount)} XOF)` : '';
+        const notifications: NotificationData[] = [
+          {
+            id: uniqueId('notif'),
+            title: status === 'due'
+              ? 'Paiement à préparer'
+              : status === 'paid'
+                ? 'Paiement confirmé'
+                : status === 'blocked'
+                  ? 'Paiement bloqué'
+                  : 'Jalon financier mis à jour',
+            message: `${milestoneLabel || 'Un jalon financier'}${amountLabel} est maintenant ${paymentMilestoneStatusLabel(status)} pour ${projectRef}.${cleanNote ? ` Note : ${cleanNote}` : ''}`,
+            type: 'payment',
+            audience: 'client',
+            link: 'project-detail',
+            projectId,
+            actionLabel: 'Voir finance',
             isRead: false,
             createdAt: now,
           },

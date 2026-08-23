@@ -232,6 +232,13 @@ function projectTitle(project: ProjectData) {
   return project.title || project.modelName || project.categoryName || 'Projet BTP';
 }
 
+function paymentStatusLabel(status: string) {
+  if (status === 'due') return 'À régler';
+  if (status === 'paid') return 'Payé';
+  if (status === 'blocked') return 'Bloqué';
+  return 'Planifié';
+}
+
 function workflowRows(tab: string, projects: ProjectData[], notifications: NotificationData[]): OperationRow[] {
   if (tab === 'studies') {
     return projects
@@ -354,21 +361,23 @@ function workflowRows(tab: string, projects: ProjectData[], notifications: Notif
   }
 
   if (tab === 'payments') {
-    return projects
-      .filter(project => ['payment_pending', 'planning', 'in_progress', 'delivered'].includes(project.status))
-      .map(project => row(
-        `payment-${project.id}`,
-        `Paiement ${project.referenceNumber}`,
-        `PAY-${project.referenceNumber.replace(/\D/g, '').slice(-6) || project.id.slice(-4)}`,
+    return projects.flatMap(project => {
+      const milestones = project.financing?.milestones ?? [];
+      if (milestones.length === 0) return [];
+      return milestones.map((milestone, index) => row(
+        `payment-${project.id}-${milestone.id}`,
+        `${index + 1}. ${milestone.label}`,
+        `PAY-${project.referenceNumber.replace(/\D/g, '').slice(-6) || project.id.slice(-4)}-${index + 1}`,
         project.clientName || 'Client Buildify',
-        project.status === 'payment_pending' ? 'Attendu' : 'À rapprocher',
-        project.updatedAt,
-        project.budgetMax || project.budgetMin,
+        paymentStatusLabel(milestone.status),
+        milestone.updatedAt || project.updatedAt,
+        milestone.expectedAmount,
         project.city,
-        [project.categoryName || 'BTP'],
+        [project.referenceNumber, `${milestone.percent}%`, project.categoryName || 'BTP'],
         project.id,
         'workflow'
       ));
+    });
   }
 
   if (tab === 'messages') {

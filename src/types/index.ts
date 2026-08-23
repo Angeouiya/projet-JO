@@ -194,6 +194,9 @@ export interface ProjectPaymentMilestoneData {
   percent: number;
   expectedAmount?: number;
   status: 'planned' | 'due' | 'paid' | 'blocked';
+  note?: string;
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
 export interface ProjectSiteUpdateData {
@@ -268,7 +271,7 @@ export interface ProjectActivityData {
   id: string;
   label: string;
   actor: string;
-  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status' | 'proposal' | 'site' | 'message';
+  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status' | 'proposal' | 'site' | 'message' | 'payment';
   createdAt: string;
 }
 

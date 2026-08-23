@@ -15,6 +15,7 @@ import type { NotificationData, ViewName } from '@/types';
 function getNotificationIcon(type: string) {
   switch (type) {
     case 'quote': return Receipt;
+    case 'payment': return Receipt;
     case 'message': return MessageSquare;
     case 'report': return ClipboardList;
     case 'photo': return Camera;

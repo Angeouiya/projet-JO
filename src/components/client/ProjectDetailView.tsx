@@ -24,7 +24,7 @@ import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { formatProjectLocation } from '@/lib/project-format';
-import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectQuoteData, ProjectSiteUpdateData, ProjectVisualProposalData } from '@/types';
+import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectPaymentMilestoneData, ProjectQuoteData, ProjectSiteUpdateData, ProjectVisualProposalData } from '@/types';
 
 // ── Types dossier client ───────────────────────────────────
 
@@ -873,6 +873,20 @@ function percentOrTodo(value: number | undefined) {
   return value !== undefined ? `${value}%` : 'À calculer';
 }
 
+function paymentMilestoneStatusLabel(status: ProjectPaymentMilestoneData['status']) {
+  if (status === 'due') return 'À régler';
+  if (status === 'paid') return 'Payé';
+  if (status === 'blocked') return 'Bloqué';
+  return 'Planifié';
+}
+
+function paymentMilestoneStatusVariant(status: ProjectPaymentMilestoneData['status']): 'default' | 'secondary' | 'outline' | 'destructive' {
+  if (status === 'paid') return 'default';
+  if (status === 'blocked') return 'destructive';
+  if (status === 'due') return 'secondary';
+  return 'outline';
+}
+
 const FINANCING_PURPOSE_LABELS: Record<string, string> = {
   'construction-only': 'Construction uniquement',
   'land-and-construction': 'Terrain + construction',
@@ -1705,6 +1719,14 @@ function FinancingTab({ data }: { data: ProjectDetailData }) {
     { label: 'Co-emprunteur', value: financingDetailLabel(financing.coBorrowerStatus, CO_BORROWER_LABELS) },
     { label: 'Personnes à charge', value: financing.householdDependents !== undefined ? `${financing.householdDependents}` : 'À compléter' },
   ];
+  const milestoneTotal = financing.milestones.reduce((total, item) => total + (item.expectedAmount ?? 0), 0);
+  const paidAmount = financing.milestones
+    .filter(item => item.status === 'paid')
+    .reduce((total, item) => total + (item.expectedAmount ?? 0), 0);
+  const dueAmount = financing.milestones
+    .filter(item => item.status === 'due')
+    .reduce((total, item) => total + (item.expectedAmount ?? 0), 0);
+  const blockedCount = financing.milestones.filter(item => item.status === 'blocked').length;
 
   return (
     <div className="space-y-4">
@@ -1858,7 +1880,26 @@ function FinancingTab({ data }: { data: ProjectDetailData }) {
                 Le paiement se déclenche quand l’étape est réalisée, vérifiée et documentée.
               </p>
             </div>
-            <Badge variant="secondary">{financing.milestones.reduce((total, item) => total + item.percent, 0)}%</Badge>
+            <Badge variant="secondary">{financing.milestones.reduce((total, item) => total + item.percent, 0)}% cadré</Badge>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total jalons</p>
+              <p className="mt-1 text-xs font-semibold">{milestoneTotal ? FORMAT_XOF(milestoneTotal) : 'À calculer'}</p>
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payé</p>
+              <p className="mt-1 text-xs font-semibold">{paidAmount ? FORMAT_XOF(paidAmount) : '0 XOF'}</p>
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">À régler</p>
+              <p className="mt-1 text-xs font-semibold">{dueAmount ? FORMAT_XOF(dueAmount) : '0 XOF'}</p>
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Blocages</p>
+              <p className="mt-1 text-xs font-semibold">{blockedCount}</p>
+            </div>
           </div>
 
           <div className="mt-4 space-y-2">
@@ -1866,8 +1907,24 @@ function FinancingTab({ data }: { data: ProjectDetailData }) {
               <div key={milestone.id} className="rounded-lg border p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">{index + 1}. {milestone.label}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold">{index + 1}. {milestone.label}</p>
+                      <Badge variant={paymentMilestoneStatusVariant(milestone.status)} className="text-[10px]">
+                        {paymentMilestoneStatusLabel(milestone.status)}
+                      </Badge>
+                    </div>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{milestone.trigger}</p>
+                    {milestone.note && (
+                      <p className="mt-2 rounded-md bg-muted/40 p-2 text-xs leading-5 text-muted-foreground">
+                        {milestone.note}
+                      </p>
+                    )}
+                    {(milestone.updatedAt || milestone.updatedBy) && (
+                      <p className="mt-2 text-[11px] text-muted-foreground">
+                        Mis à jour {milestone.updatedAt ? new Date(milestone.updatedAt).toLocaleDateString('fr-FR') : ''}
+                        {milestone.updatedBy ? ` · ${milestone.updatedBy}` : ''}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold">{milestone.percent}%</p>
