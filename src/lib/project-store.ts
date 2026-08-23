@@ -101,7 +101,7 @@ async function ensureNeonProjectStore() {
   return sql;
 }
 
-async function ensureTursoProjectStore() {
+export async function ensureTursoProjectStore() {
   const db = getTursoClient();
   if (!db) throw new Error('Turso project database is not configured.');
 

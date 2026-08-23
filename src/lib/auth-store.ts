@@ -1,5 +1,6 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
+import { ensureTursoProjectStore } from '@/lib/project-store';
 import { getTursoClient, hasTursoDatabase } from '@/lib/turso';
 import type { AppUser } from '@/types';
 
@@ -16,6 +17,12 @@ type AuthRow = {
   type: AppUser['type'];
   role: string;
   avatar: string | null;
+  residence_country: string | null;
+  time_zone: string | null;
+  preferred_contact_channel: string | null;
+  representative_name: string | null;
+  representative_phone: string | null;
+  representative_relation: string | null;
   failed_attempts: number;
   locked_until: string | null;
   is_active: number;
@@ -52,6 +59,12 @@ function rowToUser(row: AuthRow): AppUser {
     type: row.type,
     role: row.role,
     avatar: row.avatar || undefined,
+    residenceCountry: row.residence_country || undefined,
+    timeZone: row.time_zone || undefined,
+    preferredContactChannel: row.preferred_contact_channel || undefined,
+    representativeName: row.representative_name || undefined,
+    representativePhone: row.representative_phone || undefined,
+    representativeRelation: row.representative_relation || undefined,
   };
 }
 
@@ -70,6 +83,12 @@ async function ensureAuthSchema() {
         type TEXT NOT NULL DEFAULT 'client',
         role TEXT NOT NULL DEFAULT 'client',
         avatar TEXT,
+        residence_country TEXT,
+        time_zone TEXT,
+        preferred_contact_channel TEXT,
+        representative_name TEXT,
+        representative_phone TEXT,
+        representative_relation TEXT,
         failed_attempts INTEGER NOT NULL DEFAULT 0,
         locked_until TEXT,
         is_active INTEGER NOT NULL DEFAULT 1,
@@ -99,6 +118,28 @@ async function ensureAuthSchema() {
       )`,
       `CREATE INDEX IF NOT EXISTS buildify_password_resets_user_idx ON buildify_password_resets (user_id)`,
     ], 'write');
+
+    const columnsResult = await db.execute('PRAGMA table_info(buildify_users)');
+    const existingColumns = new Set(columnsResult.rows.map(row => String(row.name)));
+    const profileColumns = [
+      ['residence_country', 'TEXT'],
+      ['time_zone', 'TEXT'],
+      ['preferred_contact_channel', 'TEXT'],
+      ['representative_name', 'TEXT'],
+      ['representative_phone', 'TEXT'],
+      ['representative_relation', 'TEXT'],
+    ] as const;
+    const migrations = profileColumns
+      .filter(([name]) => !existingColumns.has(name))
+      .map(([name, type]) => `ALTER TABLE buildify_users ADD COLUMN ${name} ${type}`);
+    for (const migration of migrations) {
+      try {
+        await db.execute(migration);
+      } catch (error) {
+        const message = error instanceof Error ? error.message.toLowerCase() : '';
+        if (!message.includes('duplicate column')) throw error;
+      }
+    }
   })();
 
   await authSchemaReady;
@@ -126,6 +167,8 @@ async function findUserByIdentifier(identifier: string) {
   const phone = normalizePhone(identifier);
   const result = await db.execute({
     sql: `SELECT id, email, phone, password_hash, name, type, role, avatar,
+                 residence_country, time_zone, preferred_contact_channel,
+                 representative_name, representative_phone, representative_relation,
                  failed_attempts, locked_until, is_active
           FROM buildify_users
           WHERE email = ? OR phone = ?
@@ -292,6 +335,8 @@ export async function getSessionUser(token?: string | null) {
   const db = await ensureAuthSchema();
   const result = await db.execute({
     sql: `SELECT u.id, u.email, u.phone, u.name, u.type, u.role, u.avatar,
+                 u.residence_country, u.time_zone, u.preferred_contact_channel,
+                 u.representative_name, u.representative_phone, u.representative_relation,
                  u.failed_attempts, u.locked_until, u.is_active
           FROM buildify_sessions s
           JOIN buildify_users u ON u.id = s.user_id
@@ -313,6 +358,96 @@ export async function revokeSession(token?: string | null) {
     sql: `UPDATE buildify_sessions SET revoked_at = ? WHERE token_hash = ?`,
     args: [new Date().toISOString(), tokenDigest(token)],
   });
+}
+
+type ProfileUpdate = Pick<
+  AppUser,
+  | 'name'
+  | 'phone'
+  | 'residenceCountry'
+  | 'timeZone'
+  | 'preferredContactChannel'
+  | 'representativeName'
+  | 'representativePhone'
+  | 'representativeRelation'
+>;
+
+function optionalText(value?: string | null) {
+  return value?.trim() || null;
+}
+
+export async function updateAuthProfile(userId: string, profile: ProfileUpdate) {
+  const db = await ensureAuthSchema();
+  const now = new Date().toISOString();
+  await db.execute({
+    sql: `UPDATE buildify_users
+          SET name = ?, phone = ?, residence_country = ?, time_zone = ?,
+              preferred_contact_channel = ?, representative_name = ?,
+              representative_phone = ?, representative_relation = ?, updated_at = ?
+          WHERE id = ? AND is_active = 1`,
+    args: [
+      profile.name.trim(),
+      normalizePhone(profile.phone),
+      optionalText(profile.residenceCountry),
+      optionalText(profile.timeZone),
+      optionalText(profile.preferredContactChannel),
+      optionalText(profile.representativeName),
+      normalizePhone(profile.representativePhone),
+      optionalText(profile.representativeRelation),
+      now,
+      userId,
+    ],
+  });
+
+  const result = await db.execute({
+    sql: `SELECT id, email, phone, name, type, role, avatar,
+                 residence_country, time_zone, preferred_contact_channel,
+                 representative_name, representative_phone, representative_relation,
+                 failed_attempts, locked_until, is_active
+          FROM buildify_users WHERE id = ? AND is_active = 1 LIMIT 1`,
+    args: [userId],
+  });
+  const row = result.rows[0] as unknown as AuthRow | undefined;
+  return row ? rowToUser(row) : null;
+}
+
+export type DeleteAccountResult =
+  | { ok: true; deletedProjects: number }
+  | { ok: false; code: 'INVALID_PASSWORD' | 'ACCESS_DENIED' | 'ACCOUNT_NOT_FOUND'; message: string };
+
+export async function deleteClientAccount(userId: string, password: string): Promise<DeleteAccountResult> {
+  const db = await ensureAuthSchema();
+  const result = await db.execute({
+    sql: `SELECT id, password_hash, type FROM buildify_users WHERE id = ? AND is_active = 1 LIMIT 1`,
+    args: [userId],
+  });
+  const row = result.rows[0] as unknown as { id: string; password_hash: string; type: AppUser['type'] } | undefined;
+  if (!row) return { ok: false, code: 'ACCOUNT_NOT_FOUND', message: 'Compte introuvable.' };
+  if (row.type === 'admin' || row.type === 'employee') {
+    return {
+      ok: false,
+      code: 'ACCESS_DENIED',
+      message: "Un compte d'administration ne peut pas être supprimé depuis l'espace client.",
+    };
+  }
+  if (!await verifyPassword(password, row.password_hash)) {
+    return { ok: false, code: 'INVALID_PASSWORD', message: 'Mot de passe incorrect.' };
+  }
+
+  await ensureTursoProjectStore();
+  const countResult = await db.execute({
+    sql: 'SELECT COUNT(*) AS total FROM buildify_project_requests WHERE user_id = ?',
+    args: [userId],
+  });
+  const deletedProjects = Number(countResult.rows[0]?.total ?? 0);
+  await db.batch([
+    { sql: 'DELETE FROM buildify_project_requests WHERE user_id = ?', args: [userId] },
+    { sql: 'DELETE FROM buildify_password_resets WHERE user_id = ?', args: [userId] },
+    { sql: 'DELETE FROM buildify_sessions WHERE user_id = ?', args: [userId] },
+    { sql: 'DELETE FROM buildify_users WHERE id = ?', args: [userId] },
+  ], 'write');
+
+  return { ok: true, deletedProjects };
 }
 
 export async function createPasswordReset(emailInput: string) {

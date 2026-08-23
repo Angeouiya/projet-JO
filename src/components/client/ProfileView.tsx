@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   Heart, FolderArchive, Settings, HelpCircle, LogOut,
   ChevronRight, Bell, User, Mail, Phone, PenLine,
-  Clock3, Globe2, MessageCircle, UserRoundCheck,
+  Clock3, Globe2, MessageCircle, UserRoundCheck, Trash2, LoaderCircle, ShieldAlert, UserX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { useAppStore } from '@/stores/app-store';
@@ -84,6 +84,12 @@ export function ProfileView() {
   const [editRepresentativeName, setEditRepresentativeName] = useState(user?.representativeName || '');
   const [editRepresentativePhone, setEditRepresentativePhone] = useState(user?.representativePhone || '');
   const [editRepresentativeRelation, setEditRepresentativeRelation] = useState(user?.representativeRelation || 'none');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const displayName = user?.name || 'Utilisateur';
   const displayEmail = user?.email || 'email@exemple.com';
@@ -108,7 +114,7 @@ export function ProfileView() {
     setEditOpen(true);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!editName.trim()) {
       addToast('Le nom complet est obligatoire.', 'error');
       return;
@@ -125,7 +131,7 @@ export function ProfileView() {
       return;
     }
 
-    updateUserProfile({
+    const profile = {
       name: editName,
       phone: normalizedPhone,
       residenceCountry: editResidenceCountry,
@@ -134,9 +140,64 @@ export function ProfileView() {
       representativeName: editRepresentativeName,
       representativePhone: editRepresentativePhone,
       representativeRelation: editRepresentativeRelation,
-    });
-    setEditOpen(false);
-    addToast('Profil client mis à jour.', 'success');
+    };
+
+    setSavingProfile(true);
+    try {
+      const response = await fetch('/api/auth/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profile),
+      });
+      const payload = await response.json().catch(() => null) as { user?: typeof user; message?: string; error?: string } | null;
+      if (!response.ok || !payload?.user) {
+        addToast(payload?.message || payload?.error || 'Le profil ne peut pas être enregistré.', 'error');
+        return;
+      }
+
+      updateUserProfile(payload.user);
+      setEditOpen(false);
+      addToast('Profil client enregistré et synchronisé.', 'success');
+    } catch {
+      addToast('Connexion indisponible. Réessayez pour enregistrer le profil.', 'error');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const resetDeleteDialog = () => {
+    setDeletePassword('');
+    setDeleteConfirmation('');
+    setDeleteError('');
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'SUPPRIMER' || deletePassword.length < 8) return;
+    setDeleteLoading(true);
+    setDeleteError('');
+
+    try {
+      const response = await fetch('/api/auth/account', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: deletePassword, confirmation: deleteConfirmation }),
+      });
+      const payload = await response.json().catch(() => null) as { deletedProjects?: number; message?: string; error?: string } | null;
+      if (!response.ok) {
+        setDeleteError(payload?.message || payload?.error || 'La suppression du compte a échoué.');
+        return;
+      }
+
+      setDeleteOpen(false);
+      resetDeleteDialog();
+      await logout();
+      const projectCount = payload?.deletedProjects || 0;
+      addToast(`Compte supprimé${projectCount ? ` avec ${projectCount} dossier(s)` : ''}.`, 'success');
+    } catch {
+      setDeleteError('Connexion indisponible. Aucune donnée n’a été supprimée.');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const handleMenuAction = (action: (typeof MENU_ITEMS)[number]['action']) => {
@@ -300,6 +361,36 @@ export function ProfileView() {
         </Card>
       </div>
 
+      <div className="mt-4 px-4">
+        <Card className="gap-0 py-0">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <UserX className="size-4 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Confidentialité et compte</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Supprime définitivement votre accès et tous les dossiers rattachés.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4 w-full gap-2"
+              onClick={() => {
+                resetDeleteDialog();
+                setDeleteOpen(true);
+              }}
+            >
+              <Trash2 className="size-4" />
+              Supprimer mon compte
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Version info */}
       <div className="mt-8 text-center">
         <p className="text-[11px] text-muted-foreground/50">Buildify v1.0.0</p>
@@ -313,6 +404,9 @@ export function ProfileView() {
               <PenLine className="size-4" />
               Modifier le profil
             </DialogTitle>
+            <DialogDescription>
+              Enregistrez vos coordonnées, votre fuseau horaire et votre mandataire pour coordonner les projets à distance.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
@@ -436,11 +530,81 @@ export function ProfileView() {
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={savingProfile}>
               Annuler
             </Button>
-            <Button onClick={handleSaveProfile}>
-              Enregistrer
+            <Button onClick={handleSaveProfile} disabled={savingProfile}>
+              {savingProfile && <LoaderCircle className="size-4 animate-spin" />}
+              {savingProfile ? 'Enregistrement' : 'Enregistrer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (deleteLoading) return;
+          setDeleteOpen(open);
+          if (!open) resetDeleteDialog();
+        }}
+      >
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="size-5" />
+              Supprimer définitivement le compte ?
+            </DialogTitle>
+            <DialogDescription>
+              Vérification renforcée avant l’effacement irréversible de vos données Buildify.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border bg-muted/30 p-4 text-sm leading-6">
+              Cette action efface votre compte, vos sessions et tous vos projets, documents, messages et validations Buildify. Elle est irréversible.
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delete-account-password">Mot de passe actuel</Label>
+              <Input
+                id="delete-account-password"
+                type="password"
+                autoComplete="current-password"
+                value={deletePassword}
+                onChange={event => setDeletePassword(event.target.value)}
+                disabled={deleteLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delete-account-confirmation">
+                Saisissez <span className="font-bold">SUPPRIMER</span>
+              </Label>
+              <Input
+                id="delete-account-confirmation"
+                value={deleteConfirmation}
+                onChange={event => setDeleteConfirmation(event.target.value.toUpperCase())}
+                autoComplete="off"
+                disabled={deleteLoading}
+              />
+            </div>
+            {deleteError && (
+              <p role="alert" className="rounded-lg border px-3 py-2 text-sm font-medium">
+                {deleteError}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleteLoading}>
+              Annuler
+            </Button>
+            <Button
+              onClick={handleDeleteAccount}
+              disabled={deleteLoading || deletePassword.length < 8 || deleteConfirmation !== 'SUPPRIMER'}
+              className="gap-2"
+            >
+              {deleteLoading ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              {deleteLoading ? 'Suppression' : 'Supprimer le compte'}
             </Button>
           </DialogFooter>
         </DialogContent>
