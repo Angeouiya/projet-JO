@@ -122,7 +122,7 @@ function useClientReady() {
 }
 
 function usePlatformEntry(platform: PlatformEntry, routedView: ViewName, hasHydrated: boolean) {
-  const { currentView, isAuthenticated, isAdmin, showAuthModal, navigate, requireAuth } = useAppStore();
+  const { currentView, isAuthenticated, showAuthModal, navigate, requireAuth } = useAppStore();
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -135,9 +135,8 @@ function usePlatformEntry(platform: PlatformEntry, routedView: ViewName, hasHydr
 
     if (platform === 'client') {
       if (!CLIENT_PLATFORM_VIEWS.includes(currentView)) navigate('dashboard');
-      if (!isAuthenticated && !showAuthModal) requireAuth('dashboard');
     }
-  }, [currentView, hasHydrated, isAdmin, isAuthenticated, navigate, platform, requireAuth, routedView, showAuthModal]);
+  }, [currentView, hasHydrated, isAuthenticated, navigate, platform, requireAuth, routedView, showAuthModal]);
 }
 
 function LockedAccessView({

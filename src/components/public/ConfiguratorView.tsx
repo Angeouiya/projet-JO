@@ -859,6 +859,27 @@ function normalizeSearchText(value: string): string {
     .trim();
 }
 
+function getOptionSearchPlaceholder(id: string, responseKey: string, label: string): string {
+  const normalized = `${id} ${responseKey} ${label}`.toLowerCase();
+  if (normalized.includes('city') || normalized.includes('ville')) return 'Tapez une ville, commune, sous-préfecture ou village';
+  if (normalized.includes('country') || normalized.includes('pays')) return 'Tapez le pays';
+  if (normalized.includes('lot')) return 'Tapez un lot ou une prestation';
+  if (normalized.includes('document') || normalized.includes('pièce')) return 'Tapez un document disponible';
+  if (normalized.includes('finance') || normalized.includes('banque')) return 'Tapez un choix financier';
+  return 'Saisir pour chercher ou ajouter';
+}
+
+function getOptionSearchHelper(id: string, responseKey: string, filteredCount: number, totalCount: number): string {
+  const normalized = `${id} ${responseKey}`.toLowerCase();
+  if (normalized.includes('city')) {
+    const cityTotal = Math.max(0, totalCount - 1);
+    const cityFiltered = Math.min(filteredCount, cityTotal);
+    return `${cityFiltered} localité(s) affichée(s) sur ${cityTotal}. Saisie libre possible si la localité manque.`;
+  }
+  if (normalized.includes('country')) return `${filteredCount} pays affiché(s). Saisie libre possible avec “Autre pays”.`;
+  return `${filteredCount} résultat(s) affiché(s).`;
+}
+
 function getBudgetLabel(value: string): string {
   return getLabel(BUDGET_OPTIONS, value);
 }
@@ -2717,7 +2738,7 @@ export function ConfiguratorView() {
             <Input
               value={searchValue}
               onChange={event => setSearchValue(step.id, event.target.value)}
-              placeholder="Saisir pour chercher ou ajouter"
+              placeholder={getOptionSearchPlaceholder(step.id, step.responseKey, step.title)}
               className="h-11 rounded-xl pl-9 text-sm"
             />
           </div>
@@ -2846,7 +2867,7 @@ export function ConfiguratorView() {
             <Input
               value={searchValue}
               onChange={event => setSearchValue(step.id, event.target.value)}
-              placeholder="Saisir pour chercher ou ajouter"
+              placeholder={getOptionSearchPlaceholder(step.id, step.responseKey, step.title)}
               className="h-11 rounded-xl pl-9 text-sm"
             />
           </div>
@@ -2950,6 +2971,8 @@ export function ConfiguratorView() {
       : true;
     const canUseCustom = customLabel.length >= 2 && !customExists;
     const selectedCustomLabel = isCustomChoiceValue(value) ? getCustomChoiceLabel(value) : '';
+    const searchPlaceholder = getOptionSearchPlaceholder(step.id, step.responseKey, step.title);
+    const searchHelper = getOptionSearchHelper(step.id, step.responseKey, filteredOptions.length, options.length);
     return (
       <div className="space-y-3">
         <div className="relative">
@@ -2957,10 +2980,13 @@ export function ConfiguratorView() {
           <Input
             value={searchValue}
             onChange={event => setSearchValue(step.id, event.target.value)}
-            placeholder="Tapez une ville, commune ou localité"
+            placeholder={searchPlaceholder}
             className="h-12 rounded-xl pl-9 text-sm"
           />
         </div>
+        <p className="text-xs leading-5 text-muted-foreground">
+          {searchHelper}
+        </p>
         <div className="max-h-[44vh] overflow-y-auto rounded-xl border bg-background p-2">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {filteredOptions.map(option => {
