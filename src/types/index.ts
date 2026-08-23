@@ -219,6 +219,9 @@ export interface ProjectFinancingData {
   paymentPrinciple: string;
   estimatedBudget?: number;
   monthlyIncome?: number;
+  baseSalary?: number;
+  variableMonthlyIncome?: number;
+  otherMonthlyIncome?: number;
   existingMonthlyDebt?: number;
   monthlyPaymentCapacity?: number;
   ownContribution?: number;
@@ -226,6 +229,10 @@ export interface ProjectFinancingData {
   desiredLoanDurationYears?: number;
   availableSavings?: number;
   employmentStatus?: string;
+  financialSector?: string;
+  contractType?: string;
+  employerName?: string;
+  salaryDomiciliationBank?: string;
   incomeCurrency?: string;
   incomeStability?: string;
   householdDependents?: number;

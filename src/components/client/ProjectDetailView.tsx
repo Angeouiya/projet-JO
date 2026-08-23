@@ -960,6 +960,32 @@ const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {
   'to-confirm': 'À confirmer',
 };
 
+const FINANCIAL_SECTOR_LABELS: Record<string, string> = {
+  public: 'Administration publique',
+  private: 'Entreprise privée',
+  construction: 'BTP / immobilier',
+  trade: 'Commerce',
+  transport: 'Transport / logistique',
+  health: 'Santé',
+  education: 'Éducation',
+  digital: 'Digital / télécoms',
+  agriculture: 'Agriculture / agro',
+  diaspora: 'Revenus diaspora',
+  business: 'Activité indépendante',
+  other: 'Autre secteur',
+};
+
+const CONTRACT_TYPE_LABELS: Record<string, string> = {
+  permanent: 'CDI / contrat permanent',
+  fixed: 'CDD / mission longue',
+  civil: 'Fonction publique',
+  business: 'Activité indépendante',
+  company: 'Société porteuse',
+  mixed: 'Revenus mixtes',
+  informal: 'Revenus à documenter',
+  other: 'Autre situation',
+};
+
 const INCOME_STABILITY_LABELS: Record<string, string> = {
   'stable-12m': 'Stable depuis 12 mois ou plus',
   'stable-6m': 'Stable depuis 6 mois',
@@ -996,11 +1022,18 @@ const FINANCIAL_RISK_LABELS: Record<NonNullable<ProjectFinancingData['financialR
 type FinancingDraft = {
   mode: string;
   employmentStatus: string;
+  financialSector: string;
+  contractType: string;
+  employerName: string;
+  salaryDomiciliationBank: string;
   incomeCurrency: string;
   incomeStability: string;
   financingOwner: string;
   coBorrowerStatus: string;
   monthlyIncome: number | '';
+  baseSalary: number | '';
+  variableMonthlyIncome: number | '';
+  otherMonthlyIncome: number | '';
   existingMonthlyDebt: number | '';
   monthlyPaymentCapacity: number | '';
   ownContribution: number | '';
@@ -1023,6 +1056,9 @@ type FinancingDraft = {
 
 type FinancingNumberField =
   | 'monthlyIncome'
+  | 'baseSalary'
+  | 'variableMonthlyIncome'
+  | 'otherMonthlyIncome'
   | 'existingMonthlyDebt'
   | 'monthlyPaymentCapacity'
   | 'ownContribution'
@@ -1038,7 +1074,10 @@ type FinancingBooleanField =
   | 'landSupportRequested';
 
 const FINANCING_NUMBER_FIELDS: Array<{ key: FinancingNumberField; label: string; placeholder: string }> = [
-  { key: 'monthlyIncome', label: 'Salaire / revenu net mensuel', placeholder: '1500000' },
+  { key: 'baseSalary', label: 'Salaire de base net', placeholder: '1200000' },
+  { key: 'variableMonthlyIncome', label: 'Primes / revenus variables', placeholder: '200000' },
+  { key: 'otherMonthlyIncome', label: 'Autres revenus mensuels', placeholder: '100000' },
+  { key: 'monthlyIncome', label: 'Revenu net retenu', placeholder: '1500000' },
   { key: 'existingMonthlyDebt', label: 'Charges mensuelles existantes', placeholder: '250000' },
   { key: 'monthlyPaymentCapacity', label: 'Mensualité supportable', placeholder: '500000' },
   { key: 'ownContribution', label: 'Apport disponible sécurisé', placeholder: '5000000' },
@@ -1068,11 +1107,18 @@ function financingDraftFrom(financing: ProjectFinancingData): FinancingDraft {
   return {
     mode: financing.mode || 'progress-payment',
     employmentStatus: financing.employmentStatus || '',
+    financialSector: financing.financialSector || '',
+    contractType: financing.contractType || '',
+    employerName: financing.employerName || '',
+    salaryDomiciliationBank: financing.salaryDomiciliationBank || '',
     incomeCurrency: financing.incomeCurrency || 'XOF',
     incomeStability: financing.incomeStability || '',
     financingOwner: financing.financingOwner || '',
     coBorrowerStatus: financing.coBorrowerStatus || '',
     monthlyIncome: financing.monthlyIncome ?? '',
+    baseSalary: financing.baseSalary ?? '',
+    variableMonthlyIncome: financing.variableMonthlyIncome ?? '',
+    otherMonthlyIncome: financing.otherMonthlyIncome ?? '',
     existingMonthlyDebt: financing.existingMonthlyDebt ?? '',
     monthlyPaymentCapacity: financing.monthlyPaymentCapacity ?? '',
     ownContribution: financing.ownContribution ?? '',
@@ -1102,6 +1148,18 @@ function numberInputValue(value: number | '') {
   return value === '' ? '' : String(value);
 }
 
+function financingDraftMonthlyIncome(draft: FinancingDraft) {
+  const declaredMonthlyIncome = draftNumber(draft.monthlyIncome);
+  if (declaredMonthlyIncome !== undefined) return declaredMonthlyIncome;
+  const incomeParts = [
+    draftNumber(draft.baseSalary),
+    draftNumber(draft.variableMonthlyIncome),
+    draftNumber(draft.otherMonthlyIncome),
+  ].filter((value): value is number => value !== undefined);
+  if (incomeParts.length === 0) return undefined;
+  return incomeParts.reduce((total, value) => total + value, 0);
+}
+
 function defaultMilestonesForBudget(estimatedBudget?: number): ProjectPaymentMilestoneData[] {
   const phases = [
     { id: 'foundation', label: 'Fondations validées', trigger: 'Décaissement après contrôle et photos des fondations.', percent: 10 },
@@ -1128,7 +1186,7 @@ function buildMilestonesForBudget(existing: ProjectPaymentMilestoneData[], estim
 }
 
 function financingDraftScore(draft: FinancingDraft, estimatedBudget?: number) {
-  const monthlyIncome = draftNumber(draft.monthlyIncome);
+  const monthlyIncome = financingDraftMonthlyIncome(draft);
   const existingDebt = draftNumber(draft.existingMonthlyDebt) ?? 0;
   const monthlyCapacity = draftNumber(draft.monthlyPaymentCapacity) ?? 0;
   const ownContribution = draftNumber(draft.ownContribution);
@@ -1187,7 +1245,10 @@ function buildFinancingFromDraft(
   data: ProjectDetailData
 ): ProjectFinancingData {
   const estimatedBudget = base.estimatedBudget || data.budgetMax || data.budgetMin || undefined;
-  const monthlyIncome = draftNumber(draft.monthlyIncome);
+  const baseSalary = draftNumber(draft.baseSalary);
+  const variableMonthlyIncome = draftNumber(draft.variableMonthlyIncome);
+  const otherMonthlyIncome = draftNumber(draft.otherMonthlyIncome);
+  const monthlyIncome = financingDraftMonthlyIncome(draft);
   const existingMonthlyDebt = draftNumber(draft.existingMonthlyDebt);
   const monthlyPaymentCapacity = draftNumber(draft.monthlyPaymentCapacity);
   const ownContribution = draftNumber(draft.ownContribution);
@@ -1210,6 +1271,9 @@ function buildFinancingFromDraft(
     paymentPrinciple: 'Objectif Buildify : structurer un financement lisible, protéger l’apport, éviter les avances non sécurisées et déclencher les paiements uniquement par jalons vérifiés.',
     estimatedBudget,
     monthlyIncome,
+    baseSalary,
+    variableMonthlyIncome,
+    otherMonthlyIncome,
     existingMonthlyDebt,
     monthlyPaymentCapacity,
     ownContribution,
@@ -1217,6 +1281,10 @@ function buildFinancingFromDraft(
     desiredLoanDurationYears,
     availableSavings,
     employmentStatus: draft.employmentStatus || undefined,
+    financialSector: draft.financialSector || undefined,
+    contractType: draft.contractType || undefined,
+    employerName: draft.employerName.trim() || undefined,
+    salaryDomiciliationBank: draft.salaryDomiciliationBank.trim() || undefined,
     incomeCurrency: draft.incomeCurrency || undefined,
     incomeStability: draft.incomeStability || undefined,
     householdDependents,
@@ -2004,6 +2072,8 @@ function FinancingTab({
   const riskLabel = FINANCIAL_RISK_LABELS[financing.financialRiskLevel ?? 'unknown'];
   const profileItems = [
     { label: 'Situation', value: financingDetailLabel(financing.employmentStatus, EMPLOYMENT_STATUS_LABELS) },
+    { label: 'Secteur', value: financingDetailLabel(financing.financialSector, FINANCIAL_SECTOR_LABELS) },
+    { label: 'Contrat', value: financingDetailLabel(financing.contractType, CONTRACT_TYPE_LABELS) },
     { label: 'Devise revenus', value: financing.incomeCurrency || 'À compléter' },
     { label: 'Stabilité', value: financingDetailLabel(financing.incomeStability, INCOME_STABILITY_LABELS) },
     { label: 'Porteur', value: financingDetailLabel(financing.financingOwner, FINANCING_OWNER_LABELS) },
@@ -2027,10 +2097,13 @@ function FinancingTab({
   const fundingGap = financing.estimatedBudget !== undefined
     ? Math.max(0, financing.estimatedBudget - (financing.ownContribution ?? 0) - (financing.requestedLoanAmount ?? 0))
     : undefined;
+  const composedIncome = [financing.baseSalary, financing.variableMonthlyIncome, financing.otherMonthlyIncome]
+    .filter((value): value is number => value !== undefined)
+    .reduce((total, value) => total + value, 0);
   const financeReadinessSteps = [
     {
       label: 'Revenus documentés',
-      done: Boolean(financing.monthlyIncome && financing.employmentStatus && financing.incomeStability),
+      done: Boolean(financing.monthlyIncome && financing.employmentStatus && financing.incomeStability && financing.contractType),
       detail: financing.monthlyIncome ? amountOrTodo(financing.monthlyIncome) : 'Salaire ou revenu net à saisir',
     },
     {
@@ -2058,10 +2131,12 @@ function FinancingTab({
   const projectedFinancing = buildFinancingFromDraft(financing, draft, data);
   const projectedScore = projectedFinancing.affordabilityScore ?? 0;
   const requiredFinancialFieldsMissing = !draft.employmentStatus
+    || !draft.financialSector
+    || !draft.contractType
     || !draft.incomeCurrency
     || !draft.financingOwner
     || !draft.coBorrowerStatus
-    || draftNumber(draft.monthlyIncome) === undefined
+    || financingDraftMonthlyIncome(draft) === undefined
     || draftNumber(draft.existingMonthlyDebt) === undefined
     || draftNumber(draft.monthlyPaymentCapacity) === undefined
     || draftNumber(draft.ownContribution) === undefined
@@ -2152,6 +2227,16 @@ function FinancingTab({
               <p className="mt-1 text-sm font-semibold">{amountOrTodo(financing.monthlyIncome)}</p>
             </div>
             <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Salaire de base</p>
+              <p className="mt-1 text-sm font-semibold">{amountOrTodo(financing.baseSalary)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Revenus variables</p>
+              <p className="mt-1 text-sm font-semibold">
+                {composedIncome ? FORMAT_XOF((financing.variableMonthlyIncome ?? 0) + (financing.otherMonthlyIncome ?? 0)) : 'À compléter'}
+              </p>
+            </div>
+            <div className="rounded-lg border p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Charges mensuelles</p>
               <p className="mt-1 text-sm font-semibold">{amountOrTodo(financing.existingMonthlyDebt)}</p>
             </div>
@@ -2190,6 +2275,14 @@ function FinancingTab({
             <div className="rounded-lg border p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Banque</p>
               <p className="mt-1 text-sm font-semibold">{financing.bankName || 'À contacter'}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Employeur / activité</p>
+              <p className="mt-1 text-sm font-semibold break-words">{financing.employerName || 'À compléter'}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Domiciliation salaire</p>
+              <p className="mt-1 text-sm font-semibold break-words">{financing.salaryDomiciliationBank || 'À préciser'}</p>
             </div>
           </div>
 
@@ -2292,6 +2385,20 @@ function FinancingTab({
                   </select>
                 </div>
                 <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-sector">Secteur</label>
+                  <select id="finance-sector" value={draft.financialSector} onChange={event => setDraftField('financialSector', event.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-xs">
+                    <option value="">Choisir</option>
+                    {Object.entries(FINANCIAL_SECTOR_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-contract-type">Contrat</label>
+                  <select id="finance-contract-type" value={draft.contractType} onChange={event => setDraftField('contractType', event.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-xs">
+                    <option value="">Choisir</option>
+                    {Object.entries(CONTRACT_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-currency">Devise</label>
                   <select id="finance-currency" value={draft.incomeCurrency} onChange={event => setDraftField('incomeCurrency', event.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-xs">
                     {['XOF', 'EUR', 'USD', 'CAD', 'GBP'].map(currency => <option key={currency} value={currency}>{currency}</option>)}
@@ -2345,6 +2452,14 @@ function FinancingTab({
               </div>
 
               <div className="grid gap-2 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-employer">Employeur / activité</label>
+                  <Input id="finance-employer" value={draft.employerName} onChange={event => setDraftField('employerName', event.target.value)} placeholder="Entreprise, administration ou activité principale" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-salary-bank">Banque de domiciliation</label>
+                  <Input id="finance-salary-bank" value={draft.salaryDomiciliationBank} onChange={event => setDraftField('salaryDomiciliationBank', event.target.value)} placeholder="Banque où arrivent les revenus" />
+                </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="finance-bank-name">Banque ou organisme</label>
                   <Input id="finance-bank-name" value={draft.bankName} onChange={event => setDraftField('bankName', event.target.value)} placeholder="Ex : Banque partenaire diaspora" />
@@ -2437,7 +2552,7 @@ function FinancingTab({
 
               {requiredFinancialFieldsMissing && (
                 <p className="rounded-lg border border-dashed p-3 text-xs leading-5 text-muted-foreground">
-                  Complétez au minimum la situation, la devise, le porteur, le co-emprunteur, le revenu net, les charges, la capacité, l’apport et le montant à financer.
+                  Complétez au minimum la situation, le secteur, le contrat, la devise, le porteur, le co-emprunteur, le revenu retenu ou sa composition, les charges, la capacité, l’apport et le montant à financer.
                 </p>
               )}
 

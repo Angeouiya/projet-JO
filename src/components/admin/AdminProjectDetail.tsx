@@ -122,6 +122,32 @@ const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {
   'to-confirm': 'À confirmer',
 };
 
+const FINANCIAL_SECTOR_LABELS: Record<string, string> = {
+  public: 'Administration',
+  private: 'Privé',
+  construction: 'BTP / immobilier',
+  trade: 'Commerce',
+  transport: 'Transport',
+  health: 'Santé',
+  education: 'Éducation',
+  digital: 'Digital',
+  agriculture: 'Agro',
+  diaspora: 'Diaspora',
+  business: 'Indépendant',
+  other: 'Autre',
+};
+
+const CONTRACT_TYPE_LABELS: Record<string, string> = {
+  permanent: 'CDI / permanent',
+  fixed: 'CDD / mission',
+  civil: 'Fonction publique',
+  business: 'Indépendant',
+  company: 'Société',
+  mixed: 'Mixte',
+  informal: 'À documenter',
+  other: 'Autre',
+};
+
 const INCOME_STABILITY_LABELS: Record<string, string> = {
   'stable-12m': 'Stable 12 mois+',
   'stable-6m': 'Stable 6 mois',
@@ -365,6 +391,9 @@ export function AdminProjectDetail() {
   const fundingGap = financing?.estimatedBudget !== undefined
     ? Math.max(0, financing.estimatedBudget - (financing.ownContribution ?? 0) - (financing.requestedLoanAmount ?? 0))
     : undefined;
+  const composedIncome = [financing?.baseSalary, financing?.variableMonthlyIncome, financing?.otherMonthlyIncome]
+    .filter((value): value is number => value !== undefined)
+    .reduce((total, value) => total + value, 0);
   const missingDocumentCount = (financing?.documentReadiness ?? []).includes('none-yet')
     ? 4
     : Math.max(0, 4 - (financing?.documentReadiness ?? []).filter(item => ['id', 'income-proof', 'bank-statements', 'quote-or-plans'].includes(item)).length);
@@ -395,12 +424,13 @@ export function AdminProjectDetail() {
     { icon: ClipboardCheck, label: 'Action prioritaire', value: nextAdminAction },
     { icon: Landmark, label: 'Finance', value: financingScore ? `${financingScore}% - ${financeRisk}` : financeRisk },
     { icon: ShieldCheck, label: 'Revenu', value: labelFrom(EMPLOYMENT_STATUS_LABELS, financing?.employmentStatus) },
-    { icon: Clock3, label: 'Stabilité', value: labelFrom(INCOME_STABILITY_LABELS, financing?.incomeStability) },
+    { icon: FolderSearch, label: 'Secteur', value: labelFrom(FINANCIAL_SECTOR_LABELS, financing?.financialSector) },
+    { icon: Clock3, label: 'Contrat', value: labelFrom(CONTRACT_TYPE_LABELS, financing?.contractType) },
   ];
   const checklistItems = [
     { label: 'Contact client', done: Boolean(project.clientEmail || project.clientPhone) },
     { label: 'Coordination', done: Boolean(projectText(project, 'clientPresence')) },
-    { label: 'Profil financier', done: Boolean(financing?.employmentStatus && financing?.monthlyIncome !== undefined) },
+    { label: 'Profil financier', done: Boolean(financing?.employmentStatus && financing?.contractType && financing?.monthlyIncome !== undefined) },
     { label: 'Pièces banque', done: missingDocumentCount === 0 },
     { label: 'Garanties paiement', done: Boolean(financing?.notaryContract || financing?.escrowRequested || financing?.bankSupportRequested) },
     { label: 'Proposition visuelle', done: Boolean(project.visualProposal) },
@@ -1168,6 +1198,24 @@ export function AdminProjectDetail() {
                     <p className="mt-1 text-xs font-semibold">{amountOrTodo(financing?.monthlyIncome)}</p>
                   </div>
                   <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Salaire base</p>
+                    <p className="mt-1 text-xs font-semibold">{amountOrTodo(financing?.baseSalary)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Variables</p>
+                    <p className="mt-1 text-xs font-semibold">
+                      {composedIncome ? FORMAT_XOF((financing?.variableMonthlyIncome ?? 0) + (financing?.otherMonthlyIncome ?? 0)) : 'À compléter'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Secteur</p>
+                    <p className="mt-1 text-xs font-semibold">{labelFrom(FINANCIAL_SECTOR_LABELS, financing?.financialSector)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Contrat</p>
+                    <p className="mt-1 text-xs font-semibold">{labelFrom(CONTRACT_TYPE_LABELS, financing?.contractType)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Apport</p>
                     <p className="mt-1 text-xs font-semibold">{amountOrTodo(financing?.ownContribution)}</p>
                   </div>
@@ -1204,6 +1252,11 @@ export function AdminProjectDetail() {
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Banque</p>
                   <p className="mt-1 text-sm font-semibold">{financing?.bankName || 'À contacter'}</p>
                   {financing?.bankContact && <p className="mt-1 text-xs text-muted-foreground">{financing.bankContact}</p>}
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Employeur / activité</p>
+                  <p className="mt-1 text-sm font-semibold break-words">{financing?.employerName || 'À compléter'}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Domiciliation : {financing?.salaryDomiciliationBank || 'à préciser'}</p>
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pièces déclarées</p>
