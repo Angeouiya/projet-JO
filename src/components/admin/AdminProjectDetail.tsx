@@ -200,6 +200,7 @@ export function AdminProjectDetail() {
     userProjects,
     assignProjectLead,
     requestProjectInfo,
+    sendProjectMessage,
     sendProjectQuote,
     updateProjectStatus,
     publishProjectSiteUpdate,
@@ -213,6 +214,7 @@ export function AdminProjectDetail() {
   const [leadName, setLeadName] = useState(project?.assignedTo || TEAM_LEADS[0]);
   const [infoMessage, setInfoMessage] = useState(project?.missingInfo || 'Merci de compléter les dimensions du terrain et le document foncier disponible.');
   const [quoteAmount, setQuoteAmount] = useState(project?.budgetMax || project?.budgetMin || 0);
+  const [adminDirectMessage, setAdminDirectMessage] = useState('Bonjour, votre dossier avance. Vous pouvez nous écrire ici pour toute précision sur le périmètre, le financement ou le planning.');
   const [sitePhase, setSitePhase] = useState(project?.siteUpdates?.[0]?.phase || 'Fondations et implantation');
   const [siteProgress, setSiteProgress] = useState(project?.siteUpdates?.[0]?.progress || Math.max(project?.progress || 25, 25));
   const [siteImageUrl, setSiteImageUrl] = useState(project?.siteUpdates?.[0]?.imageUrl || '/images/chantier-1.png');
@@ -285,6 +287,10 @@ export function AdminProjectDetail() {
     { label: 'Garanties paiement', done: Boolean(financing?.notaryContract || financing?.escrowRequested || financing?.bankSupportRequested) },
     { label: 'Proposition visuelle', done: Boolean(project.visualProposal) },
   ];
+  const recentProjectMessages = (project.projectMessages ?? [])
+    .slice()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 4);
 
   const handleAssign = () => {
     if (!leadName.trim()) return;
@@ -296,6 +302,14 @@ export function AdminProjectDetail() {
     if (!infoMessage.trim()) return;
     requestProjectInfo(project.id, infoMessage.trim());
     addToast('Demande d’information envoyée au client.', 'success');
+  };
+
+  const handleDirectMessage = () => {
+    const message = adminDirectMessage.trim();
+    if (!message) return;
+    sendProjectMessage(project.id, { message, senderRole: 'admin' });
+    setAdminDirectMessage('');
+    addToast('Message envoyé au client.', 'success');
   };
 
   const handleQuote = () => {
@@ -578,6 +592,30 @@ export function AdminProjectDetail() {
                   )}
                 />
               </div>
+
+              <Separator className="my-4" />
+
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="adminDirectMessage">
+                Message direct au client
+              </label>
+              <Textarea
+                id="adminDirectMessage"
+                value={adminDirectMessage}
+                onChange={(event) => setAdminDirectMessage(event.target.value)}
+                className="mt-2 min-h-24"
+              />
+              <ConfirmActionDialog
+                title="Envoyer ce message au client ?"
+                description={`Le message sera ajouté au fil de discussion du dossier ${project.referenceNumber} et une notification client sera créée.`}
+                confirmLabel="Envoyer"
+                onConfirm={handleDirectMessage}
+                trigger={(
+                  <Button className="mt-3 gap-2" disabled={!adminDirectMessage.trim()}>
+                    <MessageSquareText className="size-4" />
+                    Envoyer au client
+                  </Button>
+                )}
+              />
             </CardContent>
           </Card>
 
@@ -867,6 +905,42 @@ export function AdminProjectDetail() {
                     </div>
                   ))
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="py-0 gap-0">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <MessageSquareText className="mt-0.5 size-4 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-sm font-semibold">Conversation projet</h2>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Messages directs visibles dans l’espace client et dans le module Messages admin.
+                  </p>
+                  {recentProjectMessages.length === 0 ? (
+                    <p className="mt-3 rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                      Aucun message direct pour ce dossier.
+                    </p>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {recentProjectMessages.map(message => (
+                        <div key={message.id} className="rounded-lg border bg-muted/30 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-xs font-semibold">{message.senderName}</p>
+                            <Badge variant={message.senderRole === 'admin' ? 'secondary' : 'outline'} className="text-[10px]">
+                              {message.senderRole === 'admin' ? 'Admin' : 'Client'}
+                            </Badge>
+                          </div>
+                          <p className="mt-2 text-sm leading-6">{message.message}</p>
+                          <p className="mt-2 text-[11px] text-muted-foreground">
+                            {new Date(message.createdAt).toLocaleString('fr-FR')}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

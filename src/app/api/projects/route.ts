@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { normalizeEmail, normalizeText, parseJsonField, serverError, validationError } from '@/lib/api-utils';
 import { createStoredProject, hasExternalProjectStore, listStoredProjects } from '@/lib/project-store';
-import type { ProjectDocumentData, ProjectFinancingData, ProjectSiteUpdateData } from '@/types';
+import type { ProjectDocumentData, ProjectFinancingData, ProjectMessageData, ProjectSiteUpdateData } from '@/types';
 
 const projectQuerySchema = z.object({
   userId: z.string().trim().min(1).optional(),
@@ -48,6 +48,13 @@ const projectCreateSchema = z.object({
     date: z.string().trim().min(1),
     url: z.string().trim().optional(),
     size: z.coerce.number().optional(),
+  })).optional(),
+  projectMessages: z.array(z.object({
+    id: z.string().trim().min(1),
+    senderName: z.string().trim().min(1),
+    senderRole: z.enum(['client', 'admin']),
+    message: z.string().trim().min(1),
+    createdAt: z.string().trim().min(1),
   })).optional(),
   siteUpdates: z.array(z.object({
     id: z.string().trim().min(1),
@@ -221,6 +228,7 @@ export async function POST(request: Request) {
         representativeRelation,
         financing: body.financing as ProjectFinancingData | undefined,
         documents: body.documents as ProjectDocumentData[] | undefined,
+        projectMessages: body.projectMessages as ProjectMessageData[] | undefined,
         siteUpdates: body.siteUpdates as ProjectSiteUpdateData[] | undefined,
       });
 

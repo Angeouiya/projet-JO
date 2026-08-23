@@ -128,6 +128,7 @@ export interface ProjectData {
   missingInfo?: string;
   missingInfoRequestedAt?: string;
   missingInfoResponses?: ProjectInfoResponseData[];
+  projectMessages?: ProjectMessageData[];
   formData?: Record<string, unknown>;
   documents?: ProjectDocumentData[];
   quotes?: ProjectQuoteData[];
@@ -246,11 +247,19 @@ export interface ProjectInfoResponseData {
   respondedBy?: string;
 }
 
+export interface ProjectMessageData {
+  id: string;
+  senderName: string;
+  senderRole: 'client' | 'admin';
+  message: string;
+  createdAt: string;
+}
+
 export interface ProjectActivityData {
   id: string;
   label: string;
   actor: string;
-  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status' | 'proposal' | 'site';
+  type: 'system' | 'client' | 'admin' | 'document' | 'quote' | 'status' | 'proposal' | 'site' | 'message';
   createdAt: string;
 }
 

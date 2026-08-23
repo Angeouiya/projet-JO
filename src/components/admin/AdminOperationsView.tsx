@@ -372,21 +372,39 @@ function workflowRows(tab: string, projects: ProjectData[], notifications: Notif
   }
 
   if (tab === 'messages') {
-    return projects
-      .filter(project => project.missingInfo)
-      .map(project => row(
-        `message-${project.id}`,
-        project.missingInfo || 'Message client',
+    return projects.flatMap(project => {
+      const directMessages = (project.projectMessages ?? []).map(message => row(
+        `message-${message.id}`,
+        message.message,
         project.referenceNumber,
-        project.clientName || 'Client Buildify',
-        'Action requise',
-        project.missingInfoRequestedAt || project.updatedAt,
+        message.senderName,
+        message.senderRole === 'client' ? 'Message client' : 'Message admin',
+        message.createdAt,
         undefined,
         project.city,
-        [project.categoryName || 'BTP'],
+        [project.categoryName || 'BTP', message.senderRole === 'client' ? 'À traiter' : 'Envoyé'],
         project.id,
         'workflow'
       ));
+
+      const infoRequests = project.missingInfo ? [
+        row(
+          `message-info-${project.id}`,
+          project.missingInfo,
+          project.referenceNumber,
+          project.clientName || 'Client Buildify',
+          'Information demandée',
+          project.missingInfoRequestedAt || project.updatedAt,
+          undefined,
+          project.city,
+          [project.categoryName || 'BTP', 'Action requise'],
+          project.id,
+          'workflow'
+        ),
+      ] : [];
+
+      return [...directMessages, ...infoRequests];
+    });
   }
 
   if (tab === 'notifications') {

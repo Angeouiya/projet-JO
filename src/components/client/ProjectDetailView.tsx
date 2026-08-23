@@ -165,6 +165,7 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
   const startDate = project.createdAt?.slice(0, 10) || 'Non défini';
   const siteUpdates = project.siteUpdates ?? [];
   const latestSiteUpdate = siteUpdates[0];
+  const projectMessages = (project.projectMessages ?? []).slice().sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const missingInfoDate = project.missingInfoRequestedAt
     ? new Date(project.missingInfoRequestedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
     : 'Maintenant';
@@ -209,6 +210,14 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
         text: response.message,
         time: new Date(response.respondedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         isOwn: true,
+      })),
+      ...projectMessages.map(message => ({
+        id: message.id,
+        sender: message.senderName,
+        senderRole: message.senderRole === 'admin' ? 'Équipe Buildify' : 'Client',
+        text: message.message,
+        time: new Date(message.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        isOwn: message.senderRole === 'client',
       })),
     ],
     infoResponses: project.missingInfoResponses ?? [],
@@ -1169,7 +1178,7 @@ function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: 
   );
 }
 
-function MessagesTab({ data, onSend }: { data: ProjectDetailData; onSend?: (message: string) => void }) {
+function MessagesTab({ data, onSend }: { data: ProjectDetailData; onSend?: (message: string, mode: 'info' | 'message') => void }) {
   const addToast = useAppStore(state => state.addToast);
   const [newMessage, setNewMessage] = useState('');
   const [localMessages, setLocalMessages] = useState(data.messages);
@@ -1188,7 +1197,7 @@ function MessagesTab({ data, onSend }: { data: ProjectDetailData; onSend?: (mess
     };
     setLocalMessages(prev => [...prev, msg]);
     setNewMessage('');
-    onSend?.(text);
+    onSend?.(text, hasActiveInfoRequest ? 'info' : 'message');
     if (onSend) {
       addToast(hasActiveInfoRequest ? 'Information transmise à l’administration.' : 'Message transmis au dossier.', 'success');
     }
@@ -1949,7 +1958,7 @@ function ChantierTab({ data }: { data: ProjectDetailData }) {
 type TabValue = 'resume' | 'propositions' | 'financement' | 'documents' | 'messages' | 'devis' | 'chantier';
 
 export function ProjectDetailView() {
-  const { goBack, navigate, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, respondProjectInfo } = useAppStore();
+  const { goBack, navigate, viewParams, userProjects, addProjectDocuments, updateProjectQuoteStatus, validateProjectVisualProposal, respondProjectInfo, sendProjectMessage } = useAppStore();
   const projectId = viewParams?.id || '';
   const storedProject = userProjects.find(project => project.id === projectId || project.referenceNumber === projectId);
   const data = storedProject ? detailFromStoredProject(storedProject) : null;
@@ -2025,12 +2034,12 @@ export function ProjectDetailView() {
         {/* Tabs */}
         <div className="max-w-6xl mx-auto px-4 pb-0">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
-            <TabsList className="w-full h-auto min-h-10 justify-start overflow-x-auto p-0.5 bg-muted">
+            <TabsList className="grid h-auto min-h-10 w-full grid-cols-4 gap-1 bg-muted p-0.5 sm:flex sm:justify-start sm:overflow-x-auto">
               {tabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
-                  className="h-9 min-w-[92px] flex-none px-3 text-xs sm:min-w-0 sm:flex-1 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  className="h-9 min-w-0 px-2 text-[11px] sm:flex-1 sm:px-3 sm:text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -2076,7 +2085,13 @@ export function ProjectDetailView() {
             {activeTab === 'messages' && (
               <MessagesTab
                 data={data}
-                onSend={storedProject ? (message) => respondProjectInfo(storedProject.id, message) : undefined}
+                onSend={storedProject ? (message, mode) => {
+                  if (mode === 'info') {
+                    respondProjectInfo(storedProject.id, message);
+                    return;
+                  }
+                  sendProjectMessage(storedProject.id, { message, senderRole: 'client' });
+                } : undefined}
               />
             )}
             {activeTab === 'devis' && (

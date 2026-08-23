@@ -15,6 +15,7 @@ import type {
   ProjectFinancingData,
   ProjectVisualProposalData,
   ProjectSiteUpdateData,
+  ProjectMessageData,
   NotificationData,
   TeamMemberData,
 } from '@/types';
@@ -28,6 +29,7 @@ type ProjectRequestInput = Partial<ProjectData> & Pick<ProjectData, 'referenceNu
 type AuthResumeAction = 'submit-configurator';
 type TeamMemberInput = Omit<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'> & Partial<Pick<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'>>;
 type ProjectSiteUpdateInput = Omit<ProjectSiteUpdateData, 'id' | 'createdAt' | 'createdBy'> & Partial<Pick<ProjectSiteUpdateData, 'id' | 'createdAt' | 'createdBy'>>;
+type ProjectMessageInput = Omit<ProjectMessageData, 'id' | 'createdAt' | 'senderName' | 'senderRole'> & Partial<Pick<ProjectMessageData, 'id' | 'createdAt' | 'senderName' | 'senderRole'>>;
 
 interface AppState {
   // Navigation
@@ -116,6 +118,7 @@ interface AppState {
   assignProjectLead: (projectId: string, leadName: string) => void;
   requestProjectInfo: (projectId: string, message: string) => void;
   respondProjectInfo: (projectId: string, message: string) => void;
+  sendProjectMessage: (projectId: string, message: ProjectMessageInput) => void;
   sendProjectQuote: (projectId: string, amount: number, label?: string) => void;
   updateProjectQuoteStatus: (projectId: string, quoteId: string, status: 'accepted' | 'refused') => void;
   validateProjectVisualProposal: (projectId: string, proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
@@ -404,6 +407,7 @@ export const useAppStore = create<AppState>()(
           assignedTo: input.assignedTo,
           missingInfo: input.missingInfo,
           missingInfoRequestedAt: input.missingInfoRequestedAt,
+          projectMessages: input.projectMessages ?? [],
           formData: input.formData,
           documents: input.documents ?? [],
           quotes: input.quotes ?? [],
@@ -609,6 +613,59 @@ export const useAppStore = create<AppState>()(
             type: 'message',
             audience: 'admin',
             link: 'admin-project-detail',
+            projectId,
+            actionLabel: 'Ouvrir',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications, s.isAdmin) };
+      }),
+      sendProjectMessage: (projectId, input) => set(s => {
+        const now = new Date().toISOString();
+        const senderRole = input.senderRole || (s.isAdmin ? 'admin' : 'client');
+        const senderName = input.senderName || s.user?.name || (senderRole === 'admin' ? 'Administration' : 'Client');
+        const cleanMessage = input.message.trim();
+        if (!cleanMessage) return {};
+        let projectRef = '';
+        let projectTitle = '';
+
+        const message: ProjectMessageData = {
+          id: input.id || uniqueId('msg'),
+          senderName,
+          senderRole,
+          message: cleanMessage,
+          createdAt: input.createdAt || now,
+        };
+
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          projectRef = project.referenceNumber;
+          projectTitle = project.title || project.modelName || project.categoryName || project.referenceNumber;
+          return {
+            ...project,
+            projectMessages: [...(project.projectMessages ?? []), message],
+            activityLog: [
+              activity(`Message ${senderRole === 'admin' ? 'admin' : 'client'} ajouté au dossier`, senderName, 'message'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        if (!projectRef) return { userProjects: projects };
+
+        const audience = senderRole === 'admin' ? 'client' : 'admin';
+        const notifications: NotificationData[] = [
+          {
+            id: uniqueId('notif'),
+            title: senderRole === 'admin' ? 'Nouveau message Buildify' : 'Message client reçu',
+            message: `${projectRef} (${projectTitle}) : ${cleanMessage.slice(0, 130)}${cleanMessage.length > 130 ? '...' : ''}`,
+            type: 'message',
+            audience,
+            link: senderRole === 'admin' ? 'project-detail' : 'admin-project-detail',
             projectId,
             actionLabel: 'Ouvrir',
             isRead: false,
