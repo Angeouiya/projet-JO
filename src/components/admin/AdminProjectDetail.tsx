@@ -193,6 +193,13 @@ function optionalLabel(labels: Record<string, string>, value?: string): string |
   return labels[value] || value;
 }
 
+function splitQuoteText(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+}
+
 export function AdminProjectDetail() {
   const {
     goBack,
@@ -214,6 +221,25 @@ export function AdminProjectDetail() {
   const [leadName, setLeadName] = useState(project?.assignedTo || TEAM_LEADS[0]);
   const [infoMessage, setInfoMessage] = useState(project?.missingInfo || 'Merci de compléter les dimensions du terrain et le document foncier disponible.');
   const [quoteAmount, setQuoteAmount] = useState(project?.budgetMax || project?.budgetMin || 0);
+  const [quoteLabel, setQuoteLabel] = useState(`Devis ${project?.categoryName || project?.title || 'BTP'}`);
+  const [quoteDescription, setQuoteDescription] = useState('Chiffrage structuré pour cadrer le périmètre, les hypothèses, les exclusions, les modalités de paiement et les prochaines décisions du dossier.');
+  const [quoteScopeText, setQuoteScopeText] = useState([
+    `Ouvrage : ${project?.categoryName || project?.title || 'Projet BTP'}`,
+    project?.city ? `Zone d’intervention : ${project.city}` : 'Zone d’intervention à confirmer',
+    'Étude du besoin, métrés estimatifs, coordination technique et suivi administratif',
+    'Préparation du planning, des jalons de paiement et du suivi projet Buildify',
+  ].join('\n'));
+  const [quoteAssumptionsText, setQuoteAssumptionsText] = useState([
+    'Montant établi sur les informations transmises par le client avant visite ou métrés définitifs.',
+    'Le prix final dépend des surfaces validées, des documents disponibles, du standing et des contraintes du terrain.',
+    'Le démarrage dépend de la validation du devis, du financement, des pièces administratives et du calendrier chantier.',
+  ].join('\n'));
+  const [quoteExclusionsText, setQuoteExclusionsText] = useState([
+    'Taxes, frais administratifs, études réglementaires ou prestations non explicitement incluses restent à confirmer.',
+    'Toute modification de surface, de matériaux, de délai ou de périmètre pourra entraîner un avenant.',
+  ].join('\n'));
+  const [quotePaymentTerms, setQuotePaymentTerms] = useState('Paiement par jalons vérifiés : acompte de sécurisation, lancement, avancements documentés, réception et solde après contrôle.');
+  const [quoteValidityDays, setQuoteValidityDays] = useState(15);
   const [adminDirectMessage, setAdminDirectMessage] = useState('Bonjour, votre dossier avance. Vous pouvez nous écrire ici pour toute précision sur le périmètre, le financement ou le planning.');
   const [sitePhase, setSitePhase] = useState(project?.siteUpdates?.[0]?.phase || 'Fondations et implantation');
   const [siteProgress, setSiteProgress] = useState(project?.siteUpdates?.[0]?.progress || Math.max(project?.progress || 25, 25));
@@ -241,7 +267,17 @@ export function AdminProjectDetail() {
   }
 
   const statusLabel = PROJECT_STATUS_LABELS[project.status] || project.status;
-  const quoteDisabled = !Number.isFinite(Number(quoteAmount)) || Number(quoteAmount) <= 0;
+  const quoteScopeItems = splitQuoteText(quoteScopeText);
+  const quoteAssumptionItems = splitQuoteText(quoteAssumptionsText);
+  const quoteExclusionItems = splitQuoteText(quoteExclusionsText);
+  const quoteDisabled = !Number.isFinite(Number(quoteAmount))
+    || Number(quoteAmount) <= 0
+    || !quoteLabel.trim()
+    || !quoteDescription.trim()
+    || quoteScopeItems.length === 0
+    || !quotePaymentTerms.trim()
+    || !Number.isFinite(Number(quoteValidityDays))
+    || Number(quoteValidityDays) < 1;
   const financing = project.financing || (project.formData?.financing as typeof project.financing);
   const visualProposal = project.visualProposal;
   const locationLabel = formatProjectLocation(project);
@@ -314,7 +350,16 @@ export function AdminProjectDetail() {
 
   const handleQuote = () => {
     if (quoteDisabled) return;
-    sendProjectQuote(project.id, Number(quoteAmount), `Devis ${project.categoryName || 'BTP'}`);
+    sendProjectQuote(project.id, Number(quoteAmount), quoteLabel.trim(), {
+      description: quoteDescription.trim(),
+      scope: quoteScopeItems,
+      assumptions: quoteAssumptionItems,
+      exclusions: quoteExclusionItems,
+      paymentTerms: quotePaymentTerms.trim(),
+      validityDays: Number(quoteValidityDays),
+      currency: 'XOF',
+      createdBy: 'Administration Buildify',
+    });
     addToast('Devis transmis au client.', 'success');
   };
 
@@ -463,21 +508,111 @@ export function AdminProjectDetail() {
                   />
                 </div>
 
-                <div className="rounded-lg border p-3">
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="quoteAmount">
-                    Devis
-                  </label>
-                  <Input
-                    id="quoteAmount"
-                    type="number"
-                    min={1}
-                    value={quoteAmount || ''}
-                    onChange={(event) => setQuoteAmount(Number(event.target.value))}
-                    className="mt-2"
-                  />
+                <div className="rounded-lg border p-3 md:col-span-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold">Devis professionnel</h3>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Le client reçoit un document clair avec montant, périmètre, hypothèses, exclusions et modalités de paiement.
+                      </p>
+                    </div>
+                    <Badge variant="outline">Décision client</Badge>
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="quoteLabel">
+                        Objet du devis
+                      </label>
+                      <Input
+                        id="quoteLabel"
+                        value={quoteLabel}
+                        onChange={(event) => setQuoteLabel(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="quoteAmount">
+                        Montant XOF
+                      </label>
+                      <Input
+                        id="quoteAmount"
+                        type="number"
+                        min={1}
+                        value={quoteAmount || ''}
+                        onChange={(event) => setQuoteAmount(Number(event.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="quoteDescription">
+                        Lecture client
+                      </label>
+                      <Textarea
+                        id="quoteDescription"
+                        value={quoteDescription}
+                        onChange={(event) => setQuoteDescription(event.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="quoteValidity">
+                        Validité
+                      </label>
+                      <Input
+                        id="quoteValidity"
+                        type="number"
+                        min={1}
+                        value={quoteValidityDays || ''}
+                        onChange={(event) => setQuoteValidityDays(Number(event.target.value))}
+                      />
+                      <p className="text-[11px] text-muted-foreground">Nombre de jours calendaires.</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="quoteScope">
+                        Périmètre inclus
+                      </label>
+                      <Textarea
+                        id="quoteScope"
+                        value={quoteScopeText}
+                        onChange={(event) => setQuoteScopeText(event.target.value)}
+                        rows={5}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="quoteAssumptions">
+                        Hypothèses
+                      </label>
+                      <Textarea
+                        id="quoteAssumptions"
+                        value={quoteAssumptionsText}
+                        onChange={(event) => setQuoteAssumptionsText(event.target.value)}
+                        rows={5}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="quoteExclusions">
+                        Hors périmètre
+                      </label>
+                      <Textarea
+                        id="quoteExclusions"
+                        value={quoteExclusionsText}
+                        onChange={(event) => setQuoteExclusionsText(event.target.value)}
+                        rows={5}
+                      />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-3">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="quotePaymentTerms">
+                        Modalités de paiement
+                      </label>
+                      <Textarea
+                        id="quotePaymentTerms"
+                        value={quotePaymentTerms}
+                        onChange={(event) => setQuotePaymentTerms(event.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                  </div>
                   <ConfirmActionDialog
                     title="Transmettre ce devis au client ?"
-                    description={`Le client verra un devis de ${FORMAT_XOF(Number(quoteAmount))} pour ${project.referenceNumber}. Il pourra l’accepter ou le refuser depuis sa plateforme client.`}
+                    description={`Le client verra ${quoteLabel.trim() || 'ce devis'} de ${FORMAT_XOF(Number(quoteAmount))} pour ${project.referenceNumber}, avec périmètre, hypothèses, validité de ${quoteValidityDays || 0} jour(s) et modalités de paiement. Il pourra le télécharger, l’accepter ou le refuser.`}
                     confirmLabel="Transmettre"
                     onConfirm={handleQuote}
                     trigger={(
@@ -902,6 +1037,14 @@ export function AdminProjectDetail() {
                         <Badge variant="secondary">{quoteStatusLabel(quote.status)}</Badge>
                       </div>
                       <p className="mt-3 text-sm font-bold">{FORMAT_XOF(quote.amount)}</p>
+                      {quote.description && (
+                        <p className="mt-2 text-xs leading-5 text-muted-foreground">{quote.description}</p>
+                      )}
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {quote.validityDays ? <Badge variant="outline" className="text-[10px]">{quote.validityDays} j de validité</Badge> : null}
+                        {quote.createdBy ? <Badge variant="outline" className="text-[10px]">{quote.createdBy}</Badge> : null}
+                        {quote.scope?.length ? <Badge variant="outline" className="text-[10px]">{quote.scope.length} poste{quote.scope.length > 1 ? 's' : ''}</Badge> : null}
+                      </div>
                     </div>
                   ))
                 )}

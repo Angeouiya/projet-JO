@@ -155,6 +155,15 @@ export interface ProjectQuoteData {
   amount: number;
   status: 'draft' | 'sent' | 'accepted' | 'refused';
   date: string;
+  description?: string;
+  scope?: string[];
+  assumptions?: string[];
+  exclusions?: string[];
+  paymentTerms?: string;
+  validityDays?: number;
+  currency?: string;
+  createdBy?: string;
+  updatedAt?: string;
   documentUrl?: string;
 }
 

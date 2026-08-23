@@ -16,6 +16,7 @@ import type {
   ProjectVisualProposalData,
   ProjectSiteUpdateData,
   ProjectMessageData,
+  ProjectQuoteData,
   NotificationData,
   TeamMemberData,
 } from '@/types';
@@ -30,6 +31,7 @@ type AuthResumeAction = 'submit-configurator';
 type TeamMemberInput = Omit<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'> & Partial<Pick<TeamMemberData, 'id' | 'createdAt' | 'updatedAt'>>;
 type ProjectSiteUpdateInput = Omit<ProjectSiteUpdateData, 'id' | 'createdAt' | 'createdBy'> & Partial<Pick<ProjectSiteUpdateData, 'id' | 'createdAt' | 'createdBy'>>;
 type ProjectMessageInput = Omit<ProjectMessageData, 'id' | 'createdAt' | 'senderName' | 'senderRole'> & Partial<Pick<ProjectMessageData, 'id' | 'createdAt' | 'senderName' | 'senderRole'>>;
+type ProjectQuoteInput = Partial<Omit<ProjectQuoteData, 'amount' | 'status' | 'date'>>;
 
 interface AppState {
   // Navigation
@@ -119,7 +121,7 @@ interface AppState {
   requestProjectInfo: (projectId: string, message: string) => void;
   respondProjectInfo: (projectId: string, message: string) => void;
   sendProjectMessage: (projectId: string, message: ProjectMessageInput) => void;
-  sendProjectQuote: (projectId: string, amount: number, label?: string) => void;
+  sendProjectQuote: (projectId: string, amount: number, label?: string, details?: ProjectQuoteInput) => void;
   updateProjectQuoteStatus: (projectId: string, quoteId: string, status: 'accepted' | 'refused') => void;
   validateProjectVisualProposal: (projectId: string, proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
   updateProjectFinancing: (projectId: string, financing: ProjectFinancingData) => void;
@@ -175,6 +177,29 @@ function activity(label: string, actor: string, type: ProjectActivityData['type'
 
 function unreadCount(notifications: NotificationData[], isAdmin: boolean) {
   return unreadNotificationsForRole(notifications, isAdmin).length;
+}
+
+function cleanQuoteLines(lines?: string[]) {
+  return (lines ?? []).map(line => line.trim()).filter(Boolean);
+}
+
+function defaultQuoteScope(project: ProjectData, label: string) {
+  return [
+    `${label} pour ${project.categoryName || project.title || 'ouvrage BTP'}`,
+    project.city ? `Intervention prévue à ${project.city}` : 'Localisation à confirmer avec le client',
+    'Étude du périmètre, coordination technique et chiffrage par lot',
+    'Préparation du planning, des jalons de paiement et du suivi projet Buildify',
+  ];
+}
+
+function defaultQuoteAssumptions(project: ProjectData) {
+  return [
+    'Montant établi sur les informations transmises par le client et ajustable après métrés, visite ou pièces complémentaires.',
+    project.budgetMax
+      ? `Budget client déclaré jusqu’à ${new Intl.NumberFormat('fr-FR').format(project.budgetMax)} XOF.`
+      : 'Budget client à confirmer avant contractualisation.',
+    'Le démarrage dépend de la validation du devis, des pièces administratives, du financement et du calendrier chantier.',
+  ];
 }
 
 export const useAppStore = create<AppState>()(
@@ -676,28 +701,47 @@ export const useAppStore = create<AppState>()(
 
         return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications, s.isAdmin) };
       }),
-      sendProjectQuote: (projectId, amount, label = 'Devis estimatif') => set(s => {
+      sendProjectQuote: (projectId, amount, label = 'Devis estimatif', details = {}) => set(s => {
         const now = new Date().toISOString();
         let projectRef = '';
+        let quoteLabel = label;
         const projects = s.userProjects.map(project => {
           if (project.id !== projectId) return project;
           projectRef = project.referenceNumber;
+          quoteLabel = details.label || label;
+          const scope = cleanQuoteLines(details.scope);
+          const assumptions = cleanQuoteLines(details.assumptions);
+          const exclusions = cleanQuoteLines(details.exclusions);
+          const quote: ProjectQuoteData = {
+            id: details.id || uniqueId('quote'),
+            label: quoteLabel,
+            amount,
+            status: 'sent',
+            date: details.updatedAt ? details.updatedAt.slice(0, 10) : now.slice(0, 10),
+            description: details.description || 'Devis estimatif établi pour cadrer le périmètre, le budget, les conditions de paiement et les prochaines décisions du dossier.',
+            scope: scope.length > 0 ? scope : defaultQuoteScope(project, quoteLabel),
+            assumptions: assumptions.length > 0 ? assumptions : defaultQuoteAssumptions(project),
+            exclusions: exclusions.length > 0 ? exclusions : [
+              'Taxes, frais administratifs, études réglementaires ou prestations non explicitement incluses restent à confirmer.',
+              'Toute modification de surface, de standing, de matériaux ou de délai pourra entraîner un avenant.',
+            ],
+            paymentTerms: details.paymentTerms || 'Paiement par jalons vérifiés : acompte de sécurisation, lancement, avancements documentés, réception et solde après contrôle.',
+            validityDays: details.validityDays ?? 15,
+            currency: details.currency || 'XOF',
+            createdBy: details.createdBy || s.user?.name || 'Administration Buildify',
+            updatedAt: now,
+            documentUrl: details.documentUrl,
+          };
           return {
             ...project,
             status: 'quote_sent',
             progress: Math.max(project.progress ?? 0, 15),
             quotes: [
-              {
-                id: uniqueId('quote'),
-                label,
-                amount,
-                status: 'sent' as const,
-                date: now.slice(0, 10),
-              },
+              quote,
               ...(project.quotes ?? []),
             ],
             activityLog: [
-              activity(`${label} transmis`, s.user?.name || 'Administration', 'quote'),
+              activity(`${quoteLabel} transmis`, s.user?.name || 'Administration', 'quote'),
               ...(project.activityLog ?? []),
             ],
             updatedAt: now,
@@ -707,7 +751,7 @@ export const useAppStore = create<AppState>()(
           {
             id: uniqueId('notif'),
             title: 'Devis disponible',
-            message: `${label} de ${new Intl.NumberFormat('fr-FR').format(amount)} XOF transmis pour ${projectRef}.`,
+            message: `${quoteLabel} de ${new Intl.NumberFormat('fr-FR').format(amount)} XOF transmis pour ${projectRef}.`,
             type: 'quote',
             audience: 'client',
             link: 'project-detail',
@@ -734,7 +778,7 @@ export const useAppStore = create<AppState>()(
                   projectRef = project.referenceNumber;
                   quoteLabel = quote.label;
                   quoteAmount = quote.amount;
-                  return { ...quote, status };
+                  return { ...quote, status, updatedAt: now };
                 })()
               : quote
           ));

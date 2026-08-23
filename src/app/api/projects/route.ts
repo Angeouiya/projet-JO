@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { normalizeEmail, normalizeText, parseJsonField, serverError, validationError } from '@/lib/api-utils';
 import { createStoredProject, hasExternalProjectStore, listStoredProjects } from '@/lib/project-store';
-import type { ProjectDocumentData, ProjectFinancingData, ProjectMessageData, ProjectSiteUpdateData } from '@/types';
+import type { ProjectDocumentData, ProjectFinancingData, ProjectMessageData, ProjectQuoteData, ProjectSiteUpdateData } from '@/types';
 
 const projectQuerySchema = z.object({
   userId: z.string().trim().min(1).optional(),
@@ -48,6 +48,23 @@ const projectCreateSchema = z.object({
     date: z.string().trim().min(1),
     url: z.string().trim().optional(),
     size: z.coerce.number().optional(),
+  })).optional(),
+  quotes: z.array(z.object({
+    id: z.string().trim().min(1),
+    label: z.string().trim().min(1),
+    amount: z.coerce.number().nonnegative(),
+    status: z.enum(['draft', 'sent', 'accepted', 'refused']),
+    date: z.string().trim().min(1),
+    description: z.string().trim().optional(),
+    scope: z.array(z.string().trim().min(1)).optional(),
+    assumptions: z.array(z.string().trim().min(1)).optional(),
+    exclusions: z.array(z.string().trim().min(1)).optional(),
+    paymentTerms: z.string().trim().optional(),
+    validityDays: z.coerce.number().int().min(1).optional(),
+    currency: z.string().trim().optional(),
+    createdBy: z.string().trim().optional(),
+    updatedAt: z.string().trim().optional(),
+    documentUrl: z.string().trim().optional(),
   })).optional(),
   projectMessages: z.array(z.object({
     id: z.string().trim().min(1),
@@ -228,6 +245,7 @@ export async function POST(request: Request) {
         representativeRelation,
         financing: body.financing as ProjectFinancingData | undefined,
         documents: body.documents as ProjectDocumentData[] | undefined,
+        quotes: body.quotes as ProjectQuoteData[] | undefined,
         projectMessages: body.projectMessages as ProjectMessageData[] | undefined,
         siteUpdates: body.siteUpdates as ProjectSiteUpdateData[] | undefined,
       });

@@ -24,7 +24,7 @@ import { useAppStore } from '@/stores/app-store';
 import { PROJECT_STATUS_LABELS, FORMAT_XOF } from '@/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { formatProjectLocation } from '@/lib/project-format';
-import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectSiteUpdateData, ProjectVisualProposalData } from '@/types';
+import type { ProjectData, ProjectDocumentData, ProjectFinancingData, ProjectQuoteData, ProjectSiteUpdateData, ProjectVisualProposalData } from '@/types';
 
 // ── Types dossier client ───────────────────────────────────
 
@@ -47,7 +47,7 @@ type ProjectDetailData = {
   documents: { type: string; name: string; date: string; icon: LucideIcon }[];
   messages: { id: string; sender: string; senderRole: string; text: string; time: string; isOwn: boolean }[];
   infoResponses?: ProjectData['missingInfoResponses'];
-  quotes: { id: string; label: string; amount: number; status: 'pending' | 'accepted' | 'refused'; date: string; }[];
+  quotes: ProjectQuoteViewData[];
   visualProposal?: ProjectVisualProposalData;
   financing?: ProjectFinancingData;
   clientPresence?: string;
@@ -66,6 +66,10 @@ type ProjectDetailData = {
 
 type VisualProposal = Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy' | 'strengths'> & {
   strengths: string[];
+};
+
+type ProjectQuoteViewData = Omit<ProjectQuoteData, 'status'> & {
+  status: 'pending' | 'accepted' | 'refused';
 };
 
 // ── Helper ─────────────────────────────────────────────────
@@ -222,11 +226,8 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
     ],
     infoResponses: project.missingInfoResponses ?? [],
     quotes: (project.quotes ?? []).map(quote => ({
-      id: quote.id,
-      label: quote.label,
-      amount: quote.amount,
+      ...quote,
       status: quote.status === 'accepted' || quote.status === 'refused' ? quote.status : 'pending',
-      date: quote.date,
     })),
     visualProposal: project.visualProposal,
     financing: project.financing || (project.formData?.financing as ProjectFinancingData | undefined),
@@ -505,6 +506,136 @@ function downloadProposalPortfolio(proposals: VisualProposal[], selectedProposal
   anchor.download = `${data.referenceNumber}-comparatif-propositions-buildify.html`;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function quoteScopeItems(quote: ProjectQuoteViewData, data: ProjectDetailData) {
+  return quote.scope?.length ? quote.scope : [
+    `${quote.label} pour ${data.categoryName}`,
+    `Localisation : ${data.city || 'à confirmer'}`,
+    'Coordination technique, suivi de dossier et préparation des jalons projet.',
+  ];
+}
+
+function quoteAssumptionItems(quote: ProjectQuoteViewData, data: ProjectDetailData) {
+  return quote.assumptions?.length ? quote.assumptions : [
+    'Montant établi sur les informations transmises avant métrés définitifs et validation terrain.',
+    data.financing?.readiness === 'confirmed'
+      ? 'Financement annoncé comme confirmé par le client, sous réserve des pièces justificatives.'
+      : 'Financement à confirmer avant engagement contractuel.',
+    'Les surfaces, documents, délais et choix de matériaux peuvent modifier le chiffrage final.',
+  ];
+}
+
+function quoteExclusionItems(quote: ProjectQuoteViewData) {
+  return quote.exclusions?.length ? quote.exclusions : [
+    'Taxes, frais administratifs, études réglementaires et prestations non listées restent à confirmer.',
+    'Toute évolution du périmètre fera l’objet d’un avenant ou d’un nouveau devis.',
+  ];
+}
+
+function quotePaymentTerms(quote: ProjectQuoteViewData) {
+  return quote.paymentTerms || 'Paiement par jalons vérifiés : acompte, lancement, avancements documentés, réception puis solde après contrôle.';
+}
+
+function buildQuoteHtml(quote: ProjectQuoteViewData, data: ProjectDetailData) {
+  const validity = quote.validityDays ? `${quote.validityDays} jour(s)` : 'À confirmer';
+  const statusLabel = getQuoteStatusBadge(quote.status).label;
+  const generatedAt = new Date().toLocaleDateString('fr-FR');
+
+  return `<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(quote.label)} - ${escapeHtml(data.referenceNumber)}</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; color: #111; background: #fff; }
+    main { max-width: 960px; margin: 0 auto; padding: 40px; }
+    header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #111; padding-bottom: 18px; }
+    .brand { font-size: 26px; font-weight: 800; }
+    .muted { color: #555; }
+    .right { text-align: right; font-size: 12px; line-height: 1.7; }
+    h1 { margin: 28px 0 10px; font-size: 32px; line-height: 1.15; }
+    p { line-height: 1.65; color: #333; }
+    .amount { margin: 22px 0; border: 2px solid #111; border-radius: 10px; padding: 18px; }
+    .amount .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #555; font-weight: 700; }
+    .amount .value { margin-top: 8px; font-size: 30px; font-weight: 800; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
+    .box { border: 1px solid #ddd; border-radius: 8px; padding: 14px; break-inside: avoid; }
+    .box-title { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #666; font-weight: 700; }
+    .box-value { margin-top: 8px; font-size: 14px; font-weight: 700; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    ul { margin: 10px 0 0; padding-left: 20px; line-height: 1.7; }
+    .decision { margin-top: 14px; border: 1px solid #111; border-radius: 10px; padding: 16px; }
+    footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #ddd; color: #666; font-size: 12px; line-height: 1.6; }
+    @media (max-width: 760px) { main { padding: 22px; } header, .split { display: block; } .right { margin-top: 12px; text-align: left; } .grid { grid-template-columns: 1fr; } }
+    @media print { main { padding: 24px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <div class="brand">Buildify</div>
+        <div class="muted">Devis projet client</div>
+      </div>
+      <div class="right">
+        <div>Dossier ${escapeHtml(data.referenceNumber)}</div>
+        <div>${escapeHtml(data.title)}</div>
+        <div>${escapeHtml(data.city || 'Localisation à confirmer')}</div>
+        <div>Généré le ${escapeHtml(generatedAt)}</div>
+      </div>
+    </header>
+    <h1>${escapeHtml(quote.label)}</h1>
+    <p>${escapeHtml(quote.description || 'Ce devis précise le budget, le périmètre, les hypothèses et les modalités de décision du projet.')}</p>
+    <section class="amount">
+      <div class="label">Montant proposé</div>
+      <div class="value">${escapeHtml(FORMAT_XOF(quote.amount))}</div>
+    </section>
+    <section class="grid">
+      <div class="box"><div class="box-title">Statut</div><div class="box-value">${escapeHtml(statusLabel)}</div></div>
+      <div class="box"><div class="box-title">Validité</div><div class="box-value">${escapeHtml(validity)}</div></div>
+      <div class="box"><div class="box-title">Date devis</div><div class="box-value">${escapeHtml(quote.date)}</div></div>
+      <div class="box"><div class="box-title">Préparé par</div><div class="box-value">${escapeHtml(quote.createdBy || 'Buildify')}</div></div>
+    </section>
+    <div class="split">
+      <section class="box"><div class="box-title">Périmètre inclus</div><ul>${renderList(quoteScopeItems(quote, data))}</ul></section>
+      <section class="box"><div class="box-title">Hypothèses financières et techniques</div><ul>${renderList(quoteAssumptionItems(quote, data))}</ul></section>
+    </div>
+    <div class="split">
+      <section class="box"><div class="box-title">Hors périmètre</div><ul>${renderList(quoteExclusionItems(quote))}</ul></section>
+      <section class="box"><div class="box-title">Modalités de paiement</div><p>${escapeHtml(quotePaymentTerms(quote))}</p></section>
+    </div>
+    <section class="decision">
+      <strong>Comprendre l’engagement</strong>
+      <p>Accepter ce devis autorise Buildify à préparer le contrat, le planning, les pièces de démarrage et les prochaines étapes de paiement. La contractualisation finale reste liée aux vérifications techniques, administratives et financières.</p>
+    </section>
+    <footer>
+      Document généré depuis l’espace client Buildify. Conservez-le avec vos pièces projet, surtout si vous pilotez le chantier depuis l’étranger.
+    </footer>
+  </main>
+</body>
+</html>`;
+}
+
+function downloadQuoteSheet(quote: ProjectQuoteViewData, data: ProjectDetailData) {
+  const blob = new Blob([buildQuoteHtml(quote, data)], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${data.referenceNumber}-${quote.id}-devis-buildify.html`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function openQuoteSheet(quote: ProjectQuoteViewData, data: ProjectDetailData) {
+  const tab = window.open('', '_blank');
+  if (!tab) {
+    downloadQuoteSheet(quote, data);
+    return;
+  }
+  tab.document.write(buildQuoteHtml(quote, data));
+  tab.document.close();
 }
 
 function buildVisualProposals(data: ProjectDetailData): VisualProposal[] {
@@ -1803,6 +1934,60 @@ function DevisTab({
                   </Badge>
                 </div>
                 <p className="text-lg font-bold mt-3">{FORMAT_XOF(quote.amount)}</p>
+                {quote.description && (
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{quote.description}</p>
+                )}
+
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="rounded-lg border p-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Validité</p>
+                    <p className="mt-1 text-xs font-semibold">{quote.validityDays ? `${quote.validityDays} j` : 'À confirmer'}</p>
+                  </div>
+                  <div className="rounded-lg border p-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Devise</p>
+                    <p className="mt-1 text-xs font-semibold">{quote.currency || 'XOF'}</p>
+                  </div>
+                  <div className="rounded-lg border p-2.5 sm:col-span-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Préparé par</p>
+                    <p className="mt-1 text-xs font-semibold break-words">{quote.createdBy || 'Buildify'}</p>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Périmètre inclus</p>
+                    <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                      {quoteScopeItems(quote, data).map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Hypothèses</p>
+                    <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                      {quoteAssumptionItems(quote, data).map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Hors périmètre</p>
+                    <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                      {quoteExclusionItems(quote).map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                  </div>
+                  <div className="rounded-lg border p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Modalités de paiement</p>
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">{quotePaymentTerms(quote)}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs" onClick={() => openQuoteSheet(quote, data)}>
+                    <Eye className="size-3.5" />
+                    Consulter
+                  </Button>
+                  <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs" onClick={() => downloadQuoteSheet(quote, data)}>
+                    <Download className="size-3.5" />
+                    Télécharger
+                  </Button>
+                </div>
 
                 {quote.status === 'pending' && (
                   <div className="mt-4 grid grid-cols-2 gap-2">
