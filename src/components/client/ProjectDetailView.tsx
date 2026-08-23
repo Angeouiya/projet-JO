@@ -1528,6 +1528,20 @@ const PROJECT_BRIEF_ICONS: Record<ProjectBriefItemKey, LucideIcon> = {
   timeline: Calendar,
 };
 
+type ClientActionTone = 'active' | 'done' | 'pending';
+
+interface ClientProjectAction {
+  id: string;
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  owner: string;
+  statusLabel: string;
+  tone: ClientActionTone;
+  actionLabel: string;
+  onClick?: () => void;
+}
+
 function ResumeTab({
   data,
   onOpenProposals,
@@ -1535,6 +1549,7 @@ function ResumeTab({
   onOpenPlanning,
   onOpenDocuments,
   onOpenMessages,
+  onOpenQuotes,
   onOpenSite,
 }: {
   data: ProjectDetailData;
@@ -1543,6 +1558,7 @@ function ResumeTab({
   onOpenPlanning?: () => void;
   onOpenDocuments?: () => void;
   onOpenMessages?: () => void;
+  onOpenQuotes?: () => void;
   onOpenSite?: () => void;
 }) {
   const infoItems = [
@@ -1597,6 +1613,109 @@ function ResumeTab({
   const proposalPreview = data.visualProposal ? normalizeVisualProposal(data.visualProposal) : proposals[0];
   const technicalBriefItems = data.technicalBrief.items;
   const technicalBriefChips = data.technicalBrief.chips;
+  const financeReady = score >= 65 || financing.readiness === 'confirmed';
+  const documentsReady = data.documents.length >= 2;
+  const hasInfoRequest = data.status === 'info_required';
+  const pendingQuote = data.quotes.find(quote => quote.status === 'pending');
+  const acceptedQuote = data.quotes.find(quote => quote.status === 'accepted');
+  const hasConfirmedSchedule = data.scheduleItems.some(item => item.status === 'confirmed');
+  const hasAnySchedule = data.scheduleItems.length > 0;
+  const chantierStarted = data.status === 'in_progress' || data.status === 'delivered' || data.siteUpdates.length > 0;
+  const clientActionItems: ClientProjectAction[] = [
+    {
+      id: 'messages',
+      icon: MessageSquare,
+      title: hasInfoRequest ? 'Répondre à la demande Buildify' : 'Garder le canal projet ouvert',
+      description: hasInfoRequest
+        ? 'Une information est attendue pour débloquer l’analyse, le devis ou le planning.'
+        : 'Tous les échanges utiles restent centralisés dans le dossier, sans mélange avec l’administration.',
+      owner: hasInfoRequest ? 'Client' : 'Client + Buildify',
+      statusLabel: hasInfoRequest ? 'Prioritaire' : data.messages.length ? 'Actif' : 'Ouvert',
+      tone: hasInfoRequest ? 'active' : 'pending',
+      actionLabel: 'Ouvrir échanges',
+      onClick: onOpenMessages,
+    },
+    {
+      id: 'finance',
+      icon: Wallet,
+      title: financeReady ? 'Financement lisible' : 'Renforcer le dossier financier',
+      description: financeReady
+        ? 'La capacité déclarée permet de préparer les jalons, la banque ou le contrat.'
+        : 'Complétez salaire, charges, apport, banque et pièces pour éviter un engagement flou.',
+      owner: 'Client',
+      statusLabel: financeReady ? 'Cadré' : 'À compléter',
+      tone: financeReady ? 'done' : 'active',
+      actionLabel: 'Ouvrir finance',
+      onClick: onOpenFinancing,
+    },
+    {
+      id: 'documents',
+      icon: FolderArchive,
+      title: documentsReady ? 'Pièces projet disponibles' : 'Ajouter les pièces du dossier',
+      description: documentsReady
+        ? 'Les documents transmis permettent de sécuriser l’étude et les décisions.'
+        : 'Plans, photos, titre foncier, devis existant ou justificatifs accélèrent la qualification.',
+      owner: 'Client',
+      statusLabel: documentsReady ? 'Reçu' : `${data.documents.length} pièce(s)`,
+      tone: documentsReady ? 'done' : 'active',
+      actionLabel: 'Ouvrir pièces',
+      onClick: onOpenDocuments,
+    },
+    {
+      id: 'proposal',
+      icon: Eye,
+      title: data.visualProposal ? 'Proposition visuelle validée' : 'Choisir une proposition visuelle',
+      description: data.visualProposal
+        ? 'La base visuelle est retenue pour préparer le chiffrage et la suite du dossier.'
+        : 'Comparez les images proposées, téléchargez la fiche et validez une orientation.',
+      owner: data.visualProposal ? 'Buildify' : 'Client',
+      statusLabel: data.visualProposal ? 'Validée' : proposals.length ? `${proposals.length} option(s)` : 'À publier',
+      tone: data.visualProposal ? 'done' : proposals.length ? 'active' : 'pending',
+      actionLabel: 'Voir visuels',
+      onClick: onOpenProposals,
+    },
+    {
+      id: 'quote',
+      icon: Receipt,
+      title: pendingQuote ? 'Décider sur le devis' : acceptedQuote ? 'Devis accepté' : 'Attendre le devis détaillé',
+      description: pendingQuote
+        ? 'Le devis est prêt à lire, télécharger, accepter ou refuser depuis l’espace client.'
+        : acceptedQuote
+          ? 'Le projet peut passer vers contrat, planning et jalons de paiement.'
+          : 'Buildify prépare un chiffrage clair avec périmètre, hypothèses et modalités.',
+      owner: pendingQuote ? 'Client' : 'Buildify',
+      statusLabel: pendingQuote ? 'Décision' : acceptedQuote ? 'Accepté' : 'À venir',
+      tone: pendingQuote ? 'active' : acceptedQuote ? 'done' : 'pending',
+      actionLabel: 'Ouvrir devis',
+      onClick: onOpenQuotes,
+    },
+    {
+      id: 'planning',
+      icon: Calendar,
+      title: hasAnySchedule ? 'Planning publié' : 'Planifier la prochaine étape',
+      description: hasAnySchedule
+        ? 'Confirmez le rendez-vous, demandez un report ou vérifiez les préparatifs.'
+        : 'Les visites, réunions et validations apparaîtront ici dès publication.',
+      owner: hasAnySchedule && !hasConfirmedSchedule ? 'Client' : 'Buildify',
+      statusLabel: hasConfirmedSchedule ? 'Confirmé' : hasAnySchedule ? 'À confirmer' : 'À programmer',
+      tone: hasConfirmedSchedule ? 'done' : hasAnySchedule ? 'active' : 'pending',
+      actionLabel: 'Ouvrir planning',
+      onClick: onOpenPlanning,
+    },
+    {
+      id: 'site',
+      icon: Camera,
+      title: chantierStarted ? 'Suivre le chantier' : 'Préparer le suivi chantier',
+      description: chantierStarted
+        ? 'Photos, rapports et avancement sont disponibles pour suivre chaque jalon.'
+        : 'Le suivi chantier s’activera après contrat, planning et démarrage opérationnel.',
+      owner: 'Buildify',
+      statusLabel: chantierStarted ? 'En suivi' : 'À venir',
+      tone: chantierStarted ? 'active' : 'pending',
+      actionLabel: 'Ouvrir chantier',
+      onClick: onOpenSite,
+    },
+  ];
 
   return (
     <div className="space-y-4">
@@ -1656,6 +1775,64 @@ function ResumeTab({
               <Camera className="size-4" />
               Chantier
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="py-0 gap-0 border-foreground/10">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Plan d’action client</h4>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Les prochaines décisions du dossier, avec le responsable et l’espace à ouvrir.
+              </p>
+            </div>
+            <Badge variant="outline" className="w-fit">
+              {clientActionItems.filter(item => item.tone === 'active').length} priorité(s)
+            </Badge>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {clientActionItems.map(item => {
+              const Icon = item.icon;
+              const isActive = item.tone === 'active';
+              return (
+                <div
+                  key={item.id}
+                  className={`flex min-h-[172px] flex-col rounded-lg border p-3 ${
+                    isActive ? 'border-foreground bg-foreground text-background' : 'bg-background'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${isActive ? 'bg-background/15' : 'bg-muted'}`}>
+                      <Icon className={`size-4 ${isActive ? 'text-background' : 'text-muted-foreground'}`} />
+                    </span>
+                    <Badge variant={item.tone === 'done' ? 'default' : 'outline'} className={`shrink-0 text-[10px] ${isActive ? 'border-background/30 text-background' : ''}`}>
+                      {item.statusLabel}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 min-w-0 flex-1">
+                    <p className="text-sm font-bold leading-5">{item.title}</p>
+                    <p className={`mt-2 text-xs leading-5 ${isActive ? 'text-background/75' : 'text-muted-foreground'}`}>
+                      {item.description}
+                    </p>
+                    <p className={`mt-2 text-[10px] font-semibold uppercase tracking-wider ${isActive ? 'text-background/65' : 'text-muted-foreground'}`}>
+                      Responsable · {item.owner}
+                    </p>
+                  </div>
+                  <Button
+                    variant={isActive ? 'secondary' : 'outline'}
+                    size="sm"
+                    className="mt-3 h-9 w-full gap-1.5 text-xs"
+                    onClick={item.onClick}
+                  >
+                    {item.actionLabel}
+                    <ArrowLeft className="size-3 rotate-180" />
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -3608,6 +3785,7 @@ export function ProjectDetailView() {
                 onOpenPlanning={() => setActiveTab('planning')}
                 onOpenDocuments={() => setActiveTab('documents')}
                 onOpenMessages={() => setActiveTab('messages')}
+                onOpenQuotes={() => setActiveTab('devis')}
                 onOpenSite={() => setActiveTab('chantier')}
               />
             )}

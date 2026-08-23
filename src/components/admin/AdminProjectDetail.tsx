@@ -367,6 +367,20 @@ const PROJECT_BRIEF_ICONS: Record<ProjectBriefItemKey, LucideIcon> = {
   timeline: CalendarDays,
 };
 
+type AdminActionTone = 'active' | 'done' | 'pending';
+
+interface AdminProjectAction {
+  id: string;
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  statusLabel: string;
+  owner: string;
+  tone: AdminActionTone;
+  targetId: string;
+  actionLabel: string;
+}
+
 function splitQuoteText(value: string) {
   return value
     .split(/\r?\n/)
@@ -631,6 +645,108 @@ export function AdminProjectDetail() {
     { label: 'Écart à couvrir', value: amountOrTodo(fundingGap), help: 'Budget non couvert par apport + financement déclaré.' },
     { label: 'Jalons cadrés', value: milestoneTotal ? FORMAT_XOF(milestoneTotal) : 'À calculer', help: `${paymentMilestones.length} échéance(s), ${blockedCount} blocage(s).` },
   ];
+  const hasPendingQuote = (project.quotes ?? []).some(quote => quote.status === 'sent' || quote.status === 'draft');
+  const hasAcceptedQuote = (project.quotes ?? []).some(quote => quote.status === 'accepted');
+  const hasVisualProposal = Boolean(project.visualProposal || (project.visualProposals ?? []).length);
+  const hasUpcomingSchedule = Boolean(nextScheduleItem);
+  const hasSiteUpdate = Boolean((project.siteUpdates ?? []).length);
+  const adminActionItems: AdminProjectAction[] = [
+    {
+      id: 'assign',
+      icon: UserCheck,
+      title: project.assignedTo ? 'Responsable dossier affecté' : 'Affecter un responsable',
+      description: project.assignedTo
+        ? `${project.assignedTo} pilote ce dossier et apparaît côté client.`
+        : 'Le client doit voir un interlocuteur clair pour éviter un espace projet anonyme.',
+      statusLabel: project.assignedTo ? 'OK' : 'Prioritaire',
+      owner: 'Administration',
+      tone: project.assignedTo ? 'done' : 'active',
+      targetId: 'leadName',
+      actionLabel: project.assignedTo ? 'Changer' : 'Affecter',
+    },
+    {
+      id: 'info',
+      icon: MessageSquareText,
+      title: latestInfoResponse ? 'Réponse client à analyser' : project.missingInfo ? 'Relancer les informations' : 'Demander les infos manquantes',
+      description: latestInfoResponse
+        ? 'Une réponse client est disponible : elle peut débloquer le devis, les pièces ou le planning.'
+        : project.missingInfo
+          ? 'Une demande existe déjà. Relancez ou reformulez si le dossier reste incomplet.'
+          : 'Posez une question précise depuis l’administration pour éviter les échanges dispersés.',
+      statusLabel: latestInfoResponse ? 'À traiter' : project.missingInfo ? 'En attente' : 'À cadrer',
+      owner: 'Chargé dossier',
+      tone: latestInfoResponse || !project.missingInfo ? 'active' : 'pending',
+      targetId: 'infoMessage',
+      actionLabel: 'Ouvrir message',
+    },
+    {
+      id: 'proposal',
+      icon: ImageIcon,
+      title: hasVisualProposal ? 'Visuel client publié' : 'Publier une proposition visuelle',
+      description: hasVisualProposal
+        ? 'Le client dispose d’une image consultable, téléchargeable ou validable.'
+        : 'Ajoutez une image professionnelle avec critères, risques et prochaines étapes.',
+      statusLabel: hasVisualProposal ? 'Publié' : 'À publier',
+      owner: 'Études / commercial',
+      tone: hasVisualProposal ? 'done' : 'active',
+      targetId: 'proposalTitle',
+      actionLabel: hasVisualProposal ? 'Publier autre' : 'Préparer',
+    },
+    {
+      id: 'quote',
+      icon: ReceiptText,
+      title: hasAcceptedQuote ? 'Devis accepté' : hasPendingQuote ? 'Devis à suivre' : 'Préparer un devis clair',
+      description: hasAcceptedQuote
+        ? 'Le dossier peut avancer vers contrat, planning, jalons et chantier.'
+        : hasPendingQuote
+          ? 'Un devis est transmis ou en brouillon. Suivez la décision client.'
+          : 'Le devis doit reprendre périmètre, hypothèses, exclusions, validité et paiement.',
+      statusLabel: hasAcceptedQuote ? 'Accepté' : hasPendingQuote ? 'En cours' : 'À créer',
+      owner: 'Administration',
+      tone: hasAcceptedQuote ? 'done' : 'active',
+      targetId: 'quoteLabel',
+      actionLabel: 'Ouvrir devis',
+    },
+    {
+      id: 'schedule',
+      icon: CalendarDays,
+      title: hasUpcomingSchedule ? 'Rendez-vous publié' : 'Planifier la prochaine étape',
+      description: hasUpcomingSchedule
+        ? 'Le client peut confirmer, demander un report et lire les préparatifs.'
+        : 'Programmez une visite, une réunion visio ou une validation technique.',
+      statusLabel: hasUpcomingSchedule ? 'Planifié' : 'À planifier',
+      owner: 'Opérations',
+      tone: hasUpcomingSchedule ? 'done' : 'active',
+      targetId: 'scheduleTitle',
+      actionLabel: 'Ouvrir planning',
+    },
+    {
+      id: 'milestones',
+      icon: HandCoins,
+      title: paymentMilestones.length ? 'Jalons financiers prêts' : 'Créer les jalons financiers',
+      description: paymentMilestones.length
+        ? 'Les échéances peuvent être suivies, bloquées ou marquées comme dues/payées.'
+        : 'Structurez les paiements par étapes vérifiées avant tout décaissement important.',
+      statusLabel: paymentMilestones.length ? `${paymentMilestones.length} jalon(s)` : 'À cadrer',
+      owner: 'Finance',
+      tone: paymentMilestones.length ? 'done' : 'pending',
+      targetId: 'paymentMilestone',
+      actionLabel: 'Ouvrir jalons',
+    },
+    {
+      id: 'site',
+      icon: Camera,
+      title: hasSiteUpdate ? 'Suivi chantier publié' : 'Préparer le suivi chantier',
+      description: hasSiteUpdate
+        ? 'Le client voit les photos, rapports et pourcentages depuis son espace.'
+        : 'Publiez les phases, photos et rapports dès que le chantier démarre.',
+      statusLabel: hasSiteUpdate ? 'Actif' : 'À venir',
+      owner: 'Terrain',
+      tone: hasSiteUpdate ? 'done' : 'pending',
+      targetId: 'sitePhase',
+      actionLabel: 'Ouvrir chantier',
+    },
+  ];
   const recentProjectMessages = (project.projectMessages ?? [])
     .slice()
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -739,6 +855,15 @@ export function AdminProjectDetail() {
     || !Number.isFinite(Number(siteProgress))
     || Number(siteProgress) < 0
     || Number(siteProgress) > 100;
+
+  const focusAdminAction = (targetId: string) => {
+    const element = document.getElementById(targetId);
+    if (!element) return;
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => {
+      if (element instanceof HTMLElement) element.focus();
+    }, 250);
+  };
 
   const handleSiteUpdate = () => {
     if (siteUpdateDisabled) return;
@@ -928,6 +1053,63 @@ export function AdminProjectDetail() {
                     <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{item.help}</p>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="py-0 gap-0 border-foreground/10">
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Plan d’exécution admin</p>
+                  <h2 className="mt-1 text-lg font-bold">Actions prioritaires, responsables et accès rapide</h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Chaque carte mène au bon formulaire de la plateforme administratrice, sans exposer ces actions côté client.
+                  </p>
+                </div>
+                <Badge variant="outline">{adminActionItems.filter(item => item.tone === 'active').length} priorité(s)</Badge>
+              </div>
+
+              <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {adminActionItems.map(item => {
+                  const Icon = item.icon;
+                  const isActive = item.tone === 'active';
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex min-h-[170px] flex-col rounded-lg border p-3 ${
+                        isActive ? 'border-foreground bg-foreground text-background' : 'bg-background'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${isActive ? 'bg-background/15' : 'bg-muted'}`}>
+                          <Icon className={`size-4 ${isActive ? 'text-background' : 'text-muted-foreground'}`} />
+                        </span>
+                        <Badge variant={item.tone === 'done' ? 'default' : 'outline'} className={`shrink-0 text-[10px] ${isActive ? 'border-background/30 text-background' : ''}`}>
+                          {item.statusLabel}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 min-w-0 flex-1">
+                        <p className="text-sm font-bold leading-5">{item.title}</p>
+                        <p className={`mt-2 text-xs leading-5 ${isActive ? 'text-background/75' : 'text-muted-foreground'}`}>
+                          {item.description}
+                        </p>
+                        <p className={`mt-2 text-[10px] font-semibold uppercase tracking-wider ${isActive ? 'text-background/65' : 'text-muted-foreground'}`}>
+                          Responsable · {item.owner}
+                        </p>
+                      </div>
+                      <Button
+                        variant={isActive ? 'secondary' : 'outline'}
+                        size="sm"
+                        className="mt-3 h-9 w-full gap-1.5 text-xs"
+                        onClick={() => focusAdminAction(item.targetId)}
+                      >
+                        {item.actionLabel}
+                        <ArrowLeft className="size-3 rotate-180" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
