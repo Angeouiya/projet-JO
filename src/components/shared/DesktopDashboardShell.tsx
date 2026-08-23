@@ -5,19 +5,27 @@ import {
   ChevronRight,
   ClipboardList,
   FolderKanban,
+  Hammer,
   Home,
+  Landmark,
   LockKeyhole,
   MapPin,
+  ReceiptText,
+  Route,
   Search,
+  ShieldCheck,
   User,
+  Wallet,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { unreadNotificationsForRole } from '@/lib/notification-audience';
+import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
 import { useAppStore } from '@/stores/app-store';
 import { BrandLogo } from './BrandLogo';
-import type { ViewName } from '@/types';
+import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
+import type { ProjectData, ViewName } from '@/types';
 
 type NavItem = {
   id: ViewName;
@@ -41,8 +49,32 @@ function getActiveId(view: ViewName): ViewName {
   return view;
 }
 
+function compactBudget(project: ProjectData) {
+  if (project.budgetMin && project.budgetMax) return `${FORMAT_XOF(project.budgetMin)} - ${FORMAT_XOF(project.budgetMax)}`;
+  if (project.budgetMax) return FORMAT_XOF(project.budgetMax);
+  if (project.budgetMin) return FORMAT_XOF(project.budgetMin);
+  return 'Budget à estimer';
+}
+
 export function ClientDashboardHome() {
-  const { navigate, isAuthenticated, requireAuth, user } = useAppStore();
+  const {
+    navigate,
+    isAuthenticated,
+    requireAuth,
+    user,
+    userProjects,
+    resetConfigurator,
+    setConfiguratorResponse,
+  } = useAppStore();
+
+  const activeProjects = userProjects.filter(project => !['delivered', 'cancelled'].includes(project.status));
+  const urgentProject = activeProjects.find(project => project.missingInfo || project.quotes?.some(quote => quote.status === 'sent' || quote.status === 'draft'))
+    || activeProjects[0]
+    || userProjects[0];
+  const decisionCenter = urgentProject ? buildProjectDecisionCenter(urgentProject, 'client') : null;
+  const recentProjects = [...userProjects]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
+    .slice(0, 3);
 
   const goPrivate = (view: ViewName) => {
     if (!isAuthenticated) {
@@ -52,18 +84,38 @@ export function ClientDashboardHome() {
     navigate(view);
   };
 
+  const openProject = (project: ProjectData) => {
+    goPrivate('project-detail');
+    if (isAuthenticated) {
+      navigate('project-detail', { id: project.id });
+    }
+  };
+
+  const startTypedProject = (projectType: string) => {
+    resetConfigurator();
+    setConfiguratorResponse('projectType', projectType);
+    navigate('create');
+  };
+
   const quickTabs: Array<NavItem & { description: string }> = [
-    { id: 'home', label: 'Accueil public', icon: Home, description: 'Revenir à la page d’accueil du site.' },
+    { id: 'dashboard', label: 'Accueil', icon: Home, description: 'Revenir à votre accueil client.' },
     { id: 'explore', label: 'Explorer', icon: Search, description: 'Voir les modèles, réalisations et idées de projet.' },
     { id: 'projects', label: 'Projets', icon: FolderKanban, private: true, description: 'Suivre vos demandes et dossiers transmis.' },
     { id: 'profile', label: 'Profil', icon: User, private: true, description: 'Gérer vos informations de contact.' },
   ];
 
   const projectShortcuts = [
-    'Maison basse',
-    'Immeuble R+',
-    'VRD',
-    'Lot de travaux',
+    { label: 'Maison basse', type: 'maison-basse', icon: Home, helper: 'Surface, emprise, chambres, finance' },
+    { label: 'Immeuble R+', type: 'immeuble-rplus', icon: Landmark, helper: 'Niveaux, lots, emprise, sécurité' },
+    { label: 'VRD', type: 'vrd', icon: Route, helper: 'Voirie, drainage, réseaux, exutoire' },
+    { label: 'Lot travaux', type: 'lot-travaux', icon: Hammer, helper: 'Gros œuvre, plomberie, finitions' },
+  ];
+
+  const dashboardStats = [
+    { label: 'Projets actifs', value: `${activeProjects.length}`, icon: FolderKanban },
+    { label: 'Décisions', value: decisionCenter ? `${decisionCenter.items.filter(item => item.tone === 'active' || item.tone === 'blocked').length}` : '0', icon: ShieldCheck },
+    { label: 'Devis', value: `${userProjects.reduce((total, project) => total + (project.quotes?.length ?? 0), 0)}`, icon: ReceiptText },
+    { label: 'Finance', value: decisionCenter?.metrics.find(metric => metric.label === 'Finance')?.value || 'À cadrer', icon: Wallet },
   ];
 
   return (
@@ -90,6 +142,96 @@ export function ClientDashboardHome() {
               Mes projets
               <LockKeyhole className="size-4" />
             </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold">Prochaine décision</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Le point prioritaire ressort automatiquement de vos projets, devis, messages, finance et planning.
+              </p>
+            </div>
+            {urgentProject && (
+              <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={() => openProject(urgentProject)}>
+                Ouvrir
+              </Button>
+            )}
+          </div>
+
+          {decisionCenter && urgentProject ? (
+            <div className="mt-4 rounded-xl border bg-background p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                  <Badge variant="outline" className="text-[10px]">{PROJECT_STATUS_LABELS[urgentProject.status] || urgentProject.status}</Badge>
+                  <h3 className="mt-3 break-words text-lg font-bold leading-tight">{decisionCenter.headline}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{urgentProject.title || urgentProject.categoryName || 'Projet Buildify'}</p>
+                </div>
+                <div className="shrink-0 rounded-lg border bg-muted/30 px-3 py-2 text-right">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{decisionCenter.scoreLabel}</p>
+                  <p className="mt-1 text-xl font-bold">{decisionCenter.score}%</p>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {decisionCenter.metrics.slice(0, 4).map(metric => (
+                  <div key={metric.label} className="rounded-lg border bg-muted/20 px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{metric.label}</p>
+                    <p className="mt-1 break-words text-sm font-bold">{metric.value}</p>
+                  </div>
+                ))}
+              </div>
+              {decisionCenter.blockers.length > 0 && (
+                <div className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs leading-5 text-destructive">
+                  {decisionCenter.blockers[0]}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed bg-background p-5">
+              <p className="text-sm font-semibold">Aucun projet actif pour le moment</p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Lancez un dossier pour obtenir votre suivi, vos propositions visuelles, vos devis et vos jalons.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border bg-card p-5">
+          <p className="text-sm font-semibold">Vue rapide</p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {dashboardStats.map(stat => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className="rounded-lg border bg-background p-3">
+                  <Icon className="size-4 text-muted-foreground" />
+                  <p className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{stat.label}</p>
+                  <p className="mt-1 break-words text-base font-bold">{stat.value}</p>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 space-y-2">
+            {recentProjects.length > 0 ? recentProjects.map(project => (
+              <button
+                key={project.id}
+                type="button"
+                onClick={() => openProject(project)}
+                className="flex w-full items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2 text-left transition-colors hover:border-foreground/30 hover:bg-muted/30"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{project.title || project.categoryName || 'Projet Buildify'}</span>
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">{compactBudget(project)}</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </button>
+            )) : (
+              <p className="rounded-lg border border-dashed px-3 py-4 text-xs leading-5 text-muted-foreground">
+                Vos dossiers récents apparaîtront ici.
+              </p>
+            )}
           </div>
         </div>
       </section>
@@ -122,16 +264,21 @@ export function ClientDashboardHome() {
         <div className="rounded-xl border bg-card p-5">
           <p className="text-sm font-semibold">Démarrer rapidement</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
-            {projectShortcuts.map(label => (
+            {projectShortcuts.map(item => {
+              const Icon = item.icon;
+              return (
               <button
-                key={label}
+                key={item.type}
                 type="button"
-                onClick={() => navigate('create')}
+                onClick={() => startTypedProject(item.type)}
                 className="min-h-[72px] rounded-lg border bg-background px-3 py-2 text-left text-sm font-medium leading-tight transition-colors hover:border-foreground/30 hover:bg-muted/30"
               >
-                {label}
+                <Icon className="mb-2 size-4 text-muted-foreground" />
+                <span className="block font-semibold">{item.label}</span>
+                <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">{item.helper}</span>
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
