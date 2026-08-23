@@ -28,6 +28,7 @@ import {
   localPhoneFromStored,
   normalizePhone,
 } from '@/lib/country-codes';
+import { ActionRequirementHint } from '@/components/shared/ActionRequirementHint';
 
 type AdminCreateProjectDefaults = {
   title?: string;
@@ -144,18 +145,29 @@ export function AdminCreateProjectDialog({
     description: defaults?.description || '',
   });
 
-  const canCreate = useMemo(() => {
-    const normalizedPhone = draft.clientPhone.trim()
+  const createRequirementReasons = useMemo(() => {
+    const clientPhone = draft.clientPhone.trim()
       ? normalizePhone(draft.clientPhone, getDialCode(draft.clientPhoneCountry))
       : '';
-    return Boolean(
-      draft.title.trim()
-      && draft.clientName.trim()
-      && (draft.clientEmail.trim() || normalizedPhone)
-      && draft.categoryName.trim()
-      && draft.projectCountry.trim()
-    );
+    const representativePhone = draft.representativePhone.trim()
+      ? normalizePhone(draft.representativePhone, getDialCode(draft.representativePhoneCountry))
+      : '';
+    const minBudget = numericValue(draft.budgetMin);
+    const maxBudget = numericValue(draft.budgetMax);
+
+    return [
+      !draft.title.trim() ? 'Titre du dossier' : '',
+      !draft.categoryName.trim() ? 'Catégorie de l’ouvrage' : '',
+      !draft.projectCountry.trim() ? 'Pays du projet' : '',
+      !draft.clientName.trim() ? 'Nom du client' : '',
+      (!draft.clientEmail.trim() && !clientPhone) ? 'E-mail ou téléphone client' : '',
+      (draft.clientEmail.trim() && !isEmail(draft.clientEmail.trim())) ? 'E-mail client valide' : '',
+      (clientPhone && !isPhone(clientPhone)) ? 'Téléphone client valide avec indicatif' : '',
+      (representativePhone && !isPhone(representativePhone)) ? 'Téléphone mandataire valide' : '',
+      (minBudget !== undefined && maxBudget !== undefined && minBudget > maxBudget) ? 'Budget minimum inférieur au maximum' : '',
+    ].filter(Boolean);
   }, [draft]);
+  const createDisabled = createRequirementReasons.length > 0;
 
   const setField = (field: keyof typeof draft, value: string) => {
     setDraft(current => ({ ...current, [field]: value }));
@@ -170,8 +182,8 @@ export function AdminCreateProjectDialog({
       ? normalizePhone(draft.representativePhone, getDialCode(draft.representativePhoneCountry))
       : '';
 
-    if (!canCreate) {
-      addToast('Titre, client et e-mail ou téléphone sont nécessaires.', 'error');
+    if (createDisabled) {
+      addToast('Complétez les prérequis affichés avant de créer le dossier.', 'error');
       return;
     }
     if (clientEmail && !isEmail(clientEmail)) {
@@ -522,9 +534,14 @@ export function AdminCreateProjectDialog({
           </div>
         </div>
 
+        <ActionRequirementHint
+          items={createRequirementReasons}
+          readyText="Dossier prêt à créer dans l’administration."
+        />
+
         <DialogFooter>
           <Button variant="outline" onClick={() => setDialogOpen(false)}>Annuler</Button>
-          <Button onClick={handleCreate} disabled={!canCreate}>Créer le dossier</Button>
+          <Button onClick={handleCreate} disabled={createDisabled}>Créer le dossier</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

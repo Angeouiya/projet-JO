@@ -2391,7 +2391,7 @@ function MessagesTab({ data, onSend }: { data: ProjectDetailData; onSend?: (mess
   };
 
   return (
-    <div className="flex h-[68vh] flex-col gap-3">
+    <div className="flex min-h-[68vh] flex-col gap-3 lg:h-[68vh]">
       <div className="rounded-xl border bg-muted/25 p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -2425,7 +2425,7 @@ function MessagesTab({ data, onSend }: { data: ProjectDetailData; onSend?: (mess
       </div>
 
       {/* Messages list */}
-      <div className="flex-1 overflow-y-auto space-y-3 pb-3">
+      <div className="space-y-3 pb-3 lg:flex-1 lg:overflow-y-auto">
         {localMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <MessageSquare className="size-8 text-muted-foreground/30" />
@@ -2484,6 +2484,13 @@ function MessagesTab({ data, onSend }: { data: ProjectDetailData; onSend?: (mess
           <Send className="size-4" />
         </Button>
       </div>
+      {!newMessage.trim() && (
+        <ActionRequirementHint
+          items={['Message à rédiger ou modèle à choisir']}
+          title={hasActiveInfoRequest ? 'Pour compléter le dossier' : 'Pour envoyer un message'}
+          className="mt-0"
+        />
+      )}
     </div>
   );
 }
@@ -4135,6 +4142,11 @@ function PlanningTab({
                         )}
                       />
                     </div>
+                    <ActionRequirementHint
+                      items={rescheduleNote.trim().length < 8 ? ['Raison de report (8 caractères minimum)'] : []}
+                      title="Pour demander un report"
+                      readyText="Demande de report prête à envoyer."
+                    />
                   </div>
                 )}
               </CardContent>
