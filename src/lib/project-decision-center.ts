@@ -284,7 +284,7 @@ export function buildProjectDecisionCenter(project: ProjectData, audience: Proje
   return {
     headline: audience === 'client' ? primary.title : `Admin · ${primary.title}`,
     summary: audience === 'client'
-      ? 'Vue claire des décisions qui font avancer votre projet, sans afficher les outils administratifs.'
+      ? 'Vue claire des décisions qui font avancer votre projet, sans exposer les outils internes.'
       : 'Registre admin des décisions, blocages et prochaines actions à traiter côté interne.',
     score,
     scoreLabel: score >= 80 ? 'Dossier solide' : score >= 55 ? 'Dossier en progression' : 'Dossier à renforcer',

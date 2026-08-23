@@ -617,7 +617,7 @@ function quoteAssumptionItems(quote: ProjectQuoteViewData, data: ProjectDetailDa
 
 function quoteExclusionItems(quote: ProjectQuoteViewData) {
   return quote.exclusions?.length ? quote.exclusions : [
-    'Taxes, frais administratifs, études réglementaires et prestations non listées restent à confirmer.',
+    'Taxes, frais de dossier, études réglementaires et prestations non listées restent à confirmer.',
     'Toute évolution du périmètre fera l’objet d’un avenant ou d’un nouveau devis.',
   ];
 }
@@ -697,7 +697,7 @@ function buildQuoteHtml(quote: ProjectQuoteViewData, data: ProjectDetailData) {
     </div>
     <section class="decision">
       <strong>Comprendre l’engagement</strong>
-      <p>Accepter ce devis autorise Buildify à préparer le contrat, le planning, les pièces de démarrage et les prochaines étapes de paiement. La contractualisation finale reste liée aux vérifications techniques, administratives et financières.</p>
+      <p>Accepter ce devis autorise Buildify à préparer le contrat, le planning, les pièces de démarrage et les prochaines étapes de paiement. La contractualisation finale reste liée aux vérifications techniques, contractuelles et financières.</p>
     </section>
     <footer>
       Document généré depuis l’espace client Buildify. Conservez-le avec vos pièces projet, surtout si vous pilotez le chantier depuis l’étranger.

@@ -2269,7 +2269,7 @@ export function ConfiguratorView() {
       });
 
       goNext();
-      addToast('Demande soumise et visible dans l’administration.', 'success');
+      addToast('Demande soumise et visible par l’équipe Buildify.', 'success');
     } catch (error) {
       const ref = generateReference();
       const projectTypeValue = String(responses.projectType || 'autre');
