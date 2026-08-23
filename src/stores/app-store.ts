@@ -323,6 +323,8 @@ export const useAppStore = create<AppState>()(
           isAuthenticated: true,
           isAdmin,
           showAuthModal: false,
+          authRedirectView: null,
+          authRedirectParams: {},
           unreadNotificationCount: unreadCount(state.notifications, isAdmin),
         });
         if (state.authRedirectView) {

@@ -129,7 +129,7 @@ function usePlatformEntry(platform: PlatformEntry, routedView: ViewName, hasHydr
 
     if (platform === 'admin') {
       if (!ADMIN_VIEWS.includes(currentView)) navigate('admin');
-      if (!isAdmin && !showAuthModal) requireAuth('admin');
+      if (!isAuthenticated && !showAuthModal) requireAuth('admin');
       return;
     }
 
@@ -149,18 +149,25 @@ function LockedAccessView({
   adminOnly?: boolean;
   clientOnly?: boolean;
 }) {
-  const { isAuthenticated, requireAuth, navigate } = useAppStore();
+  const { isAuthenticated, isAdmin, requireAuth, navigate, logout } = useAppStore();
   const Icon = adminOnly ? ShieldAlert : LockKeyhole;
+  const wrongRole = isAuthenticated && ((adminOnly && !isAdmin) || (clientOnly && isAdmin));
   const title = adminOnly
     ? 'Accès administrateur verrouillé'
     : clientOnly
       ? 'Accès non disponible'
       : 'Espace privé verrouillé';
-  const description = adminOnly
+  const description = wrongRole
+    ? "Vous êtes connecté avec un rôle différent. Les espaces client et administration restent séparés par lien dédié."
+    : adminOnly
     ? "Cette plateforme est réservée aux comptes habilités. Aucun contenu d'administration n'est chargé dans l'espace client."
     : clientOnly
       ? "Ce compte n'est pas compatible avec cet espace. Utilisez le lien dédié correspondant à votre rôle."
-    : "Connectez-vous pour accéder aux données privées : profil, projets, messages, favoris et notifications.";
+      : "Connectez-vous pour accéder aux données privées : profil, projets, messages, favoris et notifications.";
+
+  const openRoleSpace = () => {
+    window.location.assign(isAdmin ? '/admin' : '/client');
+  };
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-4 py-10">
@@ -172,14 +179,25 @@ function LockedAccessView({
           <h1 className="mt-5 text-xl font-bold">{title}</h1>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{description}</p>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            {!isAuthenticated && (
+            {wrongRole ? (
+              <>
+                <Button className="h-11 rounded-lg" onClick={openRoleSpace}>
+                  {isAdmin ? "Ouvrir l’administration" : "Ouvrir l’espace client"}
+                </Button>
+                <Button variant="outline" className="h-11 rounded-lg" onClick={logout}>
+                  Changer de compte
+                </Button>
+              </>
+            ) : !isAuthenticated ? (
               <Button className="h-11 rounded-lg" onClick={() => requireAuth(view)}>
                 Se connecter
               </Button>
+            ) : null}
+            {!wrongRole && (
+              <Button variant="outline" className="h-11 rounded-lg" onClick={() => navigate('home')}>
+                Retour à l’accueil
+              </Button>
             )}
-            <Button variant="outline" className="h-11 rounded-lg" onClick={() => navigate('home')}>
-              Retour à l’accueil
-            </Button>
           </div>
         </CardContent>
       </Card>
