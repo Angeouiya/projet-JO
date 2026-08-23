@@ -2439,6 +2439,43 @@ function ProposalsTab({
   const selectedCommitment = proposalClientCommitment(selectedProposal, data);
   const selectedDecisionScore = proposalDecisionScore(selectedProposal, data);
   const selectedDecisionLabel = proposalDecisionLabel(selectedDecisionScore);
+  const validationDate = data.visualProposal?.validatedAt
+    ? new Date(data.visualProposal.validatedAt).toLocaleString('fr-FR')
+    : undefined;
+  const decisionPackItems = [
+    {
+      icon: FileCheck,
+      label: 'Livrable retenu',
+      value: selectedProposal.deliverable,
+      helper: 'Base visuelle pour préparer devis, planning et périmètre contractuel.',
+    },
+    {
+      icon: ShieldCheck,
+      label: 'Contrôles avant paiement',
+      value: `${selectedRisks.length} vigilance${selectedRisks.length > 1 ? 's' : ''}`,
+      helper: 'Aucun engagement lourd sans pièces, jalons et validation écrite.',
+    },
+    {
+      icon: Receipt,
+      label: 'Base devis',
+      value: selectedProposal.estimate,
+      helper: 'Montant indicatif à transformer en devis détaillé après contrôles.',
+    },
+    {
+      icon: Calendar,
+      label: 'Suite projet',
+      value: selectedNextSteps[0] || 'Étape à cadrer',
+      helper: selectedNextSteps[1] || 'Buildify transforme le choix en actions opérationnelles.',
+    },
+  ];
+  const decisionGovernance = [
+    'La validation fixe une orientation de travail, pas un contrat définitif.',
+    'Le chiffrage final reste conditionné aux surfaces, documents, métrés, contraintes et choix de lots.',
+    'Les paiements doivent rester reliés à des jalons vérifiables, photos ou rapports à l’appui.',
+    data.clientResidenceCountry
+      ? `Client hors site ou à distance : conserver une validation écrite depuis ${data.clientResidenceCountry}.`
+      : 'Une validation écrite sera conservée dans le dossier projet.',
+  ];
 
   return (
     <div className="space-y-4">
@@ -2511,6 +2548,65 @@ function ProposalsTab({
           <div className="mt-4 rounded-lg border bg-muted/35 p-3">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ce que la validation signifie</p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">{selectedCommitment}</p>
+          </div>
+
+          <div className="mt-4 rounded-lg border p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pack décision client</p>
+                <h4 className="mt-1 text-sm font-semibold">Transformer l’image en dossier exploitable</h4>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Le choix visuel devient une base de devis, de contrat, de planning et de contrôle financier.
+                </p>
+              </div>
+              <Badge variant={validatedId === selectedProposal.id ? 'default' : 'outline'} className="w-fit text-[10px]">
+                {validatedId === selectedProposal.id ? 'Choix enregistré' : 'À valider'}
+              </Badge>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+              {decisionPackItems.map(item => (
+                <div key={item.label} className="min-w-0 rounded-lg border bg-muted/20 p-3">
+                  <item.icon className="size-4 text-muted-foreground" />
+                  <p className="mt-2 break-words text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                  <p className="mt-1 break-words text-xs font-bold leading-5">{item.value}</p>
+                  <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground">{item.helper}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+              <div className="rounded-lg border bg-background p-3">
+                <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <ClipboardCheck className="size-3.5" />
+                  Conditions de décision
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {decisionGovernance.map(item => (
+                    <p key={item} className="rounded-md bg-muted/35 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                      {item}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-lg border bg-background p-3">
+                <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <FileCheck className="size-3.5" />
+                  Trace conservée
+                </p>
+                <div className="mt-2 space-y-2 text-xs leading-5 text-muted-foreground">
+                  <p className="rounded-md bg-muted/35 px-3 py-2">
+                    Dossier : <span className="font-semibold text-foreground">{data.referenceNumber}</span>
+                  </p>
+                  <p className="rounded-md bg-muted/35 px-3 py-2">
+                    Proposition : <span className="font-semibold text-foreground">{selectedProposal.title}</span>
+                  </p>
+                  <p className="rounded-md bg-muted/35 px-3 py-2">
+                    Statut : <span className="font-semibold text-foreground">{validationDate || (validatedId === selectedProposal.id ? 'Validation locale enregistrée' : 'En attente')}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 flex flex-col sm:flex-row gap-2">

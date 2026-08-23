@@ -44,7 +44,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/app-store';
 import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
-import type { ProjectData, ProjectPaymentMilestoneData, ProjectScheduleItemData } from '@/types';
+import type { ProjectData, ProjectPaymentMilestoneData, ProjectScheduleItemData, ProjectVisualProposalData } from '@/types';
 import { formatProjectLocation } from '@/lib/project-format';
 import { buildProjectBrief } from '@/lib/project-brief';
 import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
@@ -317,6 +317,101 @@ function downloadAdminDocumentReceipt(document: NonNullable<ProjectData['documen
 function openAdminOriginalDocument(document: NonNullable<ProjectData['documents']>[number]) {
   if (!document.url) return;
   window.open(document.url, '_blank', 'noopener,noreferrer');
+}
+
+function renderAdminMemoList(items?: string[]) {
+  const safeItems = items?.length ? items : ['À compléter dans le dossier admin.'];
+  return safeItems.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+}
+
+function renderAdminMemoCriteria(criteria?: { label: string; value: string }[]) {
+  const safeCriteria = criteria?.length ? criteria : [{ label: 'Décision', value: 'À compléter' }];
+  return safeCriteria.map(item => `
+    <div class="box">
+      <div class="label">${escapeHtml(item.label)}</div>
+      <div class="value">${escapeHtml(item.value)}</div>
+    </div>
+  `).join('');
+}
+
+function buildAdminProposalDecisionMemoHtml(proposal: ProjectVisualProposalData, project: ProjectData) {
+  const imageUrl = new URL(proposal.image, window.location.origin).href;
+  const generatedAt = new Date().toLocaleDateString('fr-FR');
+  const validationLabel = proposal.validatedAt
+    ? `${new Date(proposal.validatedAt).toLocaleString('fr-FR')} par ${proposal.validatedBy || 'client'}`
+    : 'Validation client à confirmer';
+  return `<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mémo décision visuelle - ${escapeHtml(project.referenceNumber)}</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; color: #111; background: #fff; }
+    main { max-width: 980px; margin: 0 auto; padding: 38px; }
+    header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #111; padding-bottom: 18px; }
+    .brand { font-size: 24px; font-weight: 900; }
+    .ref { text-align: right; font-size: 12px; color: #555; line-height: 1.7; }
+    h1 { margin: 26px 0 10px; font-size: 30px; line-height: 1.15; }
+    img { width: 100%; border-radius: 12px; margin: 18px 0; }
+    p { color: #333; line-height: 1.65; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .box { border: 1px solid #ddd; border-radius: 10px; padding: 14px; break-inside: avoid; }
+    .label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #666; font-weight: 800; }
+    .value { margin-top: 8px; font-size: 14px; font-weight: 800; overflow-wrap: anywhere; }
+    ul { margin: 10px 0 0; padding-left: 20px; line-height: 1.7; color: #333; }
+    .decision { border: 2px solid #111; border-radius: 12px; padding: 16px; margin-top: 18px; }
+    footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+    @media (max-width: 760px) { main { padding: 22px; } header, .split { display: block; } .ref { margin-top: 12px; text-align: left; } .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div><div class="brand">Buildify</div><div>Mémo admin de décision visuelle</div></div>
+      <div class="ref">
+        <div>Dossier ${escapeHtml(project.referenceNumber)}</div>
+        <div>${escapeHtml(project.title || project.categoryName || 'Projet BTP')}</div>
+        <div>${escapeHtml(formatProjectLocation(project))}</div>
+        <div>Généré le ${escapeHtml(generatedAt)}</div>
+      </div>
+    </header>
+    <h1>${escapeHtml(proposal.title)}</h1>
+    <p>${escapeHtml(proposal.description)}</p>
+    <img src="${imageUrl}" alt="${escapeHtml(proposal.title)}" />
+    <section class="grid">
+      <div class="box"><div class="label">Catégorie</div><div class="value">${escapeHtml(proposal.category)}</div></div>
+      <div class="box"><div class="label">Budget indicatif</div><div class="value">${escapeHtml(proposal.estimate)}</div></div>
+      <div class="box"><div class="label">Délai</div><div class="value">${escapeHtml(proposal.duration)}</div></div>
+      <div class="box"><div class="label">Validation</div><div class="value">${escapeHtml(validationLabel)}</div></div>
+    </section>
+    <section class="decision">
+      <div class="label">Engagement client à tracer</div>
+      <p>${escapeHtml(proposal.clientCommitment || 'Le choix visuel doit servir de base au devis, sans remplacer le contrat définitif.')}</p>
+    </section>
+    <section class="split">
+      <div class="box"><div class="label">Périmètre à reporter au devis</div><ul>${renderAdminMemoList(proposal.technicalScope)}</ul></div>
+      <div class="box"><div class="label">Vigilances à contrôler</div><ul>${renderAdminMemoList(proposal.riskControls)}</ul></div>
+    </section>
+    <section class="split">
+      <div class="box"><div class="label">Prochaines actions admin</div><ul>${renderAdminMemoList(proposal.nextSteps)}</ul></div>
+      <div class="box"><div class="label">Critères de décision</div><div class="grid">${renderAdminMemoCriteria(proposal.decisionCriteria)}</div></div>
+    </section>
+    <footer>À utiliser pour préparer le devis détaillé, le contrat, le planning, les jalons financiers et les échanges client.</footer>
+  </main>
+</body>
+</html>`;
+}
+
+function downloadAdminProposalDecisionMemo(proposal: ProjectVisualProposalData, project: ProjectData) {
+  const blob = new Blob([buildAdminProposalDecisionMemoHtml(proposal, project)], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = window.document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${project.referenceNumber}-${proposal.id}-memo-decision-visuelle-buildify.html`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 const CLIENT_PRESENCE_LABELS: Record<string, string> = {
@@ -934,6 +1029,32 @@ export function AdminProjectDetail() {
   const leadRoleLabel = selectedLead ? ROLE_LABELS[selectedLead.role] || selectedLead.role : 'Rôle à définir';
   const leadDepartmentLabel = selectedLead ? DEPARTMENT_LABELS[selectedLead.department] || selectedLead.department : 'Équipe Buildify';
   const visualProposal = project.visualProposal;
+  const visualProposalAdminControls = visualProposal ? [
+    {
+      icon: ReceiptText,
+      label: 'Devis à préparer',
+      value: visualProposal.estimate,
+      detail: 'Reporter l’orientation, les hypothèses et les limites dans le chiffrage.',
+    },
+    {
+      icon: ShieldCheck,
+      label: 'Vigilances',
+      value: `${visualProposal.riskControls?.length || 0} contrôle${(visualProposal.riskControls?.length || 0) > 1 ? 's' : ''}`,
+      detail: 'Transformer les points de risque en demandes, visites ou réserves contractuelles.',
+    },
+    {
+      icon: CalendarDays,
+      label: 'Suite opérationnelle',
+      value: visualProposal.nextSteps?.[0] || 'Planifier la suite',
+      detail: 'Créer rendez-vous, devis, jalons et messages client depuis ce dossier.',
+    },
+    {
+      icon: FileText,
+      label: 'Mémo admin',
+      value: visualProposal.validatedAt ? 'Validation tracée' : 'À tracer',
+      detail: 'Télécharger une fiche exploitable pour l’équipe projet.',
+    },
+  ] : [];
   const locationLabel = formatProjectLocation(project);
   const technicalBrief = buildProjectBrief(project);
   const paymentMilestones = financing?.milestones ?? [];
@@ -2784,6 +2905,38 @@ export function AdminProjectDetail() {
                       <p className="rounded-lg border bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
                         {visualProposal.clientCommitment}
                       </p>
+                    )}
+                    {visualProposalAdminControls.length > 0 && (
+                      <div className="rounded-lg border p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Traitement admin du choix client</p>
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              Reprendre la décision validée dans le devis, les contrôles, le planning et les jalons.
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full gap-2 text-xs sm:w-auto"
+                            onClick={() => downloadAdminProposalDecisionMemo(visualProposal, project)}
+                          >
+                            <Download className="size-3.5" />
+                            Mémo décision
+                          </Button>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          {visualProposalAdminControls.map(item => (
+                            <div key={item.label} className="min-w-0 rounded-lg border bg-muted/25 p-3">
+                              <item.icon className="size-4 text-muted-foreground" />
+                              <p className="mt-2 break-words text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                              <p className="mt-1 break-words text-xs font-bold leading-5">{item.value}</p>
+                              <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground">{item.detail}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                     {(visualProposal.nextSteps ?? []).length > 0 && (
                       <div className="rounded-lg border p-3">
