@@ -847,10 +847,10 @@ export function AdminProjectDetail() {
   const [quoteAssumptionsText, setQuoteAssumptionsText] = useState([
     'Montant établi sur les informations transmises par le client avant visite ou métrés définitifs.',
     'Le prix final dépend des surfaces validées, des documents disponibles, du standing et des contraintes du terrain.',
-    'Le démarrage dépend de la validation du devis, du financement, des pièces administratives et du calendrier chantier.',
+    'Le démarrage dépend de la validation du devis, du financement, des pièces de dossier et du calendrier chantier.',
   ].join('\n'));
   const [quoteExclusionsText, setQuoteExclusionsText] = useState([
-    'Taxes, frais administratifs, études réglementaires ou prestations non explicitement incluses restent à confirmer.',
+    'Taxes, frais de dossier, études réglementaires ou prestations non explicitement incluses restent à confirmer.',
     'Toute modification de surface, de matériaux, de délai ou de périmètre pourra entraîner un avenant.',
   ].join('\n'));
   const [quotePaymentTerms, setQuotePaymentTerms] = useState('Paiement par jalons vérifiés : acompte de sécurisation, lancement, avancements documentés, réception et solde après contrôle.');
@@ -1258,7 +1258,7 @@ export function AdminProjectDetail() {
       paymentTerms: quotePaymentTerms.trim(),
       validityDays: Number(quoteValidityDays),
       currency: 'XOF',
-      createdBy: 'Administration Buildify',
+      createdBy: 'Équipe Buildify',
     });
     addToast('Devis transmis au client.', 'success');
   };
@@ -1308,7 +1308,7 @@ export function AdminProjectDetail() {
       riskControls: splitQuoteText(proposalRisksText),
       nextSteps: splitQuoteText(proposalNextText),
       clientCommitment: `La validation retient "${proposalTitle.trim()}" comme orientation visuelle et technique du dossier ${project.referenceNumber}. Elle prépare le chiffrage, le contrat et le planning sans remplacer les validations réglementaires.`,
-      publishedBy: 'Administration Buildify',
+      publishedBy: 'Équipe Buildify',
     });
     addToast('Proposition visuelle publiée au client.', 'success');
   };
@@ -1330,7 +1330,7 @@ export function AdminProjectDetail() {
       location: scheduleLocation,
       preparation: schedulePreparation,
       decisionExpected: scheduleDecisionExpected,
-      createdBy: 'Administration Buildify',
+      createdBy: 'Équipe Buildify',
     });
     addToast('Planning publié dans l’espace projet client.', 'success');
   };

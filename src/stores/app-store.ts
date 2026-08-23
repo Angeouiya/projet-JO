@@ -214,7 +214,7 @@ function defaultQuoteAssumptions(project: ProjectData) {
     project.budgetMax
       ? `Budget client déclaré jusqu’à ${new Intl.NumberFormat('fr-FR').format(project.budgetMax)} XOF.`
       : 'Budget client à confirmer avant contractualisation.',
-    'Le démarrage dépend de la validation du devis, des pièces administratives, du financement et du calendrier chantier.',
+    'Le démarrage dépend de la validation du devis, des pièces de dossier, du financement et du calendrier chantier.',
   ];
 }
 
@@ -771,13 +771,13 @@ export const useAppStore = create<AppState>()(
             scope: scope.length > 0 ? scope : defaultQuoteScope(project, quoteLabel),
             assumptions: assumptions.length > 0 ? assumptions : defaultQuoteAssumptions(project),
             exclusions: exclusions.length > 0 ? exclusions : [
-              'Taxes, frais administratifs, études réglementaires ou prestations non explicitement incluses restent à confirmer.',
+              'Taxes, frais de dossier, études réglementaires ou prestations non explicitement incluses restent à confirmer.',
               'Toute modification de surface, de standing, de matériaux ou de délai pourra entraîner un avenant.',
             ],
             paymentTerms: details.paymentTerms || 'Paiement par jalons vérifiés : acompte de sécurisation, lancement, avancements documentés, réception et solde après contrôle.',
             validityDays: details.validityDays ?? 15,
             currency: details.currency || 'XOF',
-            createdBy: details.createdBy || s.user?.name || 'Administration Buildify',
+            createdBy: details.createdBy || s.user?.name || 'Équipe Buildify',
             updatedAt: now,
             documentUrl: details.documentUrl,
           };
@@ -865,7 +865,7 @@ export const useAppStore = create<AppState>()(
       }),
       publishProjectVisualProposal: (projectId, input) => set(s => {
         const now = new Date().toISOString();
-        const actor = input.publishedBy || s.user?.name || 'Administration Buildify';
+        const actor = input.publishedBy || s.user?.name || 'Équipe Buildify';
         let projectRef = '';
         let proposalTitle = input.title;
         const proposal: ProjectVisualProposalData = {
@@ -1023,7 +1023,7 @@ export const useAppStore = create<AppState>()(
         let projectRef = '';
         let milestoneLabel = '';
         let milestoneAmount: number | undefined;
-        const actor = s.user?.name || 'Administration Buildify';
+        const actor = s.user?.name || 'Équipe Buildify';
         const cleanNote = note?.trim() || undefined;
         const projects = s.userProjects.map(project => {
           if (project.id !== projectId || !project.financing) return project;
@@ -1086,7 +1086,7 @@ export const useAppStore = create<AppState>()(
       }),
       scheduleProjectEvent: (projectId, input) => set(s => {
         const now = new Date().toISOString();
-        const actor = input.createdBy || s.user?.name || 'Administration Buildify';
+        const actor = input.createdBy || s.user?.name || 'Équipe Buildify';
         const title = input.title.trim();
         const scheduledAt = input.scheduledAt;
         const scheduleItem: ProjectScheduleItemData = {
@@ -1165,7 +1165,7 @@ export const useAppStore = create<AppState>()(
       }),
       updateProjectScheduleStatus: (projectId, scheduleId, status, note) => set(s => {
         const now = new Date().toISOString();
-        const actor = s.user?.name || (s.isAdmin ? 'Administration Buildify' : 'Client');
+        const actor = s.user?.name || (s.isAdmin ? 'Équipe Buildify' : 'Client');
         const actorRole: ProjectMessageData['senderRole'] = s.isAdmin ? 'admin' : 'client';
         const cleanNote = note?.trim() || undefined;
         let projectRef = '';
