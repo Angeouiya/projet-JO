@@ -28,6 +28,7 @@ import { formatProjectLocation } from '@/lib/project-format';
 import { buildProjectBrief, projectBriefLabel } from '@/lib/project-brief';
 import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
 import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
+import { downloadProjectDossier } from '@/lib/project-dossier-export';
 import type { ProjectDecisionTone } from '@/lib/project-decision-center';
 import type { ProjectBrief, ProjectBriefItemKey } from '@/lib/project-brief';
 import {
@@ -4259,6 +4260,19 @@ export function ProjectDetailView() {
           <Badge variant={getStatusVariant(data.status)} className="text-[10px] flex-shrink-0">
             {PROJECT_STATUS_LABELS[data.status] || data.status}
           </Badge>
+          {storedProject && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 shrink-0 gap-1.5 rounded-lg px-2 sm:px-3"
+              onClick={() => downloadProjectDossier(storedProject, 'client')}
+              aria-label="Télécharger le dossier projet"
+            >
+              <Download className="size-4" />
+              <span className="hidden sm:inline">Dossier</span>
+            </Button>
+          )}
         </div>
 
         {/* Progress */}

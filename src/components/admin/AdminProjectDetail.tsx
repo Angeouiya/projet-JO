@@ -49,6 +49,7 @@ import { formatProjectLocation } from '@/lib/project-format';
 import { buildProjectBrief } from '@/lib/project-brief';
 import { buildFinancingDecisionPlan } from '@/lib/financing-decision';
 import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
+import { downloadProjectDossier } from '@/lib/project-dossier-export';
 import type { ProjectDecisionTone } from '@/lib/project-decision-center';
 import type { ProjectBriefItemKey } from '@/lib/project-brief';
 import {
@@ -1562,7 +1563,19 @@ export function AdminProjectDetail() {
           <h1 className="mt-1 truncate text-2xl font-bold">{project.title || project.modelName || 'Dossier BTP'}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{project.clientName || 'Client Buildify'} · {locationLabel}</p>
         </div>
-        <Badge className="w-fit">{statusLabel}</Badge>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <Badge className="w-fit">{statusLabel}</Badge>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-lg"
+            onClick={() => downloadProjectDossier(project, 'admin')}
+          >
+            <Download className="size-4" />
+            Dossier pilotage
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
