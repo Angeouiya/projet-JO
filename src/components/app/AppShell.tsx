@@ -224,12 +224,13 @@ function GuardedViewRenderer({ view }: { view: ViewName }) {
 }
 
 export function AppShell({ platform = 'public' }: { platform?: PlatformEntry }) {
-  const { currentView, isAuthenticated, isAdmin } = useAppStore();
+  const { currentView, isAuthenticated, isAdmin, showAuthModal } = useAppStore();
   const hasHydrated = useStoreHydration();
   const clientReady = useClientReady();
   const routedView = useMemo(() => resolvePlatformView(platform, currentView), [currentView, platform]);
   const isDesktop = useDesktopViewport();
   const isFullscreen = FULLSCREEN_VIEWS.includes(routedView);
+  const showMobileBottomNav = platform !== 'admin' && !isAdmin && !showAuthModal && !ADMIN_VIEWS.includes(routedView);
   const showDesktopClientShell = isDesktop
     && DESKTOP_CLIENT_SHELL_VIEWS.includes(routedView)
     && !isAdmin
@@ -251,15 +252,14 @@ export function AppShell({ platform = 'public' }: { platform?: PlatformEntry }) 
         <>
           <PublicHeader platform={platform} />
 
-          <main className={`flex-1 ${isDesktop || isAdmin ? '' : 'pb-20'}`}>
+          <main className="flex-1 pb-20 lg:pb-0">
             <div key={routedView}>
               <GuardedViewRenderer view={routedView} />
             </div>
           </main>
-
-          {!isDesktop && !isAdmin && <BottomNav />}
         </>
       )}
+      {showMobileBottomNav && <BottomNav />}
       <AuthModal platform={platform} />
       <ToastContainer />
       <InstallPrompt />

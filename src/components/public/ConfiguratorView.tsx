@@ -3447,7 +3447,7 @@ export function ConfiguratorView() {
         {!isConfirmation && <Progress value={progressPercent} className="h-1 rounded-none" />}
       </header>
 
-      <main className="flex flex-1 flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-4 py-6 md:py-10">
+      <main className="flex flex-1 flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-4 pb-44 pt-6 md:py-10 lg:pb-10">
         <div className="grid w-full min-w-0 max-w-6xl gap-6 lg:grid-cols-[minmax(0,760px)_minmax(300px,1fr)]">
           <div key={activeStep.id} className="w-full min-w-0 max-w-full">
               {!isConfirmation && (
@@ -3540,7 +3540,7 @@ export function ConfiguratorView() {
       </main>
 
       {showNav && (
-        <footer className="sticky bottom-0 z-30 border-t bg-background/95 backdrop-blur-md">
+        <footer className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] z-30 border-t bg-background/95 backdrop-blur-md lg:sticky lg:bottom-0">
           <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-4 py-3">
             {!isFirstStep && (
               <Button variant="outline" onClick={goBack} className="h-12 shrink-0 rounded-xl px-4">
