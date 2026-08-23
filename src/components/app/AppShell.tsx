@@ -142,12 +142,10 @@ function usePlatformEntry(platform: PlatformEntry, routedView: ViewName, hasHydr
 
 function LockedAccessView({
   view,
-  platform,
   adminOnly = false,
   clientOnly = false,
 }: {
   view: ViewName;
-  platform: PlatformEntry;
   adminOnly?: boolean;
   clientOnly?: boolean;
 }) {
@@ -156,12 +154,12 @@ function LockedAccessView({
   const title = adminOnly
     ? 'Accès administrateur verrouillé'
     : clientOnly
-      ? 'Espace client séparé'
+      ? 'Accès non disponible'
       : 'Espace privé verrouillé';
   const description = adminOnly
     ? "Cette plateforme est réservée aux comptes habilités. Aucun contenu d'administration n'est chargé dans l'espace client."
     : clientOnly
-      ? "Vous êtes connecté à la plateforme admin. Les projets, messages et profils clients restent dans une plateforme client distincte."
+      ? "Ce compte n'est pas compatible avec cet espace. Utilisez le lien dédié correspondant à votre rôle."
     : "Connectez-vous pour accéder aux données privées : profil, projets, messages, favoris et notifications.";
 
   return (
@@ -179,11 +177,6 @@ function LockedAccessView({
                 Se connecter
               </Button>
             )}
-            {clientOnly && platform !== 'client' && (
-              <Button className="h-11 rounded-lg" onClick={() => navigate('admin')}>
-                Ouvrir la plateforme admin
-              </Button>
-            )}
             <Button variant="outline" className="h-11 rounded-lg" onClick={() => navigate('home')}>
               Retour à l’accueil
             </Button>
@@ -194,19 +187,19 @@ function LockedAccessView({
   );
 }
 
-function GuardedViewRenderer({ view, platform }: { view: ViewName; platform: PlatformEntry }) {
+function GuardedViewRenderer({ view }: { view: ViewName }) {
   const { isAuthenticated, isAdmin } = useAppStore();
 
   if (ADMIN_VIEWS.includes(view) && !isAdmin) {
-    return <LockedAccessView view={view} platform={platform} adminOnly />;
+    return <LockedAccessView view={view} adminOnly />;
   }
 
   if (PRIVATE_VIEWS.includes(view) && !isAuthenticated) {
-    return <LockedAccessView view={view} platform={platform} />;
+    return <LockedAccessView view={view} />;
   }
 
   if (PRIVATE_VIEWS.includes(view) && isAdmin) {
-    return <LockedAccessView view={view} platform={platform} clientOnly />;
+    return <LockedAccessView view={view} clientOnly />;
   }
 
   return <ViewRenderer view={view} />;
@@ -230,19 +223,19 @@ export function AppShell({ platform = 'public' }: { platform?: PlatformEntry }) 
     <div className="min-h-screen flex flex-col bg-background">
       {isFullscreen ? (
         <main className="flex-1">
-          <GuardedViewRenderer view={routedView} platform={platform} />
+          <GuardedViewRenderer view={routedView} />
         </main>
       ) : showDesktopClientShell ? (
         <DesktopDashboardShell currentView={routedView}>
-          <GuardedViewRenderer view={routedView} platform={platform} />
+          <GuardedViewRenderer view={routedView} />
         </DesktopDashboardShell>
       ) : (
         <>
-          <PublicHeader />
+          <PublicHeader platform={platform} />
 
           <main className={`flex-1 ${isDesktop || isAdmin ? '' : 'pb-20'}`}>
             <div key={routedView}>
-              <GuardedViewRenderer view={routedView} platform={platform} />
+              <GuardedViewRenderer view={routedView} />
             </div>
           </main>
 

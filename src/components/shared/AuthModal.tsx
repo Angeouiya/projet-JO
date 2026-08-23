@@ -142,8 +142,17 @@ export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) 
     }
 
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 700));
+    const response = await fetch('/api/auth/password-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetEmail }),
+    });
+    const payload = await response.json().catch(() => null) as { error?: string; message?: string } | null;
     setLoading(false);
+    if (!response.ok) {
+      setError(payload?.message || payload?.error || "Le service de récupération n'est pas disponible.");
+      return;
+    }
     goMode('reset-sent');
   };
 
@@ -202,7 +211,7 @@ export function AuthModal({ platform = 'public' }: { platform?: AuthPlatform }) 
             )}
 
             {error && (
-              <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-xs font-medium text-destructive">
+              <div className="mb-4 rounded-xl border bg-muted/50 px-4 py-3 text-xs font-medium leading-5 text-foreground">
                 {error}
               </div>
             )}

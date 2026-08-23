@@ -2,19 +2,21 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Menu, X, Bell, Search, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Menu, X, Bell, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { unreadNotificationsForRole } from '@/lib/notification-audience';
 import { useAppStore } from '@/stores/app-store';
 import { BrandLogo } from './BrandLogo';
 
-export function PublicHeader() {
-  const { isAuthenticated, isAdmin, user, navigate, notifications, requireAuth, goBack } = useAppStore();
+type HeaderPlatform = 'public' | 'client' | 'admin';
+
+export function PublicHeader({ platform = 'public' }: { platform?: HeaderPlatform }) {
+  const { currentView, isAuthenticated, isAdmin, user, navigate, notifications, requireAuth, goBack } = useAppStore();
   const [menuOpen, setMenuOpen] = useState(false);
-  const unreadCount = unreadNotificationsForRole(notifications, isAdmin).length;
-  const showBack = !['home', 'explore', 'admin'].includes(useAppStore().currentView);
+  const isClientAccount = isAuthenticated && !isAdmin;
+  const unreadCount = unreadNotificationsForRole(notifications, false).length;
+  const showBack = !['home', 'explore', 'admin'].includes(currentView);
 
   return (
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur border-b border-border safe-top">
@@ -26,15 +28,9 @@ export function PublicHeader() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             </button>
           )}
-          {isAdmin ? (
-            <button onClick={() => navigate('admin')} className="flex items-center gap-2">
-              <BrandLogo size="xs" nameClassName="hidden sm:block" />
-            </button>
-          ) : (
-            <button onClick={() => navigate('home')} className="flex items-center gap-2">
-              <BrandLogo size="xs" nameClassName="hidden sm:block" />
-            </button>
-          )}
+          <button onClick={() => navigate('home')} className="flex items-center gap-2">
+            <BrandLogo size="xs" nameClassName="hidden sm:block" />
+          </button>
         </div>
 
         {/* Center - Search (desktop) */}
@@ -53,16 +49,7 @@ export function PublicHeader() {
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <>
-              {isAdmin ? (
-                <Button
-                  size="sm"
-                  className="hidden gap-2 text-xs md:inline-flex"
-                  onClick={() => navigate('admin')}
-                >
-                  <ShieldCheck className="size-3.5" />
-                  Plateforme admin
-                </Button>
-              ) : (
+              {isClientAccount && (
                 <Button
                   size="sm"
                   className="hidden gap-2 text-xs md:inline-flex"
@@ -72,16 +59,18 @@ export function PublicHeader() {
                   Espace client
                 </Button>
               )}
-              <button onClick={() => navigate(isAdmin ? 'admin-notifications' : 'notifications')} className="relative p-2 hover:bg-muted rounded-lg">
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-foreground text-background text-[9px] rounded-full flex items-center justify-center font-medium">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </button>
+              {isClientAccount && (
+                <button onClick={() => navigate('notifications')} className="relative p-2 hover:bg-muted rounded-lg">
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-foreground text-background text-[9px] rounded-full flex items-center justify-center font-medium">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+              )}
               <button
-                onClick={() => navigate(isAdmin ? 'admin-settings' : 'profile')}
+                onClick={() => navigate(isClientAccount ? 'profile' : 'home')}
                 className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium hover:bg-secondary transition-colors"
               >
                 {user?.name?.charAt(0) || 'U'}
@@ -112,14 +101,7 @@ export function PublicHeader() {
               <button onClick={() => { navigate('explore'); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm">Explorer</button>
               <button onClick={() => { navigate('realizations'); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm">Réalisations</button>
               <button onClick={() => { navigate('services'); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm">Services</button>
-              {isAdmin ? (
-                <button
-                  onClick={() => { navigate('admin'); setMenuOpen(false); }}
-                  className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm font-medium"
-                >
-                  Plateforme admin
-                </button>
-              ) : (
+              {isClientAccount || platform === 'client' ? (
                 <button
                   onClick={() => {
                     if (isAuthenticated) {
@@ -133,7 +115,7 @@ export function PublicHeader() {
                 >
                   Espace client
                 </button>
-              )}
+              ) : null}
               {!isAuthenticated && (
                 <button onClick={() => { requireAuth(); setMenuOpen(false); }} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-muted text-sm font-medium">Se connecter</button>
               )}

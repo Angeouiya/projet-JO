@@ -5,7 +5,7 @@ export async function GET() {
   return NextResponse.json({
     name: 'Buildify API',
     status: 'ok',
-    modules: ['projects', 'models'],
+    modules: ['projects', 'models', 'auth-password-reset'],
     projectStore: hasExternalProjectStore() ? 'external' : 'sqlite-fallback',
   });
 }
