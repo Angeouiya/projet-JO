@@ -216,13 +216,26 @@ const COUNTRY_OPTIONS: ChoiceOption[] = [
   { value: 'Togo', label: 'Togo', description: 'Lomé, Sokodé, Kara, Atakpamé...' },
   { value: 'Bénin', label: 'Bénin', description: 'Cotonou, Porto-Novo, Parakou, Abomey-Calavi...' },
   { value: 'Ghana', label: 'Ghana', description: 'Accra, Kumasi, Tamale, Takoradi...' },
+  { value: 'Niger', label: 'Niger', description: 'Niamey, Maradi, Zinder, Tahoua...' },
+  { value: 'Liberia', label: 'Liberia', description: 'Monrovia, Gbarnga, Buchanan, Kakata...' },
+  { value: 'Sierra Leone', label: 'Sierra Leone', description: 'Freetown, Bo, Kenema, Makeni...' },
   { value: 'Cameroun', label: 'Cameroun', description: 'Douala, Yaoundé, Bafoussam, Garoua...' },
+  { value: 'Gabon', label: 'Gabon', description: 'Libreville, Port-Gentil, Franceville, Oyem...' },
+  { value: 'Congo', label: 'Congo', description: 'Brazzaville, Pointe-Noire, Dolisie, Nkayi...' },
+  { value: 'RD Congo', label: 'RD Congo', description: 'Kinshasa, Lubumbashi, Goma, Kisangani...' },
   { value: 'Nigeria', label: 'Nigeria', description: 'Lagos, Abuja, Kano, Ibadan...' },
+  { value: 'Afrique du Sud', label: 'Afrique du Sud', description: 'Johannesburg, Cape Town, Durban, Pretoria...' },
   { value: 'Maroc', label: 'Maroc', description: 'Casablanca, Rabat, Marrakech, Tanger...' },
   { value: 'France', label: 'France', description: 'Paris, Lyon, Marseille, Bordeaux...' },
   { value: 'Belgique', label: 'Belgique', description: 'Bruxelles, Anvers, Liège, Charleroi...' },
+  { value: 'Suisse', label: 'Suisse', description: 'Genève, Zurich, Lausanne, Bâle...' },
+  { value: 'Royaume-Uni', label: 'Royaume-Uni', description: 'Londres, Birmingham, Manchester, Leeds...' },
+  { value: 'Allemagne', label: 'Allemagne', description: 'Berlin, Hambourg, Munich, Francfort...' },
+  { value: 'Italie', label: 'Italie', description: 'Rome, Milan, Turin, Naples...' },
+  { value: 'Espagne', label: 'Espagne', description: 'Madrid, Barcelone, Valence, Séville...' },
   { value: 'Canada', label: 'Canada', description: 'Montréal, Toronto, Ottawa, Québec...' },
   { value: 'États-Unis', label: 'États-Unis', description: 'New York, Washington, Houston, Atlanta...' },
+  { value: 'Émirats arabes unis', label: 'Émirats arabes unis', description: 'Dubaï, Abu Dhabi, Sharjah, Ajman...' },
   { value: 'Autre pays', label: 'Autre pays', description: 'Saisie libre du pays et de la ville' },
 ];
 
@@ -235,13 +248,26 @@ const CITY_OPTIONS_BY_COUNTRY: Record<string, string[]> = {
   Togo: ['Lomé', 'Sokodé', 'Kara', 'Atakpamé', 'Kpalimé', 'Tsévié', 'Aného', 'Mango', 'Dapaong', 'Bassar', 'Notsé', 'Tchamba'],
   Bénin: ['Cotonou', 'Porto-Novo', 'Parakou', 'Abomey-Calavi', 'Djougou', 'Bohicon', 'Natitingou', 'Ouidah', 'Lokossa', 'Abomey', 'Kandi', 'Malanville'],
   Ghana: ['Accra', 'Kumasi', 'Tamale', 'Takoradi', 'Tema', 'Cape Coast', 'Sekondi', 'Sunyani', 'Ho', 'Koforidua', 'Wa', 'Bolgatanga'],
+  Niger: ['Niamey', 'Maradi', 'Zinder', 'Tahoua', 'Agadez', 'Dosso', 'Tillabéri', 'Diffa', 'Arlit', 'Birni N’Konni', 'Tessaoua', 'Gaya'],
+  Liberia: ['Monrovia', 'Gbarnga', 'Buchanan', 'Kakata', 'Voinjama', 'Harper', 'Zwedru', 'Ganta', 'Robertsport', 'Sanniquellie', 'Tubmanburg', 'Greenville'],
+  'Sierra Leone': ['Freetown', 'Bo', 'Kenema', 'Makeni', 'Koidu', 'Port Loko', 'Lunsar', 'Kabala', 'Waterloo', 'Moyamba', 'Bonthe', 'Magburaka'],
   Cameroun: ['Douala', 'Yaoundé', 'Bafoussam', 'Garoua', 'Bamenda', 'Maroua', 'Ngaoundéré', 'Bertoua', 'Ebolowa', 'Kribi', 'Limbé', 'Dschang'],
+  Gabon: ['Libreville', 'Port-Gentil', 'Franceville', 'Oyem', 'Moanda', 'Mouila', 'Lambaréné', 'Tchibanga', 'Koulamoutou', 'Makokou', 'Bitam', 'Ntoum'],
+  Congo: ['Brazzaville', 'Pointe-Noire', 'Dolisie', 'Nkayi', 'Owando', 'Ouesso', 'Madingou', 'Gamboma', 'Impfondo', 'Sibiti', 'Mossendjo', 'Kinkala'],
+  'RD Congo': ['Kinshasa', 'Lubumbashi', 'Goma', 'Kisangani', 'Bukavu', 'Kananga', 'Mbuji-Mayi', 'Kolwezi', 'Matadi', 'Boma', 'Likasi', 'Bunia'],
   Nigeria: ['Lagos', 'Abuja', 'Kano', 'Ibadan', 'Port Harcourt', 'Benin City', 'Kaduna', 'Enugu', 'Abeokuta', 'Ilorin', 'Jos', 'Calabar'],
+  'Afrique du Sud': ['Johannesburg', 'Cape Town', 'Durban', 'Pretoria', 'Port Elizabeth', 'Bloemfontein', 'East London', 'Polokwane', 'Nelspruit', 'Kimberley', 'Rustenburg', 'Pietermaritzburg'],
   Maroc: ['Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger', 'Agadir', 'Meknès', 'Oujda', 'Tétouan', 'Kénitra', 'Salé', 'El Jadida'],
   France: ['Paris', 'Marseille', 'Lyon', 'Toulouse', 'Nice', 'Nantes', 'Montpellier', 'Strasbourg', 'Bordeaux', 'Lille', 'Rennes', 'Grenoble'],
   Belgique: ['Bruxelles', 'Anvers', 'Gand', 'Charleroi', 'Liège', 'Bruges', 'Namur', 'Mons', 'Louvain', 'Malines', 'Ostende', 'Tournai'],
+  Suisse: ['Genève', 'Zurich', 'Lausanne', 'Bâle', 'Berne', 'Fribourg', 'Neuchâtel', 'Sion', 'Lucerne', 'Lugano', 'Winterthour', 'Saint-Gall'],
+  'Royaume-Uni': ['Londres', 'Birmingham', 'Manchester', 'Leeds', 'Liverpool', 'Bristol', 'Glasgow', 'Édimbourg', 'Cardiff', 'Leicester', 'Coventry', 'Nottingham'],
+  Allemagne: ['Berlin', 'Hambourg', 'Munich', 'Francfort', 'Cologne', 'Düsseldorf', 'Stuttgart', 'Dortmund', 'Essen', 'Leipzig', 'Brême', 'Hanovre'],
+  Italie: ['Rome', 'Milan', 'Turin', 'Naples', 'Bologne', 'Florence', 'Gênes', 'Bari', 'Palerme', 'Vérone', 'Venise', 'Parme'],
+  Espagne: ['Madrid', 'Barcelone', 'Valence', 'Séville', 'Saragosse', 'Malaga', 'Murcie', 'Palma', 'Bilbao', 'Alicante', 'Cordoue', 'Grenade'],
   Canada: ['Montréal', 'Toronto', 'Vancouver', 'Ottawa', 'Québec', 'Calgary', 'Edmonton', 'Winnipeg', 'Hamilton', 'Laval', 'Gatineau', 'Halifax'],
   'États-Unis': ['New York', 'Washington', 'Houston', 'Atlanta', 'Los Angeles', 'Chicago', 'Dallas', 'Miami', 'Philadelphia', 'Phoenix', 'Boston', 'Seattle'],
+  'Émirats arabes unis': ['Dubaï', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Al Ain', 'Ras el Khaïmah', 'Fujairah', 'Umm al-Quwain'],
 };
 
 function buildCityOptions(country?: string): ChoiceOption[] {
@@ -252,6 +278,15 @@ function buildCityOptions(country?: string): ChoiceOption[] {
       .map(city => ({ value: city, label: city })),
     { value: 'Autre ville', label: 'Autre ville', icon: LandPlot },
   ];
+}
+
+function isAbidjanAreaSelection(value?: unknown): boolean {
+  const city = String(value || '').trim();
+  if (!city) return false;
+  const normalized = city.toLowerCase();
+  return normalized === 'abidjan'
+    || normalized.startsWith('abidjan -')
+    || COMMUNES_ABIDJAN.some(commune => commune.toLowerCase() === normalized);
 }
 
 const TERRAIN_OPTIONS: ChoiceOption[] = [
@@ -757,6 +792,8 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
   const family = getProjectFamily(projectType);
   const terrainStatus = responses.terrainStatus as string | undefined;
   const clientPresence = responses.clientPresence as string | undefined;
+  const selectedCountry = String(responses.country || "Côte d'Ivoire");
+  const cityOptions = buildCityOptions(selectedCountry);
   const steps: StepDef[] = [
     {
       id: 'project-type',
@@ -787,10 +824,10 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
     {
       id: 'city',
       title: 'Ville du projet',
-      subtitle: 'Sélectionnez la ville ou la commune concernée',
+      subtitle: `${cityOptions.length - 1} ville(s) et localité(s) disponibles. Vous pouvez aussi saisir une localité absente.`,
       responseKey: 'city',
       type: 'select',
-      options: buildCityOptions(String(responses.country || "Côte d'Ivoire")),
+      options: cityOptions,
       required: true,
     },
     {
@@ -883,7 +920,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       });
     }
 
-    if (terrainStatus === 'searching' && responses.country === "Côte d'Ivoire" && responses.city === 'Abidjan') {
+    if (terrainStatus === 'searching' && selectedCountry === "Côte d'Ivoire" && isAbidjanAreaSelection(responses.city)) {
       steps.push({
         id: 'zones',
         title: 'Zones recherchées',
