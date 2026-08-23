@@ -132,6 +132,7 @@ export interface ProjectData {
   formData?: Record<string, unknown>;
   documents?: ProjectDocumentData[];
   quotes?: ProjectQuoteData[];
+  visualProposals?: ProjectVisualProposalData[];
   visualProposal?: ProjectVisualProposalData;
   financing?: ProjectFinancingData;
   siteUpdates?: ProjectSiteUpdateData[];
@@ -183,7 +184,9 @@ export interface ProjectVisualProposalData {
   riskControls?: string[];
   nextSteps?: string[];
   clientCommitment?: string;
-  validatedAt: string;
+  publishedAt?: string;
+  publishedBy?: string;
+  validatedAt?: string;
   validatedBy?: string;
 }
 

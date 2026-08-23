@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { normalizeEmail, normalizeText, parseJsonField, serverError, validationError } from '@/lib/api-utils';
 import { createStoredProject, hasExternalProjectStore, listStoredProjects } from '@/lib/project-store';
-import type { ProjectDocumentData, ProjectFinancingData, ProjectMessageData, ProjectQuoteData, ProjectSiteUpdateData } from '@/types';
+import type { ProjectDocumentData, ProjectFinancingData, ProjectMessageData, ProjectQuoteData, ProjectSiteUpdateData, ProjectVisualProposalData } from '@/types';
 
 const projectQuerySchema = z.object({
   userId: z.string().trim().min(1).optional(),
@@ -65,6 +65,30 @@ const projectCreateSchema = z.object({
     createdBy: z.string().trim().optional(),
     updatedAt: z.string().trim().optional(),
     documentUrl: z.string().trim().optional(),
+  })).optional(),
+  visualProposals: z.array(z.object({
+    id: z.string().trim().min(1),
+    title: z.string().trim().min(1),
+    category: z.string().trim().min(1),
+    image: z.string().trim().min(1),
+    description: z.string().trim().min(1),
+    estimate: z.string().trim().min(1),
+    duration: z.string().trim().min(1),
+    confidence: z.string().trim().min(1),
+    deliverable: z.string().trim().min(1),
+    strengths: z.array(z.string().trim().min(1)).optional(),
+    decisionCriteria: z.array(z.object({
+      label: z.string().trim().min(1),
+      value: z.string().trim().min(1),
+    })).optional(),
+    technicalScope: z.array(z.string().trim().min(1)).optional(),
+    riskControls: z.array(z.string().trim().min(1)).optional(),
+    nextSteps: z.array(z.string().trim().min(1)).optional(),
+    clientCommitment: z.string().trim().optional(),
+    publishedAt: z.string().trim().optional(),
+    publishedBy: z.string().trim().optional(),
+    validatedAt: z.string().trim().optional(),
+    validatedBy: z.string().trim().optional(),
   })).optional(),
   projectMessages: z.array(z.object({
     id: z.string().trim().min(1),
@@ -246,6 +270,7 @@ export async function POST(request: Request) {
         financing: body.financing as ProjectFinancingData | undefined,
         documents: body.documents as ProjectDocumentData[] | undefined,
         quotes: body.quotes as ProjectQuoteData[] | undefined,
+        visualProposals: body.visualProposals as ProjectVisualProposalData[] | undefined,
         projectMessages: body.projectMessages as ProjectMessageData[] | undefined,
         siteUpdates: body.siteUpdates as ProjectSiteUpdateData[] | undefined,
       });

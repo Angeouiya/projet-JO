@@ -34,6 +34,7 @@ type ProjectSiteUpdateInput = Omit<ProjectSiteUpdateData, 'id' | 'createdAt' | '
 type ProjectMessageInput = Omit<ProjectMessageData, 'id' | 'createdAt' | 'senderName' | 'senderRole'> & Partial<Pick<ProjectMessageData, 'id' | 'createdAt' | 'senderName' | 'senderRole'>>;
 type ProjectQuoteInput = Partial<Omit<ProjectQuoteData, 'amount' | 'status' | 'date'>>;
 type ProjectPaymentMilestoneStatus = ProjectPaymentMilestoneData['status'];
+type ProjectVisualProposalInput = Omit<ProjectVisualProposalData, 'id' | 'publishedAt' | 'publishedBy' | 'validatedAt' | 'validatedBy'> & Partial<Pick<ProjectVisualProposalData, 'id' | 'publishedAt' | 'publishedBy'>>;
 
 interface AppState {
   // Navigation
@@ -125,6 +126,7 @@ interface AppState {
   sendProjectMessage: (projectId: string, message: ProjectMessageInput) => void;
   sendProjectQuote: (projectId: string, amount: number, label?: string, details?: ProjectQuoteInput) => void;
   updateProjectQuoteStatus: (projectId: string, quoteId: string, status: 'accepted' | 'refused') => void;
+  publishProjectVisualProposal: (projectId: string, proposal: ProjectVisualProposalInput) => void;
   validateProjectVisualProposal: (projectId: string, proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
   updateProjectFinancing: (projectId: string, financing: ProjectFinancingData) => void;
   updateProjectPaymentMilestoneStatus: (projectId: string, milestoneId: string, status: ProjectPaymentMilestoneStatus, note?: string) => void;
@@ -446,6 +448,7 @@ export const useAppStore = create<AppState>()(
           formData: input.formData,
           documents: input.documents ?? [],
           quotes: input.quotes ?? [],
+          visualProposals: input.visualProposals ?? [],
           visualProposal: input.visualProposal,
           financing: input.financing,
           siteUpdates: input.siteUpdates ?? [],
@@ -816,6 +819,64 @@ export const useAppStore = create<AppState>()(
             link: 'admin-project-detail',
             projectId,
             actionLabel: 'Ouvrir',
+            isRead: false,
+            createdAt: now,
+          },
+          ...s.notifications,
+        ];
+
+        return { userProjects: projects, notifications, unreadNotificationCount: unreadCount(notifications, s.isAdmin) };
+      }),
+      publishProjectVisualProposal: (projectId, input) => set(s => {
+        const now = new Date().toISOString();
+        const actor = input.publishedBy || s.user?.name || 'Administration Buildify';
+        let projectRef = '';
+        let proposalTitle = input.title;
+        const proposal: ProjectVisualProposalData = {
+          ...input,
+          id: input.id || uniqueId('proposal'),
+          strengths: input.strengths?.length ? input.strengths : ['Image claire', 'Lecture budget', 'Décision facilitée'],
+          decisionCriteria: input.decisionCriteria?.length ? input.decisionCriteria : [
+            { label: 'Budget cible', value: input.estimate },
+            { label: 'Délai cible', value: input.duration },
+            { label: 'Décision', value: input.confidence },
+            { label: 'Livrable', value: input.deliverable },
+          ],
+          publishedAt: input.publishedAt || now,
+          publishedBy: actor,
+        };
+        const projects = s.userProjects.map(project => {
+          if (project.id !== projectId) return project;
+          projectRef = project.referenceNumber;
+          proposalTitle = proposal.title;
+          return {
+            ...project,
+            status: ['submitted', 'verifying', 'studying', 'estimating'].includes(project.status)
+              ? 'proposal_ready'
+              : project.status,
+            progress: Math.max(project.progress ?? 0, 20),
+            visualProposals: [
+              proposal,
+              ...(project.visualProposals ?? []).filter(item => item.id !== proposal.id),
+            ],
+            activityLog: [
+              activity(`Proposition visuelle publiée : ${proposal.title}`, actor, 'proposal'),
+              ...(project.activityLog ?? []),
+            ],
+            updatedAt: now,
+          };
+        });
+
+        const notifications: NotificationData[] = [
+          {
+            id: uniqueId('notif'),
+            title: 'Proposition visuelle disponible',
+            message: `${proposalTitle} est disponible pour ${projectRef || 'votre dossier'}. Vous pouvez consulter l’image, télécharger la fiche et valider votre choix.`,
+            type: 'proposal',
+            audience: 'client',
+            link: 'project-detail',
+            projectId,
+            actionLabel: 'Consulter',
             isRead: false,
             createdAt: now,
           },

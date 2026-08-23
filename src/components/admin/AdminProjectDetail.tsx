@@ -215,6 +215,16 @@ function splitQuoteText(value: string) {
     .filter(Boolean);
 }
 
+function criteriaFromText(value: string) {
+  return splitQuoteText(value).map(line => {
+    const [label, ...rest] = line.split(':');
+    return {
+      label: label.trim(),
+      value: rest.join(':').trim() || 'À préciser',
+    };
+  });
+}
+
 export function AdminProjectDetail() {
   const {
     goBack,
@@ -226,6 +236,7 @@ export function AdminProjectDetail() {
     sendProjectQuote,
     updateProjectStatus,
     updateProjectPaymentMilestoneStatus,
+    publishProjectVisualProposal,
     publishProjectSiteUpdate,
     addToast,
   } = useAppStore();
@@ -259,6 +270,18 @@ export function AdminProjectDetail() {
   const [paymentMilestoneId, setPaymentMilestoneId] = useState(project?.financing?.milestones?.[0]?.id || '');
   const [paymentMilestoneStatus, setPaymentMilestoneStatus] = useState<ProjectPaymentMilestoneData['status']>('due');
   const [paymentMilestoneNote, setPaymentMilestoneNote] = useState('Jalon contrôlé par l’administration Buildify. Le client peut suivre le statut dans son espace projet.');
+  const [proposalTitle, setProposalTitle] = useState(`${project?.categoryName || 'Projet BTP'} - proposition visuelle Buildify`);
+  const [proposalImage, setProposalImage] = useState(project?.visualProposals?.[0]?.image || '/images/maison-basse-1.png');
+  const [proposalDescription, setProposalDescription] = useState('Proposition visuelle publiée par Buildify pour aider le client à comparer, télécharger et valider une orientation claire avant devis définitif.');
+  const [proposalEstimate, setProposalEstimate] = useState(formatBudget(project?.budgetMin, project?.budgetMax));
+  const [proposalDuration, setProposalDuration] = useState('6 à 8 mois');
+  const [proposalConfidence, setProposalConfidence] = useState('Base professionnelle à valider');
+  const [proposalDeliverable, setProposalDeliverable] = useState('Image de référence, périmètre, points de décision et prochaines étapes du dossier.');
+  const [proposalStrengthsText, setProposalStrengthsText] = useState('Image claire pour décision\nBudget lisible\nSuivi possible à distance');
+  const [proposalCriteriaText, setProposalCriteriaText] = useState(`Budget cible: ${formatBudget(project?.budgetMin, project?.budgetMax)}\nDélai cible: 6 à 8 mois\nUsage: ${project?.categoryName || 'Projet BTP'}\nDécision: Validation visuelle client`);
+  const [proposalScopeText, setProposalScopeText] = useState(`Ouvrage : ${project?.categoryName || 'Projet BTP'}\nLocalisation : ${project?.city || 'À confirmer'}\nBase : image publiée, hypothèses et arbitrages techniques`);
+  const [proposalRisksText, setProposalRisksText] = useState('Surfaces et limites de prestation à confirmer\nDocuments administratifs à contrôler\nBudget final après métrés et choix matériaux');
+  const [proposalNextText, setProposalNextText] = useState('Client valide la proposition visuelle\nBuildify prépare le chiffrage détaillé\nAdmin transmet devis, planning et jalons');
   const [adminDirectMessage, setAdminDirectMessage] = useState('Bonjour, votre dossier avance. Vous pouvez nous écrire ici pour toute précision sur le périmètre, le financement ou le planning.');
   const [sitePhase, setSitePhase] = useState(project?.siteUpdates?.[0]?.phase || 'Fondations et implantation');
   const [siteProgress, setSiteProgress] = useState(project?.siteUpdates?.[0]?.progress || Math.max(project?.progress || 25, 25));
@@ -297,6 +320,12 @@ export function AdminProjectDetail() {
     || !quotePaymentTerms.trim()
     || !Number.isFinite(Number(quoteValidityDays))
     || Number(quoteValidityDays) < 1;
+  const proposalDisabled = !proposalTitle.trim()
+    || !proposalImage.trim()
+    || !proposalDescription.trim()
+    || !proposalEstimate.trim()
+    || !proposalDuration.trim()
+    || !proposalDeliverable.trim();
   const financing = project.financing || (project.formData?.financing as typeof project.financing);
   const visualProposal = project.visualProposal;
   const locationLabel = formatProjectLocation(project);
@@ -394,6 +423,28 @@ export function AdminProjectDetail() {
       paymentMilestoneNote
     );
     addToast('Jalon financier mis à jour.', 'success');
+  };
+
+  const handlePublishProposal = () => {
+    if (proposalDisabled) return;
+    publishProjectVisualProposal(project.id, {
+      title: proposalTitle.trim(),
+      category: project.categoryName || 'Projet BTP',
+      image: proposalImage.trim(),
+      description: proposalDescription.trim(),
+      estimate: proposalEstimate.trim(),
+      duration: proposalDuration.trim(),
+      confidence: proposalConfidence.trim() || 'À valider',
+      deliverable: proposalDeliverable.trim(),
+      strengths: splitQuoteText(proposalStrengthsText),
+      decisionCriteria: criteriaFromText(proposalCriteriaText),
+      technicalScope: splitQuoteText(proposalScopeText),
+      riskControls: splitQuoteText(proposalRisksText),
+      nextSteps: splitQuoteText(proposalNextText),
+      clientCommitment: `La validation retient "${proposalTitle.trim()}" comme orientation visuelle et technique du dossier ${project.referenceNumber}. Elle prépare le chiffrage, le contrat et le planning sans remplacer les validations réglementaires.`,
+      publishedBy: 'Administration Buildify',
+    });
+    addToast('Proposition visuelle publiée au client.', 'success');
   };
 
   const handlePlanning = () => {
@@ -652,6 +703,106 @@ export function AdminProjectDetail() {
                       <Button className="mt-3 w-full gap-2" disabled={quoteDisabled}>
                         <ReceiptText className="size-4" />
                         Transmettre
+                      </Button>
+                    )}
+                  />
+                </div>
+
+                <div className="rounded-lg border p-3 md:col-span-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold">Proposition visuelle client</h3>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Publiez une image professionnelle consultable, téléchargeable et validable dans l’espace projet client.
+                      </p>
+                    </div>
+                    <Badge variant="outline">{project.visualProposals?.length ?? 0} publiée{(project.visualProposals?.length ?? 0) > 1 ? 's' : ''}</Badge>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalTitle">
+                        Titre
+                      </label>
+                      <Input id="proposalTitle" value={proposalTitle} onChange={event => setProposalTitle(event.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalEstimate">
+                        Budget indicatif
+                      </label>
+                      <Input id="proposalEstimate" value={proposalEstimate} onChange={event => setProposalEstimate(event.target.value)} />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalImage">
+                        Image
+                      </label>
+                      <Input id="proposalImage" value={proposalImage} onChange={event => setProposalImage(event.target.value)} placeholder="/images/maison-basse-1.png" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalDuration">
+                        Délai
+                      </label>
+                      <Input id="proposalDuration" value={proposalDuration} onChange={event => setProposalDuration(event.target.value)} />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalDescription">
+                        Description client
+                      </label>
+                      <Textarea id="proposalDescription" value={proposalDescription} onChange={event => setProposalDescription(event.target.value)} rows={3} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalConfidence">
+                        Niveau de décision
+                      </label>
+                      <Input id="proposalConfidence" value={proposalConfidence} onChange={event => setProposalConfidence(event.target.value)} />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-3">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalDeliverable">
+                        Livrable
+                      </label>
+                      <Input id="proposalDeliverable" value={proposalDeliverable} onChange={event => setProposalDeliverable(event.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalStrengths">
+                        Points forts
+                      </label>
+                      <Textarea id="proposalStrengths" value={proposalStrengthsText} onChange={event => setProposalStrengthsText(event.target.value)} rows={4} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalScope">
+                        Périmètre
+                      </label>
+                      <Textarea id="proposalScope" value={proposalScopeText} onChange={event => setProposalScopeText(event.target.value)} rows={4} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalRisks">
+                        Vigilances
+                      </label>
+                      <Textarea id="proposalRisks" value={proposalRisksText} onChange={event => setProposalRisksText(event.target.value)} rows={4} />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalCriteria">
+                        Critères décisionnels
+                      </label>
+                      <Textarea id="proposalCriteria" value={proposalCriteriaText} onChange={event => setProposalCriteriaText(event.target.value)} rows={4} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="proposalNext">
+                        Prochaines étapes
+                      </label>
+                      <Textarea id="proposalNext" value={proposalNextText} onChange={event => setProposalNextText(event.target.value)} rows={4} />
+                    </div>
+                  </div>
+
+                  <ConfirmActionDialog
+                    title="Publier cette proposition visuelle ?"
+                    description={`Le client verra "${proposalTitle.trim() || 'cette proposition'}" avec l’image, la fiche téléchargeable, le comparatif et le bouton de validation.`}
+                    confirmLabel="Publier"
+                    onConfirm={handlePublishProposal}
+                    trigger={(
+                      <Button className="mt-3 w-full gap-2" disabled={proposalDisabled}>
+                        <ImageIcon className="size-4" />
+                        Publier au client
                       </Button>
                     )}
                   />
@@ -1070,7 +1221,8 @@ export function AdminProjectDetail() {
                     <div>
                       <p className="text-sm font-semibold">{visualProposal.title}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {visualProposal.category} · {new Date(visualProposal.validatedAt).toLocaleString('fr-FR')}
+                        {visualProposal.category}
+                        {visualProposal.validatedAt ? ` · ${new Date(visualProposal.validatedAt).toLocaleString('fr-FR')}` : ''}
                       </p>
                     </div>
                     <p className="text-xs leading-5 text-muted-foreground">{visualProposal.deliverable}</p>

@@ -48,6 +48,7 @@ type ProjectDetailData = {
   messages: { id: string; sender: string; senderRole: string; text: string; time: string; isOwn: boolean }[];
   infoResponses?: ProjectData['missingInfoResponses'];
   quotes: ProjectQuoteViewData[];
+  visualProposals?: ProjectVisualProposalData[];
   visualProposal?: ProjectVisualProposalData;
   financing?: ProjectFinancingData;
   clientPresence?: string;
@@ -229,6 +230,7 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
       ...quote,
       status: quote.status === 'accepted' || quote.status === 'refused' ? quote.status : 'pending',
     })),
+    visualProposals: project.visualProposals ?? [],
     visualProposal: project.visualProposal,
     financing: project.financing || (project.formData?.financing as ProjectFinancingData | undefined),
     clientPresence: labelFromMap(CLIENT_PRESENCE_LABELS, projectText(project, 'clientPresence')),
@@ -326,6 +328,13 @@ function buildStoredVisualProposal(
     riskControls: proposalRiskControls(proposal, data),
     nextSteps: proposalNextSteps(proposal),
     clientCommitment: proposalClientCommitment(proposal, data),
+  };
+}
+
+function normalizeVisualProposal(proposal: ProjectVisualProposalData): VisualProposal {
+  return {
+    ...proposal,
+    strengths: proposal.strengths?.length ? proposal.strengths : ['Proposition publiée', 'Image consultable', 'Décision cadrée'],
   };
 }
 
@@ -1290,8 +1299,10 @@ function ResumeTab({
     { icon: FolderArchive, label: 'Pièces dossier', value: `${data.documents.length} pièce(s)` },
     { icon: MessageSquare, label: 'Communication', value: data.messages.length ? `${data.messages.length} échange(s)` : 'Canal ouvert' },
   ];
-  const proposals = buildVisualProposals(data);
-  const proposalPreview = data.visualProposal ?? proposals[0];
+  const proposals = data.visualProposals?.length
+    ? data.visualProposals.map(normalizeVisualProposal)
+    : buildVisualProposals(data);
+  const proposalPreview = data.visualProposal ? normalizeVisualProposal(data.visualProposal) : proposals[0];
 
   return (
     <div className="space-y-4">
@@ -1682,7 +1693,12 @@ function ProposalsTab({
   onValidate?: (proposal: Omit<ProjectVisualProposalData, 'validatedAt' | 'validatedBy'>) => void;
 }) {
   const addToast = useAppStore(state => state.addToast);
-  const proposals = useMemo(() => buildVisualProposals(data), [data]);
+  const proposals = useMemo(
+    () => data.visualProposals?.length
+      ? data.visualProposals.map(normalizeVisualProposal)
+      : buildVisualProposals(data),
+    [data]
+  );
   const storageKey = getProposalStorageKey(data.referenceNumber);
   const [selectedId, setSelectedId] = useState(proposals[0]?.id ?? '');
   const [localValidatedId, setLocalValidatedId] = useState<string | null>(() => {
@@ -1693,7 +1709,8 @@ function ProposalsTab({
 
   const selectedProposal = proposals.find((proposal) => proposal.id === selectedId) ?? proposals[0];
   const validatedId = data.visualProposal?.id || localValidatedId;
-  const validatedProposal = proposals.find((proposal) => proposal.id === validatedId);
+  const validatedProposal = proposals.find((proposal) => proposal.id === validatedId)
+    ?? (data.visualProposal ? normalizeVisualProposal(data.visualProposal) : undefined);
 
   const handleValidate = () => {
     if (!selectedProposal) return;
