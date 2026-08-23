@@ -44,7 +44,7 @@ type ProjectDetailData = {
   startDate: string;
   estimatedEnd: string;
   team: { name: string; role: string }[];
-  documents: { type: string; name: string; date: string; icon: LucideIcon }[];
+  documents: { id?: string; type: string; name: string; date: string; icon: LucideIcon; url?: string; size?: number }[];
   messages: { id: string; sender: string; senderRole: string; text: string; time: string; isOwn: boolean }[];
   infoResponses?: ProjectData['missingInfoResponses'];
   quotes: ProjectQuoteViewData[];
@@ -192,9 +192,12 @@ function detailFromStoredProject(project: ProjectData): ProjectDetailData {
     estimatedEnd: String(project.formData?.timeline || 'À planifier'),
     team: project.assignedTo ? [{ name: project.assignedTo, role: 'Responsable dossier' }] : [],
     documents: (project.documents ?? []).map(document => ({
+      id: document.id,
       type: document.type,
       name: document.name,
       date: document.date,
+      url: document.url,
+      size: document.size,
       icon: getDocumentIcon(document.type, document.name),
     })),
     messages: [
@@ -665,6 +668,96 @@ function openQuoteSheet(quote: ProjectQuoteViewData, data: ProjectDetailData) {
   }
   tab.document.write(buildQuoteHtml(quote, data));
   tab.document.close();
+}
+
+type ClientDocumentView = ProjectDetailData['documents'][number];
+
+function formatDocumentSize(size?: number) {
+  if (!size) return 'Taille non renseignée';
+  if (size >= 1024 * 1024) return `${Math.round((size / (1024 * 1024)) * 10) / 10} Mo`;
+  return `${Math.max(1, Math.round(size / 1024))} Ko`;
+}
+
+function documentTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    plan: 'Plan',
+    photo: 'Photo',
+    contrat: 'Contrat',
+    facture: 'Facture',
+    document: 'Document',
+  };
+  return labels[type] || type;
+}
+
+function buildDocumentReceiptHtml(document: ClientDocumentView, data: ProjectDetailData, source: 'client' | 'admin') {
+  return `<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(document.name)} - ${escapeHtml(data.referenceNumber)}</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; color: #111; background: #fff; }
+    main { max-width: 760px; margin: 0 auto; padding: 38px; }
+    header { border-bottom: 2px solid #111; padding-bottom: 18px; display: flex; justify-content: space-between; gap: 24px; }
+    .brand { font-size: 24px; font-weight: 900; }
+    .ref { text-align: right; font-size: 12px; color: #555; line-height: 1.6; }
+    h1 { margin: 28px 0 8px; font-size: 28px; line-height: 1.2; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 22px; }
+    .box { border: 1px solid #ddd; border-radius: 10px; padding: 14px; }
+    .label { color: #666; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .value { margin-top: 8px; font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
+    .note { margin-top: 18px; border: 1px solid #ddd; border-radius: 10px; padding: 16px; line-height: 1.65; color: #333; }
+    footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+    @media (max-width: 640px) { main { padding: 22px; } header { display: block; } .ref { margin-top: 12px; text-align: left; } .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div><div class="brand">Buildify</div><div>Registre documentaire</div></div>
+      <div class="ref">
+        <div>Dossier ${escapeHtml(data.referenceNumber)}</div>
+        <div>${escapeHtml(data.title)}</div>
+        <div>${escapeHtml(data.city)}</div>
+      </div>
+    </header>
+    <h1>${escapeHtml(document.name)}</h1>
+    <p>Fiche de dépôt générée depuis l’espace ${source === 'admin' ? 'administrateur' : 'client'} Buildify.</p>
+    <section class="grid">
+      <div class="box"><div class="label">Type</div><div class="value">${escapeHtml(documentTypeLabel(document.type))}</div></div>
+      <div class="box"><div class="label">Date</div><div class="value">${escapeHtml(document.date)}</div></div>
+      <div class="box"><div class="label">Taille</div><div class="value">${escapeHtml(formatDocumentSize(document.size))}</div></div>
+      <div class="box"><div class="label">Statut</div><div class="value">Déposé au dossier</div></div>
+    </section>
+    <section class="note">
+      Ce registre ne remplace pas le fichier original. Il sert à tracer la pièce déclarée, faciliter le suivi admin/client, préparer les demandes de pièces complémentaires et sécuriser le parcours devis, banque, contrat et chantier.
+      ${document.url ? `<br /><br />Lien déclaré : ${escapeHtml(document.url)}` : ''}
+    </section>
+    <footer>Document rattaché au dossier ${escapeHtml(data.referenceNumber)} · Buildify</footer>
+  </main>
+</body>
+</html>`;
+}
+
+function downloadDocumentReceipt(document: ClientDocumentView, data: ProjectDetailData, source: 'client' | 'admin' = 'client') {
+  const blob = new Blob([buildDocumentReceiptHtml(document, data, source)], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = window.document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${data.referenceNumber}-${document.name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'document'}-registre-buildify.html`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadOriginalDocument(document: ClientDocumentView) {
+  if (!document.url) return;
+  const anchor = window.document.createElement('a');
+  anchor.href = document.url;
+  anchor.download = document.name;
+  anchor.target = '_blank';
+  anchor.rel = 'noreferrer';
+  anchor.click();
 }
 
 function buildVisualProposals(data: ProjectDetailData): VisualProposal[] {
@@ -1646,12 +1739,16 @@ function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: 
       type: file.type.startsWith('image/') ? 'photo' : 'document',
       name: file.name,
       date: uploadDate,
+      url: URL.createObjectURL(file),
       size: file.size,
     }));
     const uploadedDocs: ProjectDetailData['documents'] = uploadedRecords.map((document) => ({
+      id: document.id,
       type: document.type,
       name: document.name,
       date: document.date,
+      size: document.size,
+      url: document.url,
       icon: getDocumentIcon(document.type, document.name),
     }));
 
@@ -1705,13 +1802,29 @@ function DocumentsTab({ data, onUpload }: { data: ProjectDetailData; onUpload?: 
             <div className="space-y-2">
               {docs.map((doc, i) => (
                 <Card key={`${doc.name}-${doc.date}-${i}`} className="py-0 gap-0">
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="size-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                      <doc.icon className="size-4 text-muted-foreground" />
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="size-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <doc.icon className="size-4 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold truncate">{doc.name}</p>
+                        <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+                          <span className="rounded-md bg-muted px-2 py-1">{doc.date}</span>
+                          <span className="rounded-md bg-muted px-2 py-1">{documentTypeLabel(doc.type)}</span>
+                          <span className="rounded-md bg-muted px-2 py-1">{formatDocumentSize(doc.size)}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{doc.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{doc.date}</p>
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <Button variant="outline" size="sm" className="gap-2" onClick={() => downloadDocumentReceipt(doc, data)}>
+                        <Download className="size-3.5" />
+                        Télécharger la fiche
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-2" onClick={() => downloadOriginalDocument(doc)} disabled={!doc.url}>
+                        <FolderArchive className="size-3.5" />
+                        Original
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

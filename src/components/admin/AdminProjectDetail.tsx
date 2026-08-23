@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock3,
+  Download,
+  FileText,
   FolderSearch,
   Globe2,
   HandCoins,
@@ -181,6 +183,98 @@ function paymentMilestoneStatusLabel(status?: ProjectPaymentMilestoneData['statu
 function labelFrom(labels: Record<string, string>, value?: string) {
   if (!value) return 'À compléter';
   return labels[value] || value;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatDocumentSize(size?: number) {
+  if (!size) return 'Taille non renseignée';
+  if (size >= 1024 * 1024) return `${Math.round((size / (1024 * 1024)) * 10) / 10} Mo`;
+  return `${Math.max(1, Math.round(size / 1024))} Ko`;
+}
+
+function documentTypeLabel(type?: string) {
+  const labels: Record<string, string> = {
+    plan: 'Plan',
+    photo: 'Photo',
+    contrat: 'Contrat',
+    facture: 'Facture',
+    document: 'Document',
+  };
+  return type ? labels[type] || type : 'Document';
+}
+
+function buildAdminDocumentReceiptHtml(document: NonNullable<ProjectData['documents']>[number], project: ProjectData) {
+  return `<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(document.name)} - ${escapeHtml(project.referenceNumber)}</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; color: #111; background: #fff; }
+    main { max-width: 760px; margin: 0 auto; padding: 38px; }
+    header { border-bottom: 2px solid #111; padding-bottom: 18px; display: flex; justify-content: space-between; gap: 24px; }
+    .brand { font-size: 24px; font-weight: 900; }
+    .ref { text-align: right; font-size: 12px; color: #555; line-height: 1.6; }
+    h1 { margin: 28px 0 8px; font-size: 28px; line-height: 1.2; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 22px; }
+    .box { border: 1px solid #ddd; border-radius: 10px; padding: 14px; }
+    .label { color: #666; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .value { margin-top: 8px; font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
+    .note { margin-top: 18px; border: 1px solid #ddd; border-radius: 10px; padding: 16px; line-height: 1.65; color: #333; }
+    footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+    @media (max-width: 640px) { main { padding: 22px; } header { display: block; } .ref { margin-top: 12px; text-align: left; } .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div><div class="brand">Buildify</div><div>Registre documentaire admin</div></div>
+      <div class="ref">
+        <div>Dossier ${escapeHtml(project.referenceNumber)}</div>
+        <div>${escapeHtml(project.title || project.categoryName || 'Projet BTP')}</div>
+        <div>${escapeHtml(formatProjectLocation(project))}</div>
+      </div>
+    </header>
+    <h1>${escapeHtml(document.name)}</h1>
+    <p>Fiche de contrôle générée depuis l’espace administrateur Buildify.</p>
+    <section class="grid">
+      <div class="box"><div class="label">Client</div><div class="value">${escapeHtml(project.clientName || 'À rattacher')}</div></div>
+      <div class="box"><div class="label">Type</div><div class="value">${escapeHtml(documentTypeLabel(document.type))}</div></div>
+      <div class="box"><div class="label">Date</div><div class="value">${escapeHtml(document.date)}</div></div>
+      <div class="box"><div class="label">Taille</div><div class="value">${escapeHtml(formatDocumentSize(document.size))}</div></div>
+    </section>
+    <section class="note">
+      Cette fiche permet à l’administration de tracer la pièce, demander des compléments si nécessaire, et relier le document au devis, à la banque, au contrat et au suivi chantier.
+      ${document.url ? `<br /><br />Lien déclaré : ${escapeHtml(document.url)}` : ''}
+    </section>
+    <footer>Document rattaché au dossier ${escapeHtml(project.referenceNumber)} · Buildify</footer>
+  </main>
+</body>
+</html>`;
+}
+
+function downloadAdminDocumentReceipt(document: NonNullable<ProjectData['documents']>[number], project: ProjectData) {
+  const blob = new Blob([buildAdminDocumentReceiptHtml(document, project)], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = window.document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${project.referenceNumber}-${document.name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'document'}-registre-admin-buildify.html`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function openAdminOriginalDocument(document: NonNullable<ProjectData['documents']>[number]) {
+  if (!document.url) return;
+  window.open(document.url, '_blank', 'noopener,noreferrer');
 }
 
 const CLIENT_PRESENCE_LABELS: Record<string, string> = {
@@ -1442,11 +1536,29 @@ export function AdminProjectDetail() {
                   <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Aucun document déclaré.</p>
                 ) : (
                   (project.documents ?? []).map(document => (
-                    <div key={document.id} className="flex items-center gap-3 rounded-lg border p-3">
-                      <FolderSearch className="size-4 text-muted-foreground" />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{document.name}</p>
-                        <p className="text-xs text-muted-foreground">{document.date}</p>
+                    <div key={document.id} className="rounded-lg border p-3">
+                      <div className="flex items-start gap-3">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                          <FileText className="size-4 text-muted-foreground" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold">{document.name}</p>
+                          <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+                            <span className="rounded-md bg-muted px-2 py-1">{document.date}</span>
+                            <span className="rounded-md bg-muted px-2 py-1">{documentTypeLabel(document.type)}</span>
+                            <span className="rounded-md bg-muted px-2 py-1">{formatDocumentSize(document.size)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <Button variant="outline" size="sm" className="gap-2" onClick={() => downloadAdminDocumentReceipt(document, project)}>
+                          <Download className="size-3.5" />
+                          Fiche admin
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-2" onClick={() => openAdminOriginalDocument(document)} disabled={!document.url}>
+                          <FolderSearch className="size-3.5" />
+                          Original
+                        </Button>
                       </div>
                     </div>
                   ))
