@@ -75,6 +75,24 @@ function formatBudgetSummary(min?: number, max?: number) {
   return 'À estimer';
 }
 
+function compactProposalEstimate(value: string) {
+  const compactAmount = (amount: number) => {
+    if (amount >= 1_000_000) {
+      const millions = Math.round((amount / 1_000_000) * 10) / 10;
+      return `${new Intl.NumberFormat('fr-FR').format(millions)} M`;
+    }
+    return new Intl.NumberFormat('fr-FR').format(amount);
+  };
+  const amounts = Array.from(value.matchAll(/\d[\d\s\u00a0\u202f]*/g))
+    .map(match => Number(match[0].replace(/\D/g, '')))
+    .filter(Boolean);
+
+  if (amounts.length >= 2) return `${compactAmount(amounts[0])} - ${compactAmount(amounts[1])} XOF`;
+  if (amounts.length === 1) return `${compactAmount(amounts[0])} XOF`;
+
+  return value.replace(/\s*XOF\s*-\s*/g, ' - ').replace(/\s*XOF$/g, '').trim() || 'À estimer';
+}
+
 function quoteStatusLabel(status: string) {
   if (status === 'sent') return 'Transmis';
   if (status === 'accepted') return 'Accepté';
@@ -381,6 +399,23 @@ interface AdminProjectAction {
   actionLabel: string;
 }
 
+interface ProposalVariantTemplate {
+  id: string;
+  title: string;
+  category: string;
+  image: string;
+  description: string;
+  estimate: string;
+  duration: string;
+  confidence: string;
+  deliverable: string;
+  strengths: string[];
+  decisionCriteria: { label: string; value: string }[];
+  technicalScope: string[];
+  riskControls: string[];
+  nextSteps: string[];
+}
+
 function splitQuoteText(value: string) {
   return value
     .split(/\r?\n/)
@@ -396,6 +431,261 @@ function criteriaFromText(value: string) {
       value: rest.join(':').trim() || 'À préciser',
     };
   });
+}
+
+function criteriaToText(criteria: { label: string; value: string }[]) {
+  return criteria.map(item => `${item.label}: ${item.value}`).join('\n');
+}
+
+function linesToText(lines: string[]) {
+  return lines.join('\n');
+}
+
+function getProposalVariantTemplates(project?: ProjectData): ProposalVariantTemplate[] {
+  const categoryName = project?.categoryName || 'Projet BTP';
+  const category = categoryName.toLowerCase();
+  const estimate = formatBudget(project?.budgetMin, project?.budgetMax);
+  const location = project ? formatProjectLocation(project, 'Localisation à confirmer') : 'Localisation à confirmer';
+  const scopeBase = [
+    `Ouvrage : ${categoryName}`,
+    `Localisation : ${location}`,
+    'Lecture du brief client, des surfaces, du budget et des documents disponibles.',
+  ];
+  const baseRisks = [
+    'Surfaces, emprise et limites de prestation à confirmer avant devis définitif.',
+    'Documents administratifs, terrain et contraintes techniques à contrôler.',
+    'Budget final à verrouiller après métrés, choix de matériaux et visite technique.',
+  ];
+  const baseNext = [
+    'Client consulte et compare la proposition visuelle.',
+    'Client valide une orientation dans son espace projet.',
+    'Buildify prépare le devis détaillé, le planning et les jalons sécurisés.',
+  ];
+  const decisionBase = [
+    { label: 'Budget cible', value: estimate },
+    { label: 'Zone', value: location },
+    { label: 'Décision attendue', value: 'Validation visuelle client avant devis final' },
+  ];
+
+  if (category.includes('vrd') || category.includes('voirie') || category.includes('route')) {
+    return [
+      {
+        id: 'vrd-voirie-drainage',
+        title: 'VRD - voirie et drainage maîtrisés',
+        category: 'VRD',
+        image: '/images/road-1.png',
+        description: 'Variante orientée voirie, accès, caniveaux, drainage et circulation des engins pour un chantier exploitable par phases.',
+        estimate,
+        duration: '6 à 12 semaines',
+        confidence: 'Priorité exploitation du site',
+        deliverable: 'Image de référence VRD, phasage, ouvrages à contrôler et points de validation terrain.',
+        strengths: ['Accès lisibles', 'Drainage anticipé', 'Phasage exploitable'],
+        decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Accès, pentes, exutoires et maintenance' }],
+        technicalScope: [...scopeBase, 'Voirie, bordures, caniveaux, assainissement, exutoires et accès chantier.'],
+        riskControls: [...baseRisks, 'Contrôle des pentes, raccordements et points bas avant exécution.'],
+        nextSteps: baseNext,
+      },
+      {
+        id: 'vrd-reseaux',
+        title: 'VRD - réseaux et raccordements',
+        category: 'VRD',
+        image: '/images/hydraulique-1.png',
+        description: 'Variante centrée sur eau, assainissement, regards, réservations, raccordements et coordination des réseaux.',
+        estimate,
+        duration: '4 à 10 semaines',
+        confidence: 'Priorité conformité réseaux',
+        deliverable: 'Schéma réseaux, points de contrôle, fiches d’exécution et séquence de raccordement.',
+        strengths: ['Réseaux coordonnés', 'Regards accessibles', 'Maintenance prévue'],
+        decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Raccordements et conformité des réseaux' }],
+        technicalScope: [...scopeBase, 'Réseaux humides, réservations, regards, raccordements publics et essais.'],
+        riskControls: [...baseRisks, 'Risque de raccordement ou d’exutoire non disponible à lever avant chantier.'],
+        nextSteps: baseNext,
+      },
+    ];
+  }
+
+  if (category.includes('immeuble')) {
+    return [
+      {
+        id: 'rplus-facade-premium',
+        title: 'Immeuble R+ - façade premium',
+        category: 'Immeuble R+',
+        image: '/images/immeuble-1.png',
+        description: 'Variante verticale sobre avec façade régulière, accès principal lisible et lecture promoteur pour arbitrer coût, image et rendement.',
+        estimate,
+        duration: '10 à 18 mois',
+        confidence: 'Recommandée pour rendement locatif',
+        deliverable: 'Vue façade, principes de trame, contraintes structurelles et planning macro.',
+        strengths: ['Façade valorisante', 'Trame rationnelle', 'Densité utile'],
+        decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Image, rendement, structure et circulation verticale' }],
+        technicalScope: [...scopeBase, 'Façade, circulations verticales, rez-de-chaussée, parkings, gaines et sécurité incendie.'],
+        riskControls: [...baseRisks, 'Études structure, sol, sécurité incendie et stationnement à confirmer.'],
+        nextSteps: baseNext,
+      },
+      {
+        id: 'rplus-plan-technique',
+        title: 'Immeuble R+ - plan technique optimisé',
+        category: 'Études R+',
+        image: '/images/plan-1.png',
+        description: 'Variante de cadrage par plans pour fixer les noyaux, appartements, circulations, gaines et surfaces avant chiffrage.',
+        estimate,
+        duration: '3 à 6 semaines d’études',
+        confidence: 'Priorité exécution',
+        deliverable: 'Plan de principe, surfaces utiles, points BET et arbitrages de programme.',
+        strengths: ['Noyaux rationnels', 'Surfaces maîtrisées', 'Études plus fiables'],
+        decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Plans, surfaces et faisabilité technique' }],
+        technicalScope: [...scopeBase, 'Distribution, noyaux, gaines techniques, typologies, parkings et surfaces utiles.'],
+        riskControls: [...baseRisks, 'Risques liés aux normes, à la structure et aux circulations à lever avec les BET.'],
+        nextSteps: baseNext,
+      },
+    ];
+  }
+
+  if (category.includes('duplex') || category.includes('triplex')) {
+    return [
+      {
+        id: 'duplex-contemporain',
+        title: 'Duplex / Triplex - façade familiale',
+        category: 'Duplex / Triplex',
+        image: '/images/duplex-1.png',
+        description: 'Variante familiale contemporaine avec volumes lisibles, terrasse protégée, stationnement et circulation intérieure maîtrisée.',
+        estimate,
+        duration: '8 à 12 mois',
+        confidence: 'Confort familial',
+        deliverable: 'Vue extérieure, intentions matériaux, périmètre lots et jalons clés.',
+        strengths: ['Façade sobre', 'Espaces familiaux', 'Circulation claire'],
+        decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Confort, façade, stationnement et extension possible' }],
+        technicalScope: [...scopeBase, 'Façade, distribution, gros œuvre, second œuvre, finitions et espaces extérieurs.'],
+        riskControls: baseRisks,
+        nextSteps: baseNext,
+      },
+      {
+        id: 'duplex-finitions',
+        title: 'Duplex / Triplex - finitions premium',
+        category: 'Second œuvre',
+        image: '/images/interieur-1.png',
+        description: 'Variante dédiée aux finitions: revêtements, éclairage, menuiseries, plomberie, équipements et ambiance intérieure.',
+        estimate,
+        duration: '8 à 14 semaines',
+        confidence: 'Décision rapide des finitions',
+        deliverable: 'Planche finitions, lots concernés, options client et points de contrôle qualité.',
+        strengths: ['Choix concrets', 'Lots séparés', 'Standing lisible'],
+        decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Finitions, niveau de standing et réception qualité' }],
+        technicalScope: [...scopeBase, 'Peinture, carrelage, sanitaires, plafonds, menuiseries, luminaires et équipements.'],
+        riskControls: [...baseRisks, 'Disponibilité matériaux, équivalences et tolérances de finition à valider.'],
+        nextSteps: baseNext,
+      },
+    ];
+  }
+
+  if (category.includes('hydraulique')) {
+    return [
+      {
+        id: 'hydraulique-autonomie',
+        title: 'Hydraulique - autonomie et stockage',
+        category: 'Hydraulique',
+        image: '/images/hydraulique-1.png',
+        description: 'Variante orientée forage, adduction, stockage, énergie et continuité de service pour sécuriser l’accès à l’eau.',
+        estimate,
+        duration: '4 à 10 semaines',
+        confidence: 'Priorité continuité d’eau',
+        deliverable: 'Schéma de principe, dimensionnement, points d’essai et plan de maintenance.',
+        strengths: ['Autonomie cadrée', 'Stockage lisible', 'Maintenance anticipée'],
+        decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Débit, stockage, énergie et maintenance' }],
+        technicalScope: [...scopeBase, 'Forage, pompage, château d’eau, traitement, réseau, essais et réception.'],
+        riskControls: [...baseRisks, 'Débit réel, qualité d’eau et énergie disponible à vérifier avant engagement.'],
+        nextSteps: baseNext,
+      },
+    ];
+  }
+
+  if (category.includes('lot') || category.includes('rénovation') || category.includes('renovation')) {
+    return [
+      {
+        id: 'lot-finitions-premium',
+        title: 'Lots de travaux - finition premium',
+        category: 'Lots travaux',
+        image: '/images/interieur-1.png',
+        description: 'Variante dédiée aux lots de finition, reprise qualité, coordination second œuvre et réception propre par zones.',
+        estimate,
+        duration: '4 à 12 semaines',
+        confidence: 'Priorité contrôle qualité',
+        deliverable: 'Image finition, lots concernés, points de validation et réserves à surveiller.',
+        strengths: ['Qualité visible', 'Lots cadrés', 'Réception plus simple'],
+        decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Finitions, reprises et réception qualité' }],
+        technicalScope: [...scopeBase, 'Peinture, carrelage, plomberie, électricité, menuiserie, étanchéité et reprises.'],
+        riskControls: [...baseRisks, 'État existant, malfaçons et contraintes de site occupé à confirmer.'],
+        nextSteps: baseNext,
+      },
+      {
+        id: 'lot-chantier-phasage',
+        title: 'Lots de travaux - phasage chantier',
+        category: 'Lots travaux',
+        image: '/images/chantier-1.png',
+        description: 'Variante chantier pour organiser approvisionnement, zones d’intervention, sécurité et séquence des corps d’état.',
+        estimate,
+        duration: '2 à 8 semaines',
+        confidence: 'Priorité exécution rapide',
+        deliverable: 'Plan d’intervention, planning court, zones sensibles et contrôles par lot.',
+        strengths: ['Phasage clair', 'Approvisionnement suivi', 'Nuisances réduites'],
+        decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Délai, phasage et coordination des équipes' }],
+        technicalScope: [...scopeBase, 'Organisation chantier, lots prioritaires, contrôles intermédiaires et réception.'],
+        riskControls: [...baseRisks, 'Occupation du site, accès fournisseurs et reprises cachées à vérifier.'],
+        nextSteps: baseNext,
+      },
+    ];
+  }
+
+  return [
+    {
+      id: 'maison-basse-contemporaine',
+      title: 'Maison basse contemporaine',
+      category: 'Maison basse',
+      image: '/images/villa-1.png',
+      description: 'Variante claire pour villa basse avec façade élégante, terrasse protégée, emprise maîtrisée et exécution simple.',
+      estimate,
+      duration: '6 à 10 mois',
+      confidence: 'Recommandée pour budget maîtrisé',
+      deliverable: 'Vue façade, principes matériaux, enveloppe budget et phasage du dossier.',
+      strengths: ['Lecture immédiate', 'Coûts mieux cadrés', 'Entretien simple'],
+      decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Emprise, confort familial, budget et délai' }],
+      technicalScope: [...scopeBase, 'Implantation, gros œuvre, second œuvre, finitions, terrasse et espaces extérieurs.'],
+      riskControls: baseRisks,
+      nextSteps: baseNext,
+    },
+    {
+      id: 'maison-plan-optimise',
+      title: 'Maison basse - plan optimisé',
+      category: 'Études',
+      image: '/images/plan-1.png',
+      description: 'Variante de décision par plan pour valider distribution, chambres, pièces d’eau, cuisine, terrasse et réservations techniques.',
+      estimate,
+      duration: '2 à 4 semaines d’études',
+      confidence: 'Base technique solide',
+      deliverable: 'Plan de principe, surfaces, hypothèses et points ouverts avant devis.',
+      strengths: ['Surfaces utiles', 'Technique anticipée', 'Validation rapide'],
+      decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Plans, surfaces et faisabilité avant devis' }],
+      technicalScope: [...scopeBase, 'Distribution, surfaces, pièces techniques, circulations et emprise au sol.'],
+      riskControls: [...baseRisks, 'Cohérence entre terrain, emprise souhaitée et documents à confirmer.'],
+      nextSteps: baseNext,
+    },
+    {
+      id: 'maison-finitions-premium',
+      title: 'Maison basse - finitions premium',
+      category: 'Second œuvre',
+      image: '/images/interieur-1.png',
+      description: 'Variante intérieure pour arbitrer standing, revêtements, luminaires, équipements et contrôle qualité des finitions.',
+      estimate,
+      duration: '6 à 12 semaines',
+      confidence: 'Idéal avant commande',
+      deliverable: 'Planche finitions, lots concernés et décisions client à valider.',
+      strengths: ['Choix concrets', 'Lots séparés', 'Budget finition lisible'],
+      decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Standing, finitions et qualité de réception' }],
+      technicalScope: [...scopeBase, 'Peinture, plafonds, sols, sanitaires, menuiseries, éclairage et équipements.'],
+      riskControls: [...baseRisks, 'Disponibilité matériaux, équivalences et délai fournisseurs à valider.'],
+      nextSteps: baseNext,
+    },
+  ];
 }
 
 function dateTimeLocalAfter(days: number, hour = 9, minute = 0) {
@@ -454,18 +744,21 @@ export function AdminProjectDetail() {
   const [paymentMilestoneId, setPaymentMilestoneId] = useState(project?.financing?.milestones?.[0]?.id || '');
   const [paymentMilestoneStatus, setPaymentMilestoneStatus] = useState<ProjectPaymentMilestoneData['status']>('due');
   const [paymentMilestoneNote, setPaymentMilestoneNote] = useState('Jalon contrôlé par l’administration Buildify. Le client peut suivre le statut dans son espace projet.');
-  const [proposalTitle, setProposalTitle] = useState(`${project?.categoryName || 'Projet BTP'} - proposition visuelle Buildify`);
-  const [proposalImage, setProposalImage] = useState(project?.visualProposals?.[0]?.image || '/images/maison-basse-1.png');
-  const [proposalDescription, setProposalDescription] = useState('Proposition visuelle publiée par Buildify pour aider le client à comparer, télécharger et valider une orientation claire avant devis définitif.');
-  const [proposalEstimate, setProposalEstimate] = useState(formatBudget(project?.budgetMin, project?.budgetMax));
-  const [proposalDuration, setProposalDuration] = useState('6 à 8 mois');
-  const [proposalConfidence, setProposalConfidence] = useState('Base professionnelle à valider');
-  const [proposalDeliverable, setProposalDeliverable] = useState('Image de référence, périmètre, points de décision et prochaines étapes du dossier.');
-  const [proposalStrengthsText, setProposalStrengthsText] = useState('Image claire pour décision\nBudget lisible\nSuivi possible à distance');
-  const [proposalCriteriaText, setProposalCriteriaText] = useState(`Budget cible: ${formatBudget(project?.budgetMin, project?.budgetMax)}\nDélai cible: 6 à 8 mois\nUsage: ${project?.categoryName || 'Projet BTP'}\nDécision: Validation visuelle client`);
-  const [proposalScopeText, setProposalScopeText] = useState(`Ouvrage : ${project?.categoryName || 'Projet BTP'}\nLocalisation : ${project?.city || 'À confirmer'}\nBase : image publiée, hypothèses et arbitrages techniques`);
-  const [proposalRisksText, setProposalRisksText] = useState('Surfaces et limites de prestation à confirmer\nDocuments administratifs à contrôler\nBudget final après métrés et choix matériaux');
-  const [proposalNextText, setProposalNextText] = useState('Client valide la proposition visuelle\nBuildify prépare le chiffrage détaillé\nAdmin transmet devis, planning et jalons');
+  const proposalTemplates = getProposalVariantTemplates(project);
+  const initialProposalTemplate = proposalTemplates[0];
+  const [selectedProposalTemplateId, setSelectedProposalTemplateId] = useState(initialProposalTemplate.id);
+  const [proposalTitle, setProposalTitle] = useState(initialProposalTemplate.title);
+  const [proposalImage, setProposalImage] = useState(project?.visualProposals?.[0]?.image || initialProposalTemplate.image);
+  const [proposalDescription, setProposalDescription] = useState(initialProposalTemplate.description);
+  const [proposalEstimate, setProposalEstimate] = useState(initialProposalTemplate.estimate);
+  const [proposalDuration, setProposalDuration] = useState(initialProposalTemplate.duration);
+  const [proposalConfidence, setProposalConfidence] = useState(initialProposalTemplate.confidence);
+  const [proposalDeliverable, setProposalDeliverable] = useState(initialProposalTemplate.deliverable);
+  const [proposalStrengthsText, setProposalStrengthsText] = useState(linesToText(initialProposalTemplate.strengths));
+  const [proposalCriteriaText, setProposalCriteriaText] = useState(criteriaToText(initialProposalTemplate.decisionCriteria));
+  const [proposalScopeText, setProposalScopeText] = useState(linesToText(initialProposalTemplate.technicalScope));
+  const [proposalRisksText, setProposalRisksText] = useState(linesToText(initialProposalTemplate.riskControls));
+  const [proposalNextText, setProposalNextText] = useState(linesToText(initialProposalTemplate.nextSteps));
   const [adminDirectMessage, setAdminDirectMessage] = useState('Bonjour, votre dossier avance. Vous pouvez nous écrire ici pour toute précision sur le périmètre, le financement ou le planning.');
   const [scheduleType, setScheduleType] = useState<ProjectScheduleItemData['type']>('technical_visit');
   const [scheduleTitle, setScheduleTitle] = useState('Visite technique et cadrage du dossier');
@@ -803,6 +1096,23 @@ export function AdminProjectDetail() {
       paymentMilestoneNote
     );
     addToast('Jalon financier mis à jour.', 'success');
+  };
+
+  const applyProposalTemplate = (template: ProposalVariantTemplate) => {
+    setSelectedProposalTemplateId(template.id);
+    setProposalTitle(template.title);
+    setProposalImage(template.image);
+    setProposalDescription(template.description);
+    setProposalEstimate(template.estimate);
+    setProposalDuration(template.duration);
+    setProposalConfidence(template.confidence);
+    setProposalDeliverable(template.deliverable);
+    setProposalStrengthsText(linesToText(template.strengths));
+    setProposalCriteriaText(criteriaToText(template.decisionCriteria));
+    setProposalScopeText(linesToText(template.technicalScope));
+    setProposalRisksText(linesToText(template.riskControls));
+    setProposalNextText(linesToText(template.nextSteps));
+    addToast('Variante visuelle appliquée au formulaire.', 'success');
   };
 
   const handlePublishProposal = () => {
@@ -1285,6 +1595,70 @@ export function AdminProjectDetail() {
                       </p>
                     </div>
                     <Badge variant="outline">{project.visualProposals?.length ?? 0} publiée{(project.visualProposals?.length ?? 0) > 1 ? 's' : ''}</Badge>
+                  </div>
+
+                  <div className="mt-3 rounded-lg border bg-muted/20 p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold">Bibliothèque de variantes professionnelles</p>
+                        <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+                          Sélectionnez une proposition adaptée au type d’ouvrage. Les champs image, périmètre, critères et prochaines étapes sont remplis automatiquement.
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="w-fit">{proposalTemplates.length} variante{proposalTemplates.length > 1 ? 's' : ''}</Badge>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 lg:grid-cols-3">
+                      {proposalTemplates.map(template => {
+                        const selected = selectedProposalTemplateId === template.id;
+                        return (
+                          <div
+                            key={template.id}
+                            className={`overflow-hidden rounded-lg border bg-background ${selected ? 'border-foreground shadow-sm' : ''}`}
+                          >
+                            <div className="relative aspect-[16/10] bg-muted">
+                              <NextImage
+                                src={template.image}
+                                alt={template.title}
+                                fill
+                                className="object-cover grayscale"
+                                sizes="(min-width: 1024px) 20vw, 90vw"
+                              />
+                              <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
+                                <Badge className="bg-white text-black hover:bg-white">{template.category}</Badge>
+                                {selected && <Badge className="bg-black text-white hover:bg-black">Sélectionnée</Badge>}
+                              </div>
+                            </div>
+                            <div className="p-3">
+                              <p className="text-sm font-semibold leading-5">{template.title}</p>
+                              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{template.description}</p>
+                              <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+                                <div className="rounded-md border px-2 py-1.5">
+                                  <p className="text-muted-foreground">Budget</p>
+                                  <p className="mt-0.5 text-[10px] font-semibold leading-4 break-words">
+                                    {compactProposalEstimate(template.estimate)}
+                                  </p>
+                                </div>
+                                <div className="rounded-md border px-2 py-1.5">
+                                  <p className="text-muted-foreground">Délai</p>
+                                  <p className="mt-0.5 font-semibold">{template.duration}</p>
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant={selected ? 'default' : 'outline'}
+                                size="sm"
+                                className="mt-3 h-9 w-full gap-1.5 text-xs"
+                                onClick={() => applyProposalTemplate(template)}
+                              >
+                                <ImageIcon className="size-3.5" />
+                                Appliquer cette variante
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className="mt-3 grid gap-3 md:grid-cols-3">
