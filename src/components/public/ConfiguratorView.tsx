@@ -374,20 +374,20 @@ const REMOTE_DECISION_OPTIONS: ChoiceOption[] = [
 ];
 
 const TOPOGRAPHY_OPTIONS: ChoiceOption[] = [
-  { value: 'plat', label: 'Terrain plat' },
-  { value: 'pente-legere', label: 'Pente légère' },
-  { value: 'pente-forte', label: 'Pente forte' },
-  { value: 'zone-humide', label: 'Zone humide' },
-  { value: 'remblai', label: 'Remblai / terrain instable' },
-  { value: 'inconnue', label: 'À diagnostiquer' },
+  { value: 'plat', label: 'Terrain plat', icon: LandPlot },
+  { value: 'pente-legere', label: 'Pente légère', icon: Gauge },
+  { value: 'pente-forte', label: 'Pente forte', icon: TrafficCone },
+  { value: 'zone-humide', label: 'Zone humide', icon: Waves },
+  { value: 'remblai', label: 'Remblai / terrain instable', icon: Pickaxe },
+  { value: 'inconnue', label: 'À diagnostiquer', icon: Search },
 ];
 
 const BUILDING_USE_OPTIONS: ChoiceOption[] = [
-  { value: 'habitation', label: 'Habitation' },
-  { value: 'commerce', label: 'Commerce' },
-  { value: 'bureaux', label: 'Bureaux' },
-  { value: 'mixte', label: 'Mixte' },
-  { value: 'hotel', label: 'Hôtel / résidence' },
+  { value: 'habitation', label: 'Habitation', icon: Home },
+  { value: 'commerce', label: 'Commerce', icon: Warehouse },
+  { value: 'bureaux', label: 'Bureaux', icon: BriefcaseBusiness },
+  { value: 'mixte', label: 'Mixte', icon: Building2 },
+  { value: 'hotel', label: 'Hôtel / résidence', icon: Landmark },
 ];
 
 const FINITION_OPTIONS: ChoiceOption[] = [
@@ -597,6 +597,128 @@ const LOT_TRAVAUX_OPTIONS: ChoiceOption[] = [
   { value: 'toiture', label: 'Charpente / toiture', icon: Home },
   { value: 'climatisation', label: 'Climatisation', icon: AirVent },
   { value: 'finition-complete', label: 'Finition complète', icon: Gem },
+];
+
+const EXISTING_UTILITIES_OPTIONS: ChoiceOption[] = [
+  { value: 'eau-electricite', label: 'Eau et électricité', icon: PlugZap },
+  { value: 'electricite-seule', label: 'Électricité seule', icon: Lightbulb },
+  { value: 'eau-seule', label: 'Eau seule', icon: Droplets },
+  { value: 'aucun', label: 'Aucun réseau', icon: X },
+  { value: 'inconnu', label: 'À vérifier', icon: Search },
+];
+
+const SOIL_STUDY_OPTIONS: ChoiceOption[] = [
+  { value: 'faite', label: 'Déjà faite', icon: ClipboardCheck },
+  { value: 'a-faire', label: 'À faire', icon: Layers },
+  { value: 'inconnue', label: 'Je ne sais pas', icon: HelpCircle },
+];
+
+const FUTURE_EXTENSION_OPTIONS: ChoiceOption[] = [
+  { value: 'none', label: 'Aucune extension prévue', icon: CheckCircle2 },
+  { value: 'horizontal', label: 'Extension horizontale possible', icon: ArrowRight },
+  { value: 'vertical', label: 'Étage futur possible', icon: Building2 },
+  { value: 'rental-unit', label: 'Dépendance ou logement locatif futur', icon: KeyRound },
+  { value: 'to-study', label: 'À étudier avec Buildify', icon: DraftingCompass },
+];
+
+const GROUND_FLOOR_USE_OPTIONS: ChoiceOption[] = [
+  { value: 'parking', label: 'Parking', icon: CircleParking },
+  { value: 'commerce', label: 'Commerces', icon: Warehouse },
+  { value: 'logements', label: 'Logements', icon: DoorOpen },
+  { value: 'mixte', label: 'Mixte', icon: Building2 },
+  { value: 'a-definir', label: 'À définir', icon: Pencil },
+];
+
+const HYDRAULIC_ENERGY_OPTIONS: ChoiceOption[] = [
+  { value: 'reseau', label: 'Réseau électrique', icon: PlugZap },
+  { value: 'solaire', label: 'Solaire', icon: BatteryCharging },
+  { value: 'groupe', label: 'Groupe électrogène', icon: Gauge },
+  { value: 'aucune', label: 'Aucune', icon: X },
+  { value: 'inconnue', label: 'À vérifier', icon: Search },
+];
+
+const INTERVENTION_STAGE_OPTIONS: ChoiceOption[] = [
+  { value: 'neuf', label: 'Construction neuve', icon: Building2 },
+  { value: 'gros-oeuvre-termine', label: 'Gros œuvre terminé', icon: BrickWall },
+  { value: 'second-oeuvre', label: 'Second œuvre en cours', icon: Layers },
+  { value: 'renovation', label: 'Rénovation', icon: Paintbrush },
+  { value: 'reprise', label: 'Reprise après malfaçon', icon: ShieldPlus },
+];
+
+const OCCUPIED_SITE_OPTIONS: ChoiceOption[] = [
+  { value: 'oui', label: 'Oui', icon: Users },
+  { value: 'non', label: 'Non', icon: DoorOpen },
+  { value: 'partiellement', label: 'Partiellement', icon: PanelTop },
+];
+
+const LOT_TECHNICAL_PRIORITY_OPTIONS: ChoiceOption[] = [
+  { value: 'defect-repair', label: 'Reprise de malfaçons', icon: ShieldPlus },
+  { value: 'finish-quality', label: 'Qualité de finition', icon: Gem },
+  { value: 'rapid-delivery', label: 'Livraison rapide', icon: Timer },
+  { value: 'cost-control', label: 'Contrôle du coût', icon: Calculator },
+  { value: 'occupied-site', label: 'Site occupé à protéger', icon: DoorOpen },
+  { value: 'material-control', label: 'Matériaux à valider', icon: Warehouse },
+];
+
+const LOT_MEASUREMENT_BASE_OPTIONS: ChoiceOption[] = [
+  { value: 'execution-plans', label: 'Plans d’exécution disponibles', icon: DraftingCompass },
+  { value: 'site-measurement', label: 'Métré à faire sur site', icon: Ruler },
+  { value: 'photos-videos', label: 'Photos / vidéos disponibles', icon: Eye },
+  { value: 'existing-quote', label: 'Devis existant à vérifier', icon: ReceiptText },
+  { value: 'no-data', label: 'Aucune base fiable', icon: Search },
+];
+
+const LOT_RECEPTION_TEST_OPTIONS: ChoiceOption[] = [
+  { value: 'visual-check', label: 'Contrôle visuel et réserves', icon: Eye },
+  { value: 'pressure-test', label: 'Essai pression / étanchéité', icon: ShowerHead },
+  { value: 'electrical-test', label: 'Essais électriques', icon: PlugZap },
+  { value: 'level-check', label: 'Niveaux, aplomb, alignement', icon: Ruler },
+  { value: 'sample-validation', label: 'Échantillon avant exécution', icon: CheckSquare },
+];
+
+const PLUMBING_SCOPE_OPTIONS: ChoiceOption[] = [
+  { value: 'rough-in', label: 'Réseaux encastrés', icon: Wrench },
+  { value: 'bathrooms', label: 'Salles d’eau', icon: Bath },
+  { value: 'kitchen-laundry', label: 'Cuisine / buanderie', icon: CookingPot },
+  { value: 'septic-drainage', label: 'Fosse / évacuation', icon: ShowerHead },
+  { value: 'pressure-testing', label: 'Essais pression', icon: Gauge },
+];
+
+const ELECTRICAL_SCOPE_OPTIONS: ChoiceOption[] = [
+  { value: 'distribution-board', label: 'Tableau électrique', icon: PanelTop },
+  { value: 'wiring', label: 'Câblage complet', icon: PlugZap },
+  { value: 'lighting', label: 'Éclairage', icon: Lightbulb },
+  { value: 'sockets', label: 'Prises et circuits', icon: Network },
+  { value: 'earthing', label: 'Terre et sécurité', icon: ShieldCheck },
+];
+
+const STRUCTURAL_SCOPE_OPTIONS: ChoiceOption[] = [
+  { value: 'foundations', label: 'Fondations', icon: Pickaxe },
+  { value: 'elevation', label: 'Élévation murs', icon: BrickWall },
+  { value: 'slabs-beams', label: 'Dalles / poutres', icon: Building2 },
+  { value: 'masonry', label: 'Maçonnerie', icon: Hammer },
+  { value: 'concrete-repair', label: 'Reprise béton', icon: ShieldPlus },
+];
+
+const FINISHING_SCOPE_OPTIONS: ChoiceOption[] = [
+  { value: 'floors-walls', label: 'Sols et murs', icon: PanelTop },
+  { value: 'ceilings', label: 'Plafonds', icon: Layers },
+  { value: 'doors-joinery', label: 'Portes / menuiserie', icon: Drill },
+  { value: 'waterproofing', label: 'Étanchéité', icon: Droplets },
+  { value: 'painting', label: 'Peinture', icon: Paintbrush },
+  { value: 'hvac', label: 'Climatisation', icon: AirVent },
+];
+
+const AVAILABLE_BRIEF_OPTIONS: ChoiceOption[] = [
+  { value: 'oui', label: 'Oui', icon: CheckCircle2 },
+  { value: 'partiel', label: 'Partiel', icon: ClipboardList },
+  { value: 'non', label: 'Non', icon: X },
+];
+
+const PROMOTION_OBJECTIVE_OPTIONS: ChoiceOption[] = [
+  { value: 'vente', label: 'Vente', icon: BadgeDollarSign },
+  { value: 'location', label: 'Location', icon: KeyRound },
+  { value: 'mixte', label: 'Mixte', icon: Handshake },
 ];
 
 const HYDRAULIC_WORKS: ChoiceOption[] = [
@@ -959,18 +1081,8 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
       type: 'field-group',
       fields: [
         { key: 'topography', label: 'Topographie', type: 'select', options: TOPOGRAPHY_OPTIONS, required: true },
-        { key: 'existingUtilities', label: 'Réseaux disponibles', type: 'select', options: [
-          { value: 'eau-electricite', label: 'Eau et électricité' },
-          { value: 'electricite-seule', label: 'Électricité seule' },
-          { value: 'eau-seule', label: 'Eau seule' },
-          { value: 'aucun', label: 'Aucun réseau' },
-          { value: 'inconnu', label: 'À vérifier' },
-        ], required: true },
-        { key: 'soilKnown', label: 'Étude de sol', type: 'select', options: [
-          { value: 'faite', label: 'Déjà faite' },
-          { value: 'a-faire', label: 'À faire' },
-          { value: 'inconnue', label: 'Je ne sais pas' },
-        ], required: true },
+        { key: 'existingUtilities', label: 'Réseaux disponibles', type: 'select', options: EXISTING_UTILITIES_OPTIONS, required: true },
+        { key: 'soilKnown', label: 'Étude de sol', type: 'select', options: SOIL_STUDY_OPTIONS, required: true },
       ],
       required: true,
       requiredMessage: 'Renseignez les contraintes minimales du terrain pour fiabiliser l’étude.',
@@ -1019,13 +1131,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
             key: 'futureExtensionPlan',
             label: 'Extension future',
             type: 'select',
-            options: [
-              { value: 'none', label: 'Aucune extension prévue' },
-              { value: 'horizontal', label: 'Extension horizontale possible' },
-              { value: 'vertical', label: 'Étage futur possible' },
-              { value: 'rental-unit', label: 'Dépendance ou logement locatif futur' },
-              { value: 'to-study', label: 'À étudier avec Buildify' },
-            ],
+            options: FUTURE_EXTENSION_OPTIONS,
           },
         ],
         required: true,
@@ -1053,6 +1159,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         skipLabel: 'Aucun pour l’instant',
       }
     );
+
   }
 
   if (family === 'rplus') {
@@ -1086,13 +1193,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         type: 'field-group',
         fields: [
           { key: 'unitsPerFloor', label: 'Logements / locaux par étage', type: 'number', placeholder: 'Ex : 2', min: 1, unit: 'unité(s)', required: true },
-          { key: 'groundFloorUse', label: 'Rez-de-chaussée', type: 'select', options: [
-            { value: 'parking', label: 'Parking' },
-            { value: 'commerce', label: 'Commerces' },
-            { value: 'logements', label: 'Logements' },
-            { value: 'mixte', label: 'Mixte' },
-            { value: 'a-definir', label: 'À définir' },
-          ], required: true },
+          { key: 'groundFloorUse', label: 'Rez-de-chaussée', type: 'select', options: GROUND_FLOOR_USE_OPTIONS, required: true },
           { key: 'estimatedFootprint', label: 'Emprise au sol estimée', type: 'number', placeholder: 'Ex : 450', unit: 'm²', min: 1, required: true },
         ],
         required: true,
@@ -1176,13 +1277,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
           { key: 'beneficiaries', label: 'Bénéficiaires estimés', type: 'number', placeholder: 'Ex : 250', unit: 'pers.', min: 1, required: true },
           { key: 'dailyNeed', label: 'Besoin journalier', type: 'number', placeholder: 'Ex : 15', unit: 'm³/j', min: 1, required: true },
           { key: 'waterSource', label: 'Source actuelle', type: 'text', placeholder: 'Ex : puits, SODECI, forage existant', required: true },
-          { key: 'energySource', label: 'Énergie disponible', type: 'select', options: [
-            { value: 'reseau', label: 'Réseau électrique' },
-            { value: 'solaire', label: 'Solaire' },
-            { value: 'groupe', label: 'Groupe électrogène' },
-            { value: 'aucune', label: 'Aucune' },
-            { value: 'inconnue', label: 'À vérifier' },
-          ], required: true },
+          { key: 'energySource', label: 'Énergie disponible', type: 'select', options: HYDRAULIC_ENERGY_OPTIONS, required: true },
         ],
         required: true,
         requiredMessage: 'Renseignez les données hydrauliques minimales.',
@@ -1208,24 +1303,55 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         responseKey: '__lot_context__',
         type: 'field-group',
         fields: [
-          { key: 'interventionStage', label: 'Étape actuelle', type: 'select', options: [
-            { value: 'neuf', label: 'Construction neuve' },
-            { value: 'gros-oeuvre-termine', label: 'Gros œuvre terminé' },
-            { value: 'second-oeuvre', label: 'Second œuvre en cours' },
-            { value: 'renovation', label: 'Rénovation' },
-            { value: 'reprise', label: 'Reprise après malfaçon' },
-          ], required: true },
+          { key: 'interventionStage', label: 'Étape actuelle', type: 'select', options: INTERVENTION_STAGE_OPTIONS, required: true },
           { key: 'affectedArea', label: 'Surface concernée', type: 'number', placeholder: 'Ex : 120', unit: 'm²', min: 1, required: true },
-          { key: 'occupiedSite', label: 'Site occupé ?', type: 'select', options: [
-            { value: 'oui', label: 'Oui' },
-            { value: 'non', label: 'Non' },
-            { value: 'partiellement', label: 'Partiellement' },
-          ], required: true },
+          { key: 'occupiedSite', label: 'Site occupé ?', type: 'select', options: OCCUPIED_SITE_OPTIONS, required: true },
           { key: 'qualityTarget', label: 'Objectif qualité', type: 'text', placeholder: 'Ex : finition premium, reprise complète plomberie' },
         ],
         required: true,
+        requiredMessage: 'Renseignez le contexte minimum du lot de travaux.',
       }
     );
+
+    const selectedWorkLots = arrayResponse(responses.workLots);
+    const lotDetailFields: FieldDef[] = [
+      { key: 'lotTechnicalPriority', label: 'Priorité du lot', type: 'select', options: LOT_TECHNICAL_PRIORITY_OPTIONS, required: true },
+      { key: 'lotMeasurementBase', label: 'Base de métré', type: 'select', options: LOT_MEASUREMENT_BASE_OPTIONS, required: true },
+      { key: 'lotReceptionTest', label: 'Contrôle de réception attendu', type: 'select', options: LOT_RECEPTION_TEST_OPTIONS, required: true },
+    ];
+
+    if (selectedWorkLots.includes('plomberie')) {
+      lotDetailFields.push({ key: 'plumbingScope', label: 'Périmètre plomberie', type: 'select', options: PLUMBING_SCOPE_OPTIONS, required: true });
+    }
+
+    if (selectedWorkLots.includes('electricite')) {
+      lotDetailFields.push({ key: 'electricalScope', label: 'Périmètre électricité', type: 'select', options: ELECTRICAL_SCOPE_OPTIONS, required: true });
+    }
+
+    if (selectedWorkLots.includes('gros-oeuvre')) {
+      lotDetailFields.push({ key: 'structuralScope', label: 'Périmètre gros œuvre', type: 'select', options: STRUCTURAL_SCOPE_OPTIONS, required: true });
+    }
+
+    if (selectedWorkLots.some(lot => ['second-oeuvre', 'carrelage', 'peinture', 'menuiserie', 'etancheite', 'toiture', 'climatisation', 'finition-complete'].includes(lot))) {
+      lotDetailFields.push({ key: 'finishingScope', label: 'Périmètre second œuvre / finition', type: 'select', options: FINISHING_SCOPE_OPTIONS, required: true });
+    }
+
+    lotDetailFields.push(
+      { key: 'lotMaterialPreference', label: 'Matériaux ou marques souhaités', type: 'text', placeholder: 'Ex : tuyauterie multicouche, appareillage premium, peinture lavable...' },
+      { key: 'lotExecutionConstraint', label: 'Contraintes d’exécution', type: 'textarea', placeholder: 'Ex : travaux en site occupé, horaires limités, poussière à réduire, zone à protéger, besoin de phasage...' },
+    );
+
+    steps.push({
+      id: 'lot-technical-scope',
+      title: 'Cadrage technique du lot',
+      subtitle: 'Précisez le périmètre exact pour éviter un devis trop vague',
+      responseKey: '__lot_technical_scope__',
+      type: 'field-group',
+      fields: lotDetailFields,
+      required: true,
+      requiredMessage: 'Complétez les priorités, la base de métré et le contrôle de réception du lot.',
+      insight: 'Chaque lot doit préciser son périmètre, son support de métré et son mode de réception avant transmission à l’équipe technique.',
+    });
   }
 
   if (family === 'etude') {
@@ -1246,11 +1372,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         responseKey: '__study_data__',
         type: 'field-group',
         fields: [
-          { key: 'availableBrief', label: 'Programme déjà rédigé ?', type: 'select', options: [
-            { value: 'oui', label: 'Oui' },
-            { value: 'partiel', label: 'Partiel' },
-            { value: 'non', label: 'Non' },
-          ] },
+          { key: 'availableBrief', label: 'Programme déjà rédigé ?', type: 'select', options: AVAILABLE_BRIEF_OPTIONS },
           { key: 'expectedDeliverable', label: 'Livrable attendu', type: 'text', placeholder: 'Ex : plans APS/APD, DQE, planning, rapport' },
           { key: 'reviewDeadline', label: 'Délai souhaité', type: 'text', placeholder: 'Ex : 10 jours, 3 semaines' },
         ],
@@ -1271,11 +1393,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         fields: [
           { key: 'unitCount', label: 'Nombre d’unités', type: 'number', placeholder: 'Ex : 24', unit: 'unité(s)' },
           { key: 'targetTypology', label: 'Typologies visées', type: 'text', placeholder: 'Ex : studios, 3 pièces, villas basses' },
-          { key: 'salesTarget', label: 'Objectif', type: 'select', options: [
-            { value: 'vente', label: 'Vente' },
-            { value: 'location', label: 'Location' },
-            { value: 'mixte', label: 'Mixte' },
-          ] },
+          { key: 'salesTarget', label: 'Objectif', type: 'select', options: PROMOTION_OBJECTIVE_OPTIONS },
         ],
         skippable: true,
         skipLabel: 'À cadrer',
@@ -2014,7 +2132,7 @@ function buildOuvrageControlProfile(responses: Record<string, unknown>): Ouvrage
         { label: 'Emprise au sol', value: formatMetricNumber(houseFootprint, 'm²'), helper: 'Occupation réelle du bâti', tone: ratioTone(footprintRatio, 45, 60) },
         { label: 'Taux d’emprise', value: formatMetricPercent(footprintRatio), helper: 'À vérifier avec les règles locales', tone: ratioTone(footprintRatio, 45, 60) },
         { label: 'Surface construite', value: formatMetricNumber(builtSurface, 'm²'), helper: bedrooms ? `${bedrooms} chambre(s) demandée(s)` : 'Programme intérieur à compléter' },
-        { label: 'Extérieur préservé', value: formatMetricNumber(outdoorArea, 'm²'), helper: extension ? getLabel([{ value: 'none', label: 'Aucune extension prévue' }, { value: 'horizontal', label: 'Extension horizontale possible' }, { value: 'vertical', label: 'Étage futur possible' }, { value: 'rental-unit', label: 'Dépendance ou logement locatif futur' }, { value: 'to-study', label: 'À étudier avec Buildify' }], extension) : 'Cour, parking, terrasse ou jardin' },
+        { label: 'Extérieur préservé', value: formatMetricNumber(outdoorArea, 'm²'), helper: extension ? getLabel(FUTURE_EXTENSION_OPTIONS, extension) : 'Cour, parking, terrasse ou jardin' },
       ],
       checks: compactStrings([
         terrainSurface && houseFootprint ? `Valider ${formatMetricPercent(footprintRatio)} d’emprise avant esquisse.` : 'Saisir terrain + emprise pour calculer l’occupation.',
@@ -2039,14 +2157,6 @@ function buildOuvrageControlProfile(responses: Record<string, unknown>): Ouvrage
     const upperUnits = rPlusLevel && unitsPerFloor ? rPlusLevel * unitsPerFloor : undefined;
     const totalLevels = rPlusLevel ? rPlusLevel + 1 : undefined;
     const floorArea = totalLevels && estimatedFootprint ? totalLevels * estimatedFootprint : undefined;
-    const groundFloorLabels: ChoiceOption[] = [
-      { value: 'parking', label: 'Parking' },
-      { value: 'commerce', label: 'Commerces' },
-      { value: 'logements', label: 'Logements' },
-      { value: 'mixte', label: 'Mixte' },
-      { value: 'a-definir', label: 'À définir' },
-    ];
-
     return {
       title: 'Immeuble R+ - contrôle structure',
       subtitle: 'Niveaux, lots, emprise, circulation et sécurité.',
@@ -2056,7 +2166,7 @@ function buildOuvrageControlProfile(responses: Record<string, unknown>): Ouvrage
         { label: 'Lots estimés', value: formatMetricNumber(upperUnits, 'unité(s)'), helper: 'Hors ajustement rez-de-chaussée' },
         { label: 'Emprise estimée', value: formatMetricNumber(estimatedFootprint, 'm²'), helper: locationLabel },
         { label: 'Surface plancher indicative', value: formatMetricNumber(floorArea, 'm²'), helper: 'Base très préliminaire à confirmer' },
-        { label: 'Rez-de-chaussée', value: stringResponse(responses, 'groundFloorUse') ? getLabel(groundFloorLabels, String(responses.groundFloorUse)) : 'À préciser', helper: getLabel(BUILDING_USE_OPTIONS, String(responses.buildingUse || 'a-definir')) },
+        { label: 'Rez-de-chaussée', value: stringResponse(responses, 'groundFloorUse') ? getLabel(GROUND_FLOOR_USE_OPTIONS, String(responses.groundFloorUse)) : 'À préciser', helper: getLabel(BUILDING_USE_OPTIONS, String(responses.buildingUse || 'a-definir')) },
       ],
       checks: compactStrings([
         rPlusLevel && rPlusLevel >= 4 ? 'Anticiper ascenseur, sécurité incendie et contrôle structure.' : 'Valider escalier, accès et évacuation dès l’esquisse.',
@@ -2105,6 +2215,42 @@ function buildOuvrageControlProfile(responses: Record<string, unknown>): Ouvrage
         !outfallPoint && 'Exutoire absent : risque majeur sur eaux pluviales.',
         !plotCount && 'Nombre de lots absent : raccordements et charge réseaux à affiner.',
         financeStress === 'critical' && 'Financement à sécuriser avant phasage VRD.',
+      ]),
+      finance,
+    };
+  }
+
+  if (family === 'lot') {
+    const workLotsText = labelsToPreview(responses.workLots, LOT_TRAVAUX_OPTIONS, 'Lots à choisir');
+    const affectedArea = numberResponse(responses.affectedArea);
+    const interventionStage = stringResponse(responses, 'interventionStage');
+    const occupiedSite = stringResponse(responses, 'occupiedSite');
+    const priority = stringResponse(responses, 'lotTechnicalPriority');
+    const measurementBase = stringResponse(responses, 'lotMeasurementBase');
+    const receptionTest = stringResponse(responses, 'lotReceptionTest');
+
+    return {
+      title: `${selectedProjectLabel} - contrôle lots`,
+      subtitle: 'Périmètre, surface, support de métré, contraintes et réception.',
+      icon: ToolCase,
+      metrics: [
+        { label: 'Lots concernés', value: workLotsText, helper: locationLabel },
+        { label: 'Surface touchée', value: formatMetricNumber(affectedArea, 'm²'), helper: 'Base pour quantités, phasage et main-d’œuvre' },
+        { label: 'Étape chantier', value: interventionStage ? getLabel(INTERVENTION_STAGE_OPTIONS, interventionStage) : 'À préciser', helper: occupiedSite ? `Site : ${getLabel(OCCUPIED_SITE_OPTIONS, occupiedSite)}` : 'Occupation du site à renseigner' },
+        { label: 'Priorité', value: priority ? getLabel(LOT_TECHNICAL_PRIORITY_OPTIONS, priority) : 'À choisir', helper: measurementBase ? `Métré : ${getLabel(LOT_MEASUREMENT_BASE_OPTIONS, measurementBase)}` : 'Support de métré à verrouiller' },
+        { label: 'Réception', value: receptionTest ? getLabel(LOT_RECEPTION_TEST_OPTIONS, receptionTest) : 'À choisir', helper: stringResponse(responses, 'qualityTarget') || 'Critères qualité à formaliser' },
+      ],
+      checks: compactStrings([
+        workLotsText !== 'Lots à choisir' ? 'Limiter exactement les lots inclus et exclus du devis.' : 'Choisir les lots concernés avant métré.',
+        affectedArea ? `Contrôler environ ${formatMetricNumber(affectedArea, 'm²')} avant quantités.` : 'Saisir la surface concernée.',
+        measurementBase ? 'Rattacher le devis à une base mesurable : plans, visite, photos ou devis existant.' : 'Définir la base de métré avant prix.',
+        receptionTest ? 'Prévoir le contrôle de réception avant paiement final.' : 'Choisir un contrôle de réception par lot.',
+      ]),
+      risks: compactStrings([
+        !affectedArea && 'Surface absente : risque de devis incomplet.',
+        occupiedSite === 'oui' && 'Site occupé : protéger zones habitées, poussière, bruit et accès.',
+        measurementBase === 'no-data' && 'Aucune base fiable : visite ou diagnostic nécessaire.',
+        financeStress === 'critical' && 'Sécuriser les paiements par jalons avant exécution du lot.',
       ]),
       finance,
     };
@@ -2987,7 +3133,7 @@ export function ConfiguratorView() {
         const fieldSearchValue = getSearchValue(fieldSearchKey);
         const filteredFieldOptions = getFilteredOptions(fieldSearchKey, fieldOptions);
         const selectedFieldOption = value ? fieldOptions.find(option => option.value === value) : undefined;
-        const selectedCustomFieldOption = value && isCustomChoiceValue(value)
+        const selectedCustomFieldOption: ChoiceOption | undefined = value && isCustomChoiceValue(value)
           ? { value, label: getCustomChoiceLabel(value) }
           : undefined;
         const customFieldLabel = fieldSearchValue.trim();
@@ -3001,7 +3147,7 @@ export function ConfiguratorView() {
           : filteredFieldOptions;
         const customFieldAlreadyVisible = Boolean(customFieldValue)
           && visibleFieldOptionsBase.some(option => option.value === customFieldValue);
-        const visibleFieldOptions = customFieldLabel.length >= 2 && !customFieldExists && !customFieldAlreadyVisible
+        const visibleFieldOptions: ChoiceOption[] = customFieldLabel.length >= 2 && !customFieldExists && !customFieldAlreadyVisible
           ? [...visibleFieldOptionsBase, { value: customFieldValue, label: `Utiliser “${customFieldLabel}”` }]
           : visibleFieldOptionsBase;
         const showFieldSearch = fieldOptions.length >= 5;
@@ -3030,19 +3176,29 @@ export function ConfiguratorView() {
                 <div className="grid grid-cols-2 gap-2">
                   {fieldOptionsPreview.map(option => {
                     const selected = value === option.value;
+                    const Icon = option.icon;
                     return (
                       <button
                         key={option.value}
                         type="button"
                         aria-pressed={selected}
                         onClick={() => setConfiguratorResponse(field.key, option.value)}
-                        className={`flex min-h-[54px] items-start justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs leading-4 transition-colors ${
+                        className={`flex min-h-[72px] items-start gap-2 rounded-xl border px-2.5 py-2.5 text-left text-xs leading-4 transition-colors sm:min-h-[62px] sm:px-3 ${
                           selected
                             ? 'border-foreground bg-foreground text-background'
                             : 'border-border bg-background hover:border-foreground/40 hover:bg-muted/40'
                         }`}
                       >
-                        <span className="min-w-0 break-words font-semibold">{option.label}</span>
+                        <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
+                          selected ? 'bg-background/15 text-background' : 'bg-muted text-foreground'
+                        }`}>
+                          {Icon ? (
+                            <Icon className="size-3.5" />
+                          ) : (
+                            <span className="text-[10px] font-bold">{optionInitials(option.label)}</span>
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1 break-words font-semibold">{option.label}</span>
                         {selected && <CheckCircle2 className="mt-0.5 size-4 shrink-0" />}
                       </button>
                     );
