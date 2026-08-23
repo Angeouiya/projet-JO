@@ -8,4 +8,3 @@ export default async function ResetPasswordPage({
   const params = await searchParams;
   return <ResetPasswordForm email={params.email || ''} token={params.token || ''} />;
 }
-

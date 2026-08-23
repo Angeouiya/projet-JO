@@ -369,4 +369,3 @@ export async function resetPassword(input: { email: string; token: string; passw
   ], 'write');
   return true;
 }
-

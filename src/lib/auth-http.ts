@@ -22,7 +22,6 @@ export async function setSessionCookie(token: string, expiresAt: Date) {
     expires: expiresAt,
   });
 }
-
 export async function clearSessionCookie() {
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE_NAME, '', {
@@ -33,4 +32,3 @@ export async function clearSessionCookie() {
     maxAge: 0,
   });
 }
-

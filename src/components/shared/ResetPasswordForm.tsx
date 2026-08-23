@@ -108,4 +108,3 @@ export function ResetPasswordForm({ email, token }: { email: string; token: stri
     </main>
   );
 }
-

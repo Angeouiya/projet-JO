@@ -50,4 +50,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "L'inscription n'a pas pu être finalisée." }, { status: 500 });
   }
 }
-

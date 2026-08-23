@@ -38,4 +38,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Connexion indisponible.' }, { status: 500 });
   }
 }
-

@@ -16,4 +16,3 @@ export function getTursoClient() {
 
   return tursoClient;
 }
-
