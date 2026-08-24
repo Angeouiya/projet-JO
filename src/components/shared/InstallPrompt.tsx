@@ -64,7 +64,7 @@ export function InstallPrompt() {
     && !showAuthModal
     && !dismissed
     && !isStandalone
-    && (showInstallPrompt || isMobile);
+    && showInstallPrompt;
 
   if (!shouldShow) return null;
 

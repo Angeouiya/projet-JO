@@ -6,7 +6,7 @@ import {
   Home, Building2, Building, Landmark, MapPin,
   Grid3X3, Hammer, Route, Construction, Droplets, DraftingCompass,
   ArrowRight, ChevronRight, Phone, Mail, MapPinIcon,
-  Maximize2, BedDouble, Bath, Layers, Clock, BadgeCheck,
+  Maximize2, BedDouble, BadgeCheck, ClipboardCheck, FolderKanban, RefreshCw, ServerCog,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { BrandLogo } from '@/components/shared/BrandLogo';
 import { FORMAT_SHORT_XOF } from '@/types';
 import type { CatalogModelData, TeamMemberData } from '@/types';
 import { DEPARTMENT_LABELS, ROLE_LABELS } from '@/data/team';
+import { PLATFORM_RELEASE } from '@/data/platform-release';
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 30 },
@@ -112,6 +113,8 @@ const testimonials = [
   { name: 'Fatou C.', quote: 'Notre immeuble R+ a été livré en 16 mois. Excellent rapport qualité-prix.', role: 'Investisseuse, Plateau' },
 ];
 
+const releaseIcons = [ServerCog, ClipboardCheck, FolderKanban, RefreshCw] as const;
+
 function AnimatedSection({ children, className }: { children: React.ReactNode; className?: string }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-60px' });
@@ -177,7 +180,7 @@ export function HomeView() {
   return (
     <main className="min-h-screen bg-background">
       {/* Hero */}
-      <section className="relative h-screen min-h-[600px] max-h-[900px] w-full overflow-hidden">
+      <section className="relative h-[72svh] min-h-[500px] max-h-[660px] w-full overflow-hidden md:h-[82vh] md:min-h-[620px] md:max-h-[900px]">
         <img
           src="/images/hero-villa.png"
           alt="Villa moderne Côte d'Ivoire"
@@ -191,7 +194,7 @@ export function HomeView() {
             transition={{ duration: 0.8, ease: 'easeOut' }}
             className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-tight"
           >
-            Votre projet.<br />Bien construit.
+            Buildify
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -199,7 +202,7 @@ export function HomeView() {
             transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
             className="mt-4 text-white/70 text-base md:text-lg max-w-md"
           >
-            Construction, architecture et promotion immobilière en Côte d'Ivoire.
+            Construction, architecture, VRD et suivi financier pour vos projets en Côte d'Ivoire et à l'international.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -225,6 +228,34 @@ export function HomeView() {
           </motion.div>
         </div>
       </section>
+
+      {/* Version active */}
+      <AnimatedSection className="border-b bg-background py-8 md:py-10">
+        <div className="grid gap-4 px-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:px-12 lg:px-20">
+          <motion.div variants={fadeUp} className="min-w-0">
+            <Badge variant="outline" className="h-7 rounded-lg px-2.5 text-[11px] font-semibold">
+              {PLATFORM_RELEASE.status}
+            </Badge>
+            <h2 className="mt-3 text-xl font-bold tracking-tight md:text-2xl">
+              {PLATFORM_RELEASE.label}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Mise à jour active depuis le {PLATFORM_RELEASE.date}.
+            </p>
+          </motion.div>
+          <motion.div variants={fadeUp} className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {PLATFORM_RELEASE.notes.map((note, index) => {
+              const ReleaseIcon = releaseIcons[index] || BadgeCheck;
+              return (
+                <div key={note} className="min-h-[96px] rounded-lg border bg-card p-3">
+                  <ReleaseIcon className="size-4 text-muted-foreground" />
+                  <p className="mt-3 text-xs font-semibold leading-5">{note}</p>
+                </div>
+              );
+            })}
+          </motion.div>
+        </div>
+      </AnimatedSection>
 
       {/* Categories */}
       <AnimatedSection className="py-16 md:py-24">

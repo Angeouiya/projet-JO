@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { hasExternalProjectStore, projectStoreName } from '@/lib/project-store';
+import { PLATFORM_RELEASE } from '@/data/platform-release';
+import { projectStoreName } from '@/lib/project-store';
 
 export async function GET() {
   return NextResponse.json({
     name: 'Buildify API',
     status: 'ok',
-    modules: ['projects', 'models', 'auth-password-reset'],
+    release: PLATFORM_RELEASE,
+    modules: ['projects', 'models', 'team', 'auth-password-reset', 'pwa-refresh'],
     projectStore: projectStoreName(),
   });
 }
