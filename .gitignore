@@ -54,3 +54,6 @@ server.log
 /skills/
 .vercel
 .env*
+/dist/
+.vinext/
+.wrangler/
