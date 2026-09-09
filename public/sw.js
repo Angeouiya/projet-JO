@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildify-shell-v6-2026-08-24';
+const CACHE_NAME = 'buildify-shell-v7-2026-09-09';
 const STATIC_ASSETS = ['/manifest.json', '/icons/buildify-logo.png'];
 const CACHEABLE_PREFIXES = ['/icons/', '/images/', '/_next/static/'];
 

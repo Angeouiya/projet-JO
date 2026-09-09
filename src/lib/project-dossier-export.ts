@@ -183,13 +183,13 @@ function renderFinancing(project: ProjectData) {
     <div class="grid four">
       ${cells([
         { label: 'Statut', value: financingReadinessLabel(financing.readiness) },
-        { label: 'Revenu retenu', value: money(financing.monthlyIncome) },
-        { label: 'Salaire base', value: money(financing.baseSalary) },
-        { label: 'Charges existantes', value: money(financing.existingMonthlyDebt) },
-        { label: 'Mensualité cible', value: money(financing.monthlyPaymentCapacity) },
+        { label: 'Budget retenu', value: money(financing.estimatedBudget) },
+        { label: 'Fonds déclarés', value: money((financing.ownContribution ?? 0) + (financing.requestedLoanAmount ?? 0)) },
+        { label: 'Couverture budget', value: percent(financing.declaredFundingCoveragePercent) },
+        { label: 'Marge travaux', value: money(financing.contingencyReserve) },
         { label: 'Apport', value: money(financing.ownContribution) },
-        { label: 'Montant à financer', value: money(financing.requestedLoanAmount) },
-        { label: 'Ratio projeté', value: percent(financing.projectedDebtRatioPercent) },
+        { label: 'Montant à compléter', value: money(financing.requestedLoanAmount) },
+        { label: 'Niveau banque', value: projectBriefLabel(financing.bankAgreementStage || '') || 'À compléter' },
       ])}
     </div>
     <div class="split">

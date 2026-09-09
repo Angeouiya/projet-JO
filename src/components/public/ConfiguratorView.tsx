@@ -73,6 +73,7 @@ import {
   RotateCcw,
   Ruler,
   Search,
+  SearchCheck,
   Send,
   Scale,
   ShieldPlus,
@@ -105,6 +106,7 @@ import { Progress } from '@/components/ui/progress';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { useAppStore } from '@/stores/app-store';
 import { CITIES_CI, COMMUNES_ABIDJAN } from '@/types';
+import { getProjectGroupForType, PROJECT_GROUP_LABELS, type ProjectGroupId } from '@/data/project-groups';
 import type { LucideIcon } from 'lucide-react';
 import type { ProjectFinancingData, ProjectPaymentMilestoneData } from '@/types';
 
@@ -210,6 +212,21 @@ const PROJECT_TYPES: ChoiceOption[] = [
   { value: 'renovation', label: 'Rénovation', icon: Paintbrush, description: 'Réhabilitation, extension, reprise' },
   { value: 'etude-suivi', label: 'Étude / suivi', icon: DraftingCompass, description: 'Plans, contrôle, chiffrage' },
   { value: 'autre', label: 'Autre besoin', icon: HelpCircle, description: 'Demande à préciser' },
+];
+
+const PROJECT_GROUPS: ChoiceOption[] = [
+  {
+    value: 'batiment',
+    label: PROJECT_GROUP_LABELS.batiment,
+    icon: Building2,
+    description: 'Maisons, immeubles R+, promotions, rénovation, lots de travaux et études.',
+  },
+  {
+    value: 'travaux-publics',
+    label: PROJECT_GROUP_LABELS['travaux-publics'],
+    icon: Route,
+    description: 'VRD, voiries, réseaux, hydraulique, assainissement et aménagements.',
+  },
 ];
 
 const CATEGORY_SLUG_BY_TYPE: Record<string, string> = {
@@ -423,7 +440,7 @@ const FINANCING_OPTIONS: ChoiceOption[] = [
   { value: 'progress-payment', label: 'Paiement par avancement', icon: Calendar, description: 'Paiement à chaque étape réalisée du chantier' },
   { value: 'notary-secured', label: 'Contrat notarié', icon: ShieldCheck, description: 'Sécuriser les engagements avant démarrage' },
   { value: 'land-and-finance', label: 'Terrain + financement', icon: MapPin, description: 'Besoin d’appui terrain, banque et budget global' },
-  { value: 'to-structure', label: 'À structurer', icon: HelpCircle, description: 'Besoin d’évaluer la capacité et le montage' },
+  { value: 'to-structure', label: 'À structurer', icon: HelpCircle, description: 'Besoin de cadrer budget, apport, banque et jalons' },
 ];
 
 const PAYMENT_SECURITY_OPTIONS: ChoiceOption[] = [
@@ -444,13 +461,29 @@ const FINANCING_PURPOSE_OPTIONS: ChoiceOption[] = [
   { value: 'completion-finishes', label: 'Achèvement / finitions', icon: PaintBucket },
 ];
 
+const FINANCING_SOURCE_OPTIONS: ChoiceOption[] = [
+  { value: 'own-funds', label: 'Fonds propres', icon: Wallet, description: 'Budget déjà mobilisable par le porteur du projet' },
+  { value: 'bank-loan', label: 'Banque / institution', icon: Landmark, description: 'Financement bancaire ou institutionnel en cours' },
+  { value: 'family-partners', label: 'Famille / associés', icon: Handshake, description: 'Participation de proches, associés ou co-investisseurs' },
+  { value: 'company-budget', label: 'Budget entreprise', icon: Warehouse, description: 'Projet porté par une société ou une organisation' },
+  { value: 'asset-sale', label: 'Vente d’actif', icon: ReceiptText, description: 'Budget attendu après vente ou arbitrage patrimonial' },
+  { value: 'to-confirm', label: 'À confirmer', icon: HelpCircle, description: 'Source pas encore totalement arrêtée' },
+];
+
+const BUDGET_CONFIDENCE_OPTIONS: ChoiceOption[] = [
+  { value: 'approved-envelope', label: 'Enveloppe validée', icon: BadgeCheck, description: 'Budget arrêté et disponible ou prévalidé' },
+  { value: 'documented-estimate', label: 'Estimation documentée', icon: ClipboardCheck, description: 'Budget basé sur devis, plans ou métré' },
+  { value: 'rough-envelope', label: 'Enveloppe indicative', icon: Calculator, description: 'Montant de travail à affiner avec Buildify' },
+  { value: 'needs-analysis', label: 'À analyser gratuitement', icon: SearchCheck, description: 'Besoin d’une lecture technique et financière' },
+];
+
 const EMPLOYMENT_STATUS_OPTIONS: ChoiceOption[] = [
   { value: 'civil-servant', label: 'Fonctionnaire / agent public', icon: ShieldCheck },
   { value: 'private-salary', label: 'Salarié du privé', icon: BriefcaseBusiness },
   { value: 'diaspora-salary', label: 'Salarié hors Côte d’Ivoire', icon: Globe },
   { value: 'entrepreneur', label: 'Entrepreneur / commerçant', icon: Warehouse },
   { value: 'liberal-service', label: 'Profession libérale', icon: ToolCase },
-  { value: 'mixed-income', label: 'Revenus mixtes', icon: Layers },
+  { value: 'mixed-income', label: 'Budget multi-source', icon: Layers },
   { value: 'family-backed', label: 'Appui familial structuré', icon: Users },
   { value: 'to-confirm', label: 'À confirmer', icon: HelpCircle },
 ];
@@ -465,7 +498,7 @@ const FINANCIAL_SECTOR_OPTIONS: ChoiceOption[] = [
   { value: 'education', label: 'Éducation', icon: NotebookTabs },
   { value: 'digital', label: 'Digital / télécoms', icon: RadioTower },
   { value: 'agriculture', label: 'Agriculture / agro', icon: Sprout },
-  { value: 'diaspora', label: 'Revenus diaspora', icon: Globe },
+  { value: 'diaspora', label: 'Budget diaspora', icon: Globe },
   { value: 'business', label: 'Activité indépendante', icon: ToolCase },
   { value: 'other', label: 'Autre secteur', icon: HelpCircle },
 ];
@@ -476,8 +509,8 @@ const CONTRACT_TYPE_OPTIONS: ChoiceOption[] = [
   { value: 'civil', label: 'Fonction publique', icon: Stamp },
   { value: 'business', label: 'Activité indépendante', icon: Hammer },
   { value: 'company', label: 'Société porteuse', icon: Building },
-  { value: 'mixed', label: 'Revenus mixtes', icon: Layers },
-  { value: 'informal', label: 'Revenus à documenter', icon: ReceiptText },
+  { value: 'mixed', label: 'Budget multi-source', icon: Layers },
+  { value: 'informal', label: 'Budget à documenter', icon: ReceiptText },
   { value: 'other', label: 'Autre situation', icon: HelpCircle },
 ];
 
@@ -495,14 +528,14 @@ const INCOME_STABILITY_OPTIONS: ChoiceOption[] = [
   { value: 'stable-6m', label: 'Stable depuis 6 mois', icon: CalendarCheck },
   { value: 'variable', label: 'Variable mais documenté', icon: Gauge },
   { value: 'seasonal', label: 'Saisonnier / par contrat', icon: CalendarClock },
-  { value: 'new-income', label: 'Nouveau revenu à consolider', icon: Clock },
+  { value: 'new-income', label: 'Budget à consolider', icon: Clock },
   { value: 'to-document', label: 'À documenter', icon: NotebookTabs },
 ];
 
 const CO_BORROWER_OPTIONS: ChoiceOption[] = [
-  { value: 'none', label: 'Aucun co-emprunteur', icon: UserCheck },
-  { value: 'spouse', label: 'Conjoint(e)', icon: Users },
-  { value: 'family', label: 'Famille', icon: Handshake },
+  { value: 'none', label: 'Aucun partenaire', icon: UserCheck },
+  { value: 'spouse', label: 'Garant identifié', icon: ShieldCheck },
+  { value: 'family', label: 'Partenaire familial', icon: Handshake },
   { value: 'associate', label: 'Associé / partenaire', icon: BriefcaseBusiness },
   { value: 'company', label: 'Société porteuse', icon: Warehouse },
   { value: 'to-confirm', label: 'À confirmer', icon: HelpCircle },
@@ -510,8 +543,8 @@ const CO_BORROWER_OPTIONS: ChoiceOption[] = [
 
 const FINANCING_OWNER_OPTIONS: ChoiceOption[] = [
   { value: 'single-client', label: 'Client seul', icon: UserCheck },
-  { value: 'couple', label: 'Couple / foyer', icon: Users },
-  { value: 'family', label: 'Famille', icon: Handshake },
+  { value: 'couple', label: 'Client + partenaire', icon: Users },
+  { value: 'family', label: 'Famille / mandataire', icon: Handshake },
   { value: 'company', label: 'Entreprise', icon: BriefcaseBusiness },
   { value: 'investor-group', label: 'Groupe d’investisseurs', icon: Building },
 ];
@@ -526,8 +559,8 @@ const BANK_AGREEMENT_STAGE_OPTIONS: ChoiceOption[] = [
 ];
 
 const DOWN_PAYMENT_SOURCE_OPTIONS: ChoiceOption[] = [
-  { value: 'savings', label: 'Épargne personnelle', icon: Banknote },
-  { value: 'salary-business', label: 'Revenus d’activité', icon: BriefcaseBusiness },
+  { value: 'savings', label: 'Fonds déjà mobilisés', icon: Banknote },
+  { value: 'salary-business', label: 'Budget d’activité', icon: BriefcaseBusiness },
   { value: 'family-support', label: 'Appui familial / associé', icon: Users },
   { value: 'asset-sale', label: 'Vente d’actif', icon: Landmark },
   { value: 'company-cash', label: 'Trésorerie entreprise', icon: Warehouse },
@@ -536,17 +569,18 @@ const DOWN_PAYMENT_SOURCE_OPTIONS: ChoiceOption[] = [
 
 const FINANCING_DOCUMENT_OPTIONS: ChoiceOption[] = [
   { value: 'id', label: 'Pièce d’identité', icon: UserCheck },
-  { value: 'income-proof', label: 'Justificatifs de revenus', icon: ReceiptText },
-  { value: 'bank-statements', label: 'Relevés bancaires', icon: Landmark },
   { value: 'land-document', label: 'Document terrain', icon: LandPlot },
   { value: 'company-documents', label: 'Documents entreprise', icon: BriefcaseBusiness },
   { value: 'quote-or-plans', label: 'Plans / devis / métré', icon: ClipboardList },
+  { value: 'bank-letter', label: 'Simulation ou accord banque', icon: Landmark },
+  { value: 'fund-proof', label: 'Preuve de budget disponible', icon: Wallet },
+  { value: 'payment-schedule', label: 'Échéancier souhaité', icon: CalendarClock },
   { value: 'none-yet', label: 'Aucun document pour le moment', icon: HelpCircle },
 ];
 
 const FINANCING_COMMITMENT_OPTIONS: ChoiceOption[] = [
-  { value: 'truthful-data', label: 'Je fournis des données sincères', icon: BadgeCheck },
-  { value: 'bank-verification', label: 'J’accepte la vérification banque', icon: Landmark },
+  { value: 'truthful-data', label: 'Je fournis un budget sincère', icon: BadgeCheck },
+  { value: 'bank-verification', label: 'J’accepte le contrôle des pièces', icon: Landmark },
   { value: 'progress-payment', label: 'Je comprends le paiement par avancement', icon: CalendarClock },
   { value: 'no-hidden-advance', label: 'Je veux éviter les avances non sécurisées', icon: ShieldPlus },
 ];
@@ -949,7 +983,14 @@ function getTechnicalIntentOptions(family: ProjectFamily): ChoiceOption[] {
 }
 
 function buildSteps(responses: Record<string, unknown>): StepDef[] {
-  const projectType = responses.projectType as string | undefined;
+  const storedProjectType = responses.projectType as string | undefined;
+  const selectedProjectGroup = (responses.projectGroup as ProjectGroupId | undefined) || getProjectGroupForType(storedProjectType);
+  const projectType = storedProjectType && (!selectedProjectGroup || getProjectGroupForType(storedProjectType) === selectedProjectGroup)
+    ? storedProjectType
+    : undefined;
+  const projectTypeOptions = selectedProjectGroup
+    ? PROJECT_TYPES.filter(option => getProjectGroupForType(option.value) === selectedProjectGroup)
+    : PROJECT_TYPES;
   const family = getProjectFamily(projectType);
   const terrainStatus = responses.terrainStatus as string | undefined;
   const clientPresence = responses.clientPresence as string | undefined;
@@ -957,18 +998,32 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
   const cityOptions = buildCityOptions(selectedCountry);
   const steps: StepDef[] = [
     {
+      id: 'project-group',
+      title: 'Grande catégorie du projet',
+      subtitle: 'Séparez clairement bâtiment et travaux publics dès le départ',
+      responseKey: 'projectGroup',
+      type: 'choice-single',
+      options: PROJECT_GROUPS,
+      required: true,
+      requiredMessage: 'Choisissez Bâtiment ou Travaux publics avant de continuer.',
+      insight: 'Buildify charge ensuite uniquement les champs adaptés à la famille de l’ouvrage.',
+    },
+    {
       id: 'project-type',
-      title: 'Catégorie de l’ouvrage',
-      subtitle: 'Choisissez le type de projet à cadrer',
+      title: selectedProjectGroup === 'travaux-publics' ? 'Catégorie travaux publics' : 'Catégorie bâtiment',
+      subtitle: selectedProjectGroup
+        ? `Choisissez le type exact dans ${PROJECT_GROUP_LABELS[selectedProjectGroup]}`
+        : 'Choisissez d’abord une grande catégorie',
       responseKey: 'projectType',
       type: 'choice-single',
-      options: PROJECT_TYPES,
+      options: projectTypeOptions,
       required: true,
+      requiredMessage: 'Choisissez la catégorie précise de l’ouvrage.',
       insight: 'Le formulaire s’adapte ensuite à la catégorie sélectionnée.',
     },
   ];
 
-  if (!projectType) return steps;
+  if (!selectedProjectGroup || !projectType) return steps;
 
   steps.push(
     {
@@ -1507,47 +1562,37 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
     },
     {
       id: 'financial-identity',
-      title: 'Profil financier',
-      subtitle: 'Structurez le dossier comme pour une analyse banque',
+      title: 'Cadre du financement',
+      subtitle: 'Analyse gratuite du montage, centrée sur le budget du projet',
       responseKey: '__financial_identity__',
       type: 'field-group',
       fields: [
-        { key: 'employmentStatus', label: 'Situation économique', type: 'select', options: EMPLOYMENT_STATUS_OPTIONS, required: true },
-        { key: 'financialSector', label: 'Domaine / secteur financier', type: 'select', options: FINANCIAL_SECTOR_OPTIONS, required: true },
-        { key: 'contractType', label: 'Type de contrat ou statut', type: 'select', options: CONTRACT_TYPE_OPTIONS, required: true },
-        { key: 'employerName', label: 'Employeur / activité principale', type: 'text', placeholder: 'Ex : Ministère, société, commerce, activité diaspora', required: true },
-        { key: 'salaryDomiciliationBank', label: 'Banque de domiciliation', type: 'text', placeholder: 'Banque où arrivent les revenus ou épargne principale' },
-        { key: 'incomeCurrency', label: 'Devise principale des revenus', type: 'select', options: INCOME_CURRENCY_OPTIONS, required: true },
-        { key: 'incomeStability', label: 'Stabilité des revenus', type: 'select', options: INCOME_STABILITY_OPTIONS, required: true },
         { key: 'financingOwner', label: 'Porteur du financement', type: 'select', options: FINANCING_OWNER_OPTIONS, required: true },
-        { key: 'coBorrowerStatus', label: 'Co-emprunteur / garant', type: 'select', options: CO_BORROWER_OPTIONS, required: true },
-        { key: 'householdDependents', label: 'Personnes à charge', type: 'number', placeholder: 'Ex : 3', min: 0, unit: 'personne(s)' },
+        { key: 'financingSourceType', label: 'Source principale du budget', type: 'select', options: FINANCING_SOURCE_OPTIONS, required: true },
+        { key: 'budgetConfidence', label: 'Niveau de certitude du budget', type: 'select', options: BUDGET_CONFIDENCE_OPTIONS, required: true },
+        { key: 'coBorrowerStatus', label: 'Garant ou partenaire financier', type: 'select', options: CO_BORROWER_OPTIONS, required: true },
+        { key: 'fundingReference', label: 'Référence utile', type: 'text', placeholder: 'Ex : banque envisagée, mandataire, entreprise, investisseur, accord oral' },
       ],
       required: true,
-      requiredMessage: 'Complétez le profil financier avant de passer aux montants.',
-      insight: 'Situation, secteur, contrat, employeur, devise, stabilité, porteur, garant et capacité réelle avant engagement.',
+      requiredMessage: 'Complétez le cadre du financement avant de passer aux montants.',
+      insight: 'Buildify peut réaliser une analyse technique et financière gratuite avec le budget, l’apport, les pièces et les garanties utiles au projet.',
     },
     {
       id: 'financing-profile',
-      title: 'Capacité financière',
-      subtitle: 'Renseignez les montants clés pour mesurer une mensualité réaliste',
+      title: 'Enveloppe du projet',
+      subtitle: 'Détaillez ce qui est disponible, ce qui reste à structurer et la marge travaux',
       responseKey: '__financing_profile__',
       type: 'field-group',
       fields: [
-        { key: 'baseSalary', label: 'Salaire de base / revenu fixe', type: 'number', placeholder: 'Ex : 1200000', unit: 'F CFA', min: 0, required: true, helper: 'Montant fixe réellement disponible avant primes, loyers, transferts ou revenus variables.' },
-        { key: 'variableMonthlyIncome', label: 'Primes / revenus variables', type: 'number', placeholder: 'Ex : 200000', unit: 'F CFA', min: 0, helper: 'Moyenne mensuelle prudente : primes régulières, commissions, missions ou activité complémentaire.' },
-        { key: 'otherMonthlyIncome', label: 'Autres revenus mensuels', type: 'number', placeholder: 'Ex : 100000', unit: 'F CFA', min: 0, helper: 'Loyers, transferts familiaux stables, dividendes ou autre revenu documentable.' },
-        { key: 'monthlyIncome', label: 'Revenu net retenu', type: 'number', placeholder: 'Ex : 1500000', unit: 'F CFA', min: 0, required: true, helper: 'Montant total que vous acceptez de retenir pour l’analyse. Il doit rester prudent et justifiable.' },
-        { key: 'existingMonthlyDebt', label: 'Charges ou crédits mensuels', type: 'number', placeholder: 'Ex : 250000', unit: 'F CFA', min: 0, required: true, helper: 'Indiquez 0 si vous n’avez pas de crédit ou charge fixe importante.' },
-        { key: 'monthlyPaymentCapacity', label: 'Mensualité acceptable', type: 'number', placeholder: 'Ex : 450000', unit: 'F CFA', min: 0, required: true, helper: 'Montant maximum que vous pensez pouvoir payer sans mettre votre foyer ou activité sous tension.' },
-        { key: 'ownContribution', label: 'Apport disponible immédiatement', type: 'number', placeholder: 'Ex : 5000000', unit: 'F CFA', min: 0, required: true },
-        { key: 'availableSavings', label: 'Épargne de sécurité restante', type: 'number', placeholder: 'Ex : 1000000', unit: 'F CFA', min: 0, helper: 'Montant que vous souhaitez garder après apport pour les imprévus.' },
-        { key: 'requestedLoanAmount', label: 'Montant à financer', type: 'number', placeholder: 'Ex : 35000000', unit: 'F CFA', min: 0, required: true },
-        { key: 'desiredLoanDurationYears', label: 'Durée souhaitée', type: 'number', placeholder: 'Ex : 10', unit: 'an(s)', min: 1, max: 30, required: true },
+        { key: 'ownContribution', label: 'Apport déjà mobilisable', type: 'number', placeholder: 'Ex : 5000000', unit: 'F CFA', min: 0, required: true, helper: 'Fonds que vous êtes prêt à consacrer au projet maintenant.' },
+        { key: 'requestedLoanAmount', label: 'Montant à compléter', type: 'number', placeholder: 'Ex : 35000000', unit: 'F CFA', min: 0, required: true, helper: 'Part à financer par banque, famille, associés, entreprise ou autre source.' },
+        { key: 'contingencyReserve', label: 'Marge imprévus travaux', type: 'number', placeholder: 'Ex : 3000000', unit: 'F CFA', min: 0, helper: 'Réserve prévue pour les aléas du chantier, hors dépenses personnelles.' },
+        { key: 'desiredLoanDurationYears', label: 'Durée souhaitée si financement', type: 'number', placeholder: 'Ex : 10', unit: 'an(s)', min: 1, max: 30, required: true },
+        { key: 'paymentEnvelopeNote', label: 'Précision sur l’enveloppe', type: 'textarea', placeholder: 'Ex : fonds disponibles en deux tranches, banque en discussion, budget à ajuster après métré...' },
       ],
       required: true,
-      requiredMessage: 'Complétez les montants financiers de base avant de continuer.',
-      insight: 'Ces informations permettent d’estimer le taux d’endettement et de préparer un échange sérieux avec une banque ou un notaire.',
+      requiredMessage: 'Complétez l’apport, le montant à structurer et la durée souhaitée.',
+      insight: 'L’objectif est de mesurer la couverture du budget et le reste à structurer, pas votre situation personnelle.',
     },
     {
       id: 'financing-bank',
@@ -1560,7 +1605,7 @@ function buildSteps(responses: Record<string, unknown>): StepDef[] {
         { key: 'bankName', label: 'Banque ou institution envisagée', type: 'text', placeholder: 'Ex : BNI, SGCI, NSIA, aucune pour le moment' },
         { key: 'bankContact', label: 'Contact banque', type: 'text', placeholder: 'Nom, agence, téléphone ou e-mail si disponible' },
         { key: 'downPaymentSource', label: 'Origine de l’apport', type: 'select', options: DOWN_PAYMENT_SOURCE_OPTIONS, required: true },
-        { key: 'financingNotes', label: 'Précision financière utile', type: 'textarea', placeholder: 'Ex : préaccord oral, apport détenu sur compte, financement familial, dossier employeur, besoin d’accompagnement banque...' },
+        { key: 'financingNotes', label: 'Précision financière utile', type: 'textarea', placeholder: 'Ex : préaccord oral, apport détenu sur compte, financement familial, budget entreprise, besoin d’accompagnement banque...' },
       ],
       required: true,
       requiredMessage: 'Indiquez le niveau banque et l’origine de l’apport.',
@@ -1822,42 +1867,39 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
   const paymentSecurity = arrayResponse(responses.paymentSecurity);
   const documentReadiness = arrayResponse(responses.documentReadiness);
   const commitments = arrayResponse(responses.commitments);
-  const baseSalary = numberResponse(responses.baseSalary, true);
-  const variableMonthlyIncome = numberResponse(responses.variableMonthlyIncome, true);
-  const otherMonthlyIncome = numberResponse(responses.otherMonthlyIncome, true);
-  const composedMonthlyIncome = [baseSalary, variableMonthlyIncome, otherMonthlyIncome]
-    .filter((value): value is number => value !== undefined)
-    .reduce((total, value) => total + value, 0);
-  const declaredMonthlyIncome = numberResponse(responses.monthlyIncome, true);
-  const monthlyIncome = declaredMonthlyIncome !== undefined
-    ? declaredMonthlyIncome
-    : composedMonthlyIncome > 0 ? composedMonthlyIncome : undefined;
-  const existingMonthlyDebt = numberResponse(responses.existingMonthlyDebt, true);
-  const monthlyPaymentCapacity = numberResponse(responses.monthlyPaymentCapacity, true);
   const ownContribution = numberResponse(responses.ownContribution, true);
   const requestedLoanAmount = numberResponse(responses.requestedLoanAmount, true);
   const desiredLoanDurationYears = numberResponse(responses.desiredLoanDurationYears);
-  const availableSavings = numberResponse(responses.availableSavings, true);
-  const householdDependents = numberResponse(responses.householdDependents, true);
+  const contingencyReserve = numberResponse(responses.contingencyReserve, true);
   const bankAgreementStage = String(responses.bankAgreementStage || '').trim() || undefined;
+  const budgetConfidence = String(responses.budgetConfidence || '').trim() || undefined;
   const estimatedBudget = budgetMax || budgetMin || undefined;
   const readiness: ProjectFinancingData['readiness'] =
     mode === 'confirmed-bank' || bankAgreementStage === 'funds-available' || bankAgreementStage === 'pre-approved' ? 'confirmed'
       : mode === 'bank-support' || bankAgreementStage === 'under-review' || bankAgreementStage === 'documents-requested' ? 'bank_review'
         : mode === 'to-structure' || mode === 'land-and-finance' ? 'to_structure'
           : 'unknown';
-  const currentDebtRatioPercent = percentRatio(existingMonthlyDebt, monthlyIncome);
-  const projectedDebtRatioPercent = percentRatio((existingMonthlyDebt ?? 0) + (monthlyPaymentCapacity ?? 0), monthlyIncome);
   const equityRatioPercent = percentRatio(ownContribution, estimatedBudget);
-  const cashReserveMonths = monthlyIncome && availableSavings !== undefined
-    ? Math.round((availableSavings / monthlyIncome) * 10) / 10
-    : undefined;
-  const incomeStability = String(responses.incomeStability || '').trim() || undefined;
+  const declaredFunding = (ownContribution ?? 0) + (requestedLoanAmount ?? 0);
+  const declaredFundingCoveragePercent = percentRatio(declaredFunding > 0 ? declaredFunding : undefined, estimatedBudget);
+  const coverageScore = declaredFundingCoveragePercent === undefined
+    ? 4
+    : declaredFundingCoveragePercent >= 100 ? 18
+      : declaredFundingCoveragePercent >= 85 ? 14
+        : declaredFundingCoveragePercent >= 65 ? 9
+          : declaredFundingCoveragePercent >= 40 ? 5
+            : 1;
+  const confidenceScore: Record<string, number> = {
+    'approved-envelope': 14,
+    'documented-estimate': 11,
+    'rough-envelope': 7,
+    'needs-analysis': 5,
+  };
   const affordabilityScore = clampPercent(
-    15
+    18
       + bankStageScore(bankAgreementStage)
-      + stabilityScore(incomeStability)
-      + debtRatioScore(projectedDebtRatioPercent)
+      + (budgetConfidence ? confidenceScore[budgetConfidence] ?? 5 : 5)
+      + coverageScore
       + equityScore(equityRatioPercent)
       + documentScore(documentReadiness)
       + securityScore(paymentSecurity, commitments)
@@ -1866,32 +1908,38 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
   return {
     mode,
     readiness,
-    paymentPrinciple: 'Objectif Buildify : lire les revenus, charges, apport, banque et garanties avant engagement, protéger l’apport, éviter les avances non sécurisées et déclencher les paiements uniquement par jalons vérifiés.',
+    paymentPrinciple: 'Analyse Buildify gratuite : cadrer le budget, l’apport, le reste à financer, la banque, les pièces et les garanties avant tout engagement. Le formulaire reste centré sur le projet.',
     estimatedBudget,
-    monthlyIncome,
-    baseSalary,
-    variableMonthlyIncome,
-    otherMonthlyIncome,
-    existingMonthlyDebt,
-    monthlyPaymentCapacity,
+    monthlyIncome: undefined,
+    baseSalary: undefined,
+    variableMonthlyIncome: undefined,
+    otherMonthlyIncome: undefined,
+    existingMonthlyDebt: undefined,
+    monthlyPaymentCapacity: undefined,
     ownContribution,
     requestedLoanAmount,
     desiredLoanDurationYears,
-    availableSavings,
-    employmentStatus: String(responses.employmentStatus || '').trim() || undefined,
-    financialSector: String(responses.financialSector || '').trim() || undefined,
-    contractType: String(responses.contractType || '').trim() || undefined,
-    employerName: String(responses.employerName || '').trim() || undefined,
-    salaryDomiciliationBank: String(responses.salaryDomiciliationBank || '').trim() || undefined,
-    incomeCurrency: String(responses.incomeCurrency || '').trim() || undefined,
-    incomeStability,
-    householdDependents,
+    availableSavings: undefined,
+    contingencyReserve,
+    declaredFundingCoveragePercent,
+    financingSourceType: String(responses.financingSourceType || '').trim() || undefined,
+    budgetConfidence,
+    fundingReference: String(responses.fundingReference || '').trim() || undefined,
+    paymentEnvelopeNote: String(responses.paymentEnvelopeNote || '').trim() || undefined,
+    employmentStatus: undefined,
+    financialSector: undefined,
+    contractType: undefined,
+    employerName: undefined,
+    salaryDomiciliationBank: undefined,
+    incomeCurrency: undefined,
+    incomeStability: undefined,
+    householdDependents: undefined,
     coBorrowerStatus: String(responses.coBorrowerStatus || '').trim() || undefined,
     financingOwner: String(responses.financingOwner || '').trim() || undefined,
     affordabilityScore,
-    financialRiskLevel: financialRiskLevel(affordabilityScore, projectedDebtRatioPercent),
+    financialRiskLevel: financialRiskLevel(affordabilityScore),
     equityRatioPercent,
-    cashReserveMonths,
+    cashReserveMonths: undefined,
     bankName: String(responses.bankName || '').trim() || undefined,
     bankContact: String(responses.bankContact || '').trim() || undefined,
     bankAgreementStage,
@@ -1900,13 +1948,16 @@ function buildProjectFinancing(responses: Record<string, unknown>, budgetMin?: n
     documentReadiness,
     guarantees: paymentSecurity,
     commitments,
-    currentDebtRatioPercent,
-    projectedDebtRatioPercent,
+    currentDebtRatioPercent: undefined,
+    projectedDebtRatioPercent: undefined,
     notaryContract: mode === 'notary-secured' || paymentSecurity.includes('notary-contract'),
     escrowRequested: paymentSecurity.includes('escrow'),
     bankSupportRequested: mode === 'bank-support' || paymentSecurity.includes('bank-support'),
     landSupportRequested: mode === 'land-and-finance' || responses.terrainStatus === 'searching',
-    notes: String(responses.financingNotes || '').trim() || undefined,
+    notes: [responses.financingNotes, responses.paymentEnvelopeNote]
+      .map(value => String(value || '').trim())
+      .filter(Boolean)
+      .join('\n') || undefined,
     milestones: buildPaymentMilestones(estimatedBudget),
     updatedAt: new Date().toISOString(),
   };
@@ -1947,61 +1998,51 @@ function financingStageText(financing: ProjectFinancingData, coveragePercent?: n
 function buildFinancingAdvisorPlan(responses: Record<string, unknown>, budgetMin?: number, budgetMax?: number): FinancingAdvisorPlan {
   const financing = buildProjectFinancing(responses, budgetMin, budgetMax);
   const budget = budgetMax || budgetMin || financing.estimatedBudget;
-  const maxPrudentMonthly = financing.monthlyIncome !== undefined
-    ? Math.max(0, Math.round((financing.monthlyIncome * 0.35) - (financing.existingMonthlyDebt ?? 0)))
-    : undefined;
-  const declaredCapacity = financing.monthlyPaymentCapacity;
-  const retainedMonthly = declaredCapacity !== undefined && maxPrudentMonthly !== undefined
-    ? Math.min(declaredCapacity, maxPrudentMonthly)
-    : declaredCapacity ?? maxPrudentMonthly;
-  const loanCapacity = estimateLoanPrincipal(retainedMonthly, financing.desiredLoanDurationYears);
-  const totalCapacity = (loanCapacity ?? 0) + (financing.ownContribution ?? 0);
-  const hasAnyCapacity = loanCapacity !== undefined || financing.ownContribution !== undefined;
-  const coveragePercent = budget && hasAnyCapacity ? clampPercent((totalCapacity / budget) * 100) : undefined;
-  const gap = budget && hasAnyCapacity ? Math.max(0, budget - totalCapacity) : undefined;
+  const declaredFunding = (financing.ownContribution ?? 0) + (financing.requestedLoanAmount ?? 0);
+  const hasFundingFrame = financing.ownContribution !== undefined || financing.requestedLoanAmount !== undefined;
+  const coveragePercent = budget && hasFundingFrame ? clampPercent((declaredFunding / budget) * 100) : undefined;
+  const gap = budget && hasFundingFrame ? Math.max(0, budget - declaredFunding) : undefined;
   const firstMilestoneAmount = budget ? Math.round(budget * 0.1) : undefined;
-  const requiredMonthlyGap = gap && financing.desiredLoanDurationYears
-    ? Math.round((gap / (financing.desiredLoanDurationYears * 12)) / 0.78)
-    : undefined;
   const documentCount = financing.documentReadiness?.filter(item => item !== 'none-yet').length ?? 0;
   const stageLabel = financingStageText(financing, coveragePercent);
   const safeguards = compactStrings([
+    'Analyse technique et financière gratuite avant décision : Buildify vérifie le budget, le périmètre et les preuves de financement.',
     'Aucun paiement important avant étape contrôlée, preuve d’avancement et validation écrite.',
     firstMilestoneAmount ? `Premier jalon indicatif : ${formatMetricMoney(firstMilestoneAmount)} après contrôle de fondations ou étape équivalente.` : 'Les montants de jalons seront calculés après budget définitif.',
     financing.escrowRequested || financing.notaryContract ? 'Contrat notarié, compte séquestre ou paiement bancaire peuvent sécuriser les décaissements.' : 'Ajoutez contrat notarié, séquestre ou décaissement bancaire si vous voulez plus de protection.',
   ]);
   const nextActions = compactStrings([
-    financing.monthlyIncome === undefined && 'Saisir le revenu net retenu pour mesurer la mensualité prudente.',
-    financing.existingMonthlyDebt === undefined && 'Déclarer les charges ou crédits mensuels, même si le montant est 0.',
+    budget === undefined && 'Choisir un budget indicatif pour démarrer l’analyse gratuite.',
     financing.ownContribution === undefined && 'Indiquer l’apport réellement disponible avant d’engager le dossier.',
-    financing.desiredLoanDurationYears === undefined && 'Choisir une durée de financement pour estimer la capacité.',
-    documentCount < 3 && 'Préparer pièce d’identité, justificatifs de revenus et relevés bancaires.',
-    gap !== undefined && gap > 0 && requiredMonthlyGap !== undefined && `Écart à couvrir : ${formatMetricMoney(gap)} ou environ ${formatMetricMoney(requiredMonthlyGap)} de mensualité supplémentaire prudente.`,
+    financing.requestedLoanAmount === undefined && 'Indiquer le montant à compléter par banque, partenaires, entreprise ou phasage.',
+    !financing.budgetConfidence && 'Préciser si le budget est validé, documenté, indicatif ou à analyser.',
+    documentCount < 2 && 'Préparer document terrain, devis/plans/métré ou simulation banque si disponible.',
+    gap !== undefined && gap > 0 && `Reste à structurer : ${formatMetricMoney(gap)} par apport, banque, phasage ou ajustement de périmètre.`,
     coveragePercent !== undefined && coveragePercent >= 100 && 'Passer à la sécurisation banque, contrat et planning de paiement par jalons.',
   ]).slice(0, 5);
 
   return {
     title: stageLabel,
-    summary: 'Lecture indicative pour savoir si le projet peut avancer, doit être phasé ou nécessite un échange banque avant engagement.',
+    summary: 'Lecture gratuite et indicative pour savoir si le projet peut avancer, doit être phasé ou nécessite un échange banque avant engagement.',
     stageLabel,
     readinessLabel: financingReadinessText(financing.readiness),
     metrics: [
       {
-        label: 'Mensualité prudente',
-        value: retainedMonthly === undefined ? 'À saisir' : formatMetricMoney(retainedMonthly),
-        helper: maxPrudentMonthly === undefined ? 'Calculée après revenu et charges.' : `Plafond prudent estimé : ${formatMetricMoney(maxPrudentMonthly)}.`,
+        label: 'Budget indicatif',
+        value: budget === undefined ? 'À choisir' : formatMetricMoney(budget),
+        helper: 'Base de calcul pour l’analyse technique et financière gratuite.',
         icon: Wallet,
       },
       {
-        label: 'Capacité financement',
-        value: loanCapacity === undefined ? 'À calculer' : formatMetricMoney(loanCapacity),
-        helper: financing.desiredLoanDurationYears ? `Sur ${financing.desiredLoanDurationYears} an(s), lecture volontairement prudente.` : 'Ajoutez la durée souhaitée.',
+        label: 'Fonds déclarés',
+        value: hasFundingFrame ? formatMetricMoney(declaredFunding) : 'À saisir',
+        helper: 'Apport mobilisable + montant à compléter déclaré.',
         icon: Landmark,
       },
       {
         label: 'Couverture budget',
         value: coveragePercent === undefined ? 'À calculer' : `${coveragePercent}%`,
-        helper: budget ? `Budget retenu : ${formatMetricMoney(budget)} avec apport + capacité.` : 'Choisissez un budget indicatif.',
+        helper: budget ? `Budget retenu : ${formatMetricMoney(budget)} avec apport + financement déclaré.` : 'Choisissez un budget indicatif.',
         icon: Gauge,
       },
       {
@@ -2063,6 +2104,11 @@ function labelsToPreview(values: unknown, options: ChoiceOption[], fallback: str
 function buildFinanceMetrics(responses: Record<string, unknown>, budgetMin?: number, budgetMax?: number): ControlMetric[] {
   const financing = buildProjectFinancing(responses, budgetMin, budgetMax);
   const score = financing.affordabilityScore;
+  const budget = financing.estimatedBudget;
+  const declaredFunding = (financing.ownContribution ?? 0) + (financing.requestedLoanAmount ?? 0);
+  const gap = budget !== undefined && (financing.ownContribution !== undefined || financing.requestedLoanAmount !== undefined)
+    ? Math.max(0, budget - declaredFunding)
+    : undefined;
   const riskLabels: Record<string, string> = {
     low: 'Faible',
     moderate: 'Modéré',
@@ -2072,16 +2118,16 @@ function buildFinanceMetrics(responses: Record<string, unknown>, budgetMin?: num
 
   return [
     {
-      label: 'Score finance',
+      label: 'Score analyse',
       value: score === undefined ? 'À compléter' : `${score}/100`,
-      helper: `Lecture risque : ${riskLabels[financing.financialRiskLevel || 'unknown']}`,
+      helper: `Lecture financement : ${riskLabels[financing.financialRiskLevel || 'unknown']}`,
       tone: financeRiskTone(financing.financialRiskLevel),
     },
     {
-      label: 'Endettement projeté',
-      value: formatMetricPercent(financing.projectedDebtRatioPercent),
-      helper: 'Charges existantes + mensualité acceptable',
-      tone: ratioTone(financing.projectedDebtRatioPercent, 40, 55),
+      label: 'Couverture budget',
+      value: formatMetricPercent(financing.declaredFundingCoveragePercent),
+      helper: 'Apport + montant à compléter déclarés',
+      tone: financing.declaredFundingCoveragePercent === undefined ? 'neutral' : financing.declaredFundingCoveragePercent >= 100 ? 'good' : financing.declaredFundingCoveragePercent >= 70 ? 'warn' : 'critical',
     },
     {
       label: 'Apport / budget',
@@ -2090,10 +2136,10 @@ function buildFinanceMetrics(responses: Record<string, unknown>, budgetMin?: num
       tone: financing.equityRatioPercent === undefined ? 'neutral' : financing.equityRatioPercent >= 20 ? 'good' : 'warn',
     },
     {
-      label: 'Réserve après apport',
-      value: financing.cashReserveMonths === undefined ? 'À saisir' : `${financing.cashReserveMonths} mois`,
-      helper: 'Épargne restante rapportée au revenu net',
-      tone: financing.cashReserveMonths === undefined ? 'neutral' : financing.cashReserveMonths >= 3 ? 'good' : 'warn',
+      label: 'Reste à structurer',
+      value: gap === undefined ? 'À calculer' : gap > 0 ? formatMetricMoney(gap) : '0 F CFA',
+      helper: 'Écart entre budget retenu et fonds déclarés',
+      tone: gap === undefined ? 'neutral' : gap > 0 ? 'warn' : 'good',
     },
   ];
 }
@@ -2107,7 +2153,7 @@ function buildOuvrageControlProfile(responses: Record<string, unknown>): Ouvrage
   const budgetMin = budgetMinRaw ?? undefined;
   const budgetMax = budgetMaxRaw ?? undefined;
   const finance = buildFinanceMetrics(responses, budgetMin, budgetMax);
-  const financeStress = finance.find(item => item.label === 'Endettement projeté')?.tone;
+  const financeStress = finance.find(item => item.label === 'Couverture budget')?.tone;
   const terrainSurface = numberResponse(responses.surfaceArea);
   const siteAccess = stringResponse(responses, 'siteAccess');
   const soilKnown = stringResponse(responses, 'soilKnown');
@@ -2164,7 +2210,7 @@ function buildOuvrageControlProfile(responses: Record<string, unknown>): Ouvrage
       risks: compactStrings([
         footprintRatio !== undefined && footprintRatio >= 60 && 'Emprise élevée : risque de cour, parking ou recul insuffisant.',
         soilKnown !== 'faite' && 'Fondations et structure à sécuriser par étude de sol.',
-        financeStress === 'critical' && 'Capacité financière à revoir avant engagement chantier.',
+        financeStress === 'critical' && 'Montage financier à revoir avant engagement chantier.',
         !budgetValue && 'Budget indicatif encore absent : devis peu fiable.',
       ]),
       finance,
@@ -2294,7 +2340,7 @@ function buildOuvrageControlProfile(responses: Record<string, unknown>): Ouvrage
     ],
     risks: compactStrings([
       !budgetValue && 'Budget non déclaré : arbitrages difficiles.',
-      financeStress === 'critical' && 'Capacité financière à sécuriser avant engagement.',
+      financeStress === 'critical' && 'Montage financier à sécuriser avant engagement.',
       'Tout lot technique doit prévoir essais et réception.',
     ]),
     finance,
@@ -2383,7 +2429,7 @@ export function ConfiguratorView() {
   } = useAppStore();
 
   const responses = configurator.responses;
-  const [localStepId, setLocalStepId] = useState<string>('project-type');
+  const [localStepId, setLocalStepId] = useState<string>('project-group');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState('');
   const [choiceSearch, setChoiceSearch] = useState<Record<string, string>>({});
@@ -2445,6 +2491,10 @@ export function ConfiguratorView() {
         };
         const mapped = Object.entries(typeMap).find(([key]) => cat.includes(key))?.[1] || 'maison-basse';
         setConfiguratorResponse('projectType', mapped);
+        const mappedGroup = getProjectGroupForType(mapped);
+        if (mappedGroup) {
+          setConfiguratorResponse('projectGroup', mappedGroup);
+        }
         setConfiguratorData({ modelId: model.id, categoryName: model.categoryName });
       }
     }
@@ -2728,6 +2778,12 @@ export function ConfiguratorView() {
     const showSearch = options.length >= 5;
     const selectOption = (value: string) => {
       setConfiguratorResponse(step.responseKey, value);
+      if (step.responseKey === 'projectGroup') {
+        const currentType = responses.projectType as string | undefined;
+        if (currentType && getProjectGroupForType(currentType) !== value) {
+          setConfiguratorResponse('projectType', '');
+        }
+      }
       if (step.responseKey === 'country') {
         setConfiguratorResponse('city', '');
         setConfiguratorResponse('otherCity', '');
@@ -3552,11 +3608,11 @@ export function ConfiguratorView() {
   const budgetControlValue = stringResponse(responses, 'budget');
   const budgetControlLabel = budgetControlValue ? getBudgetLabel(budgetControlValue) : 'À choisir';
   const financeMetric = (label: string) => controlProfile.finance.find(item => item.label === label);
-  const financeScoreMetric = financeMetric('Score finance');
-  const debtMetric = financeMetric('Endettement projeté');
+  const financeScoreMetric = financeMetric('Score analyse');
+  const coverageMetric = financeMetric('Couverture budget');
   const equityMetric = financeMetric('Apport / budget');
-  const reserveMetric = financeMetric('Réserve après apport');
-  const financeRiskLabel = financeScoreMetric?.helper?.replace('Lecture risque : ', '') || 'À qualifier';
+  const gapMetric = financeMetric('Reste à structurer');
+  const financeRiskLabel = financeScoreMetric?.helper?.replace('Lecture financement : ', '') || 'À qualifier';
   const professionalControlRows = [
     {
       label: 'Contrôle professionnel',
@@ -3566,12 +3622,12 @@ export function ConfiguratorView() {
     {
       label: 'Finance',
       icon: Wallet,
-      summary: `Score ${financeScoreMetric?.value || 'À compléter'} | Risque ${financeRiskLabel} | Endettement ${debtMetric?.value || 'À calculer'} | Apport ${equityMetric?.value || 'À calculer'} | Réserve ${reserveMetric?.value || 'À saisir'} | Aucun engagement sans catégorie, lieu et budget.`,
+      summary: `Score ${financeScoreMetric?.value || 'À compléter'} | Lecture ${financeRiskLabel} | Couverture ${coverageMetric?.value || 'À calculer'} | Apport ${equityMetric?.value || 'À calculer'} | Reste ${gapMetric?.value || 'À structurer'} | Analyse technique et financière gratuite.`,
     },
   ];
   const professionalControlLabel = [
     `Contrôle professionnel : Catégorie ${categoryControlLabel}, pays ${countryControlLabel}, ville ${cityControlLabel}, budget ${budgetControlLabel}.`,
-    `Finance : score ${financeScoreMetric?.value || 'À compléter'}, risque ${financeRiskLabel}, endettement ${debtMetric?.value || 'À calculer'}, apport ${equityMetric?.value || 'À calculer'}, réserve ${reserveMetric?.value || 'À saisir'}. Aucun engagement sans catégorie, lieu et budget.`,
+    `Finance : score ${financeScoreMetric?.value || 'À compléter'}, lecture ${financeRiskLabel}, couverture ${coverageMetric?.value || 'À calculer'}, apport ${equityMetric?.value || 'À calculer'}, reste ${gapMetric?.value || 'À structurer'}. Aucun engagement sans catégorie, lieu et budget.`,
   ].join(' ');
 
   const renderProfessionalControlStrip = () => {

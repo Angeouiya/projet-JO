@@ -20,17 +20,15 @@ import {
 import { useAppStore } from '@/stores/app-store';
 import { DEFAULT_CATALOG_MODELS } from '@/data/catalog-models';
 import { FORMAT_SHORT_XOF } from '@/types';
+import { getProjectGroupForCatalog, PROJECT_GROUP_LABELS } from '@/data/project-groups';
 import type { CatalogModelData, FilterState } from '@/types';
 
 const FALLBACK_MODELS = DEFAULT_CATALOG_MODELS;
 
 const CATEGORY_PILLS = [
   { value: 'all', label: 'Tout' },
-  { value: 'villa', label: 'Villa' },
-  { value: 'duplex', label: 'Duplex' },
-  { value: 'triplex', label: 'Triplex' },
-  { value: 'immeuble', label: 'Immeuble' },
-  { value: 'cite', label: 'Cité' },
+  { value: 'batiment', label: PROJECT_GROUP_LABELS.batiment },
+  { value: 'travaux-publics', label: PROJECT_GROUP_LABELS['travaux-publics'] },
 ];
 
 const SORT_OPTIONS = [
@@ -85,7 +83,7 @@ export function ExploreView() {
     }
 
     if (activeCategory !== 'all') {
-      result = result.filter(m => m.categoryId === activeCategory);
+      result = result.filter(m => getProjectGroupForCatalog(m.categoryId, m.categoryName) === activeCategory);
     }
 
     if (filters.standing) {

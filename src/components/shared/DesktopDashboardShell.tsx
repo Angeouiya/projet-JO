@@ -25,6 +25,7 @@ import { buildProjectDecisionCenter } from '@/lib/project-decision-center';
 import { useAppStore } from '@/stores/app-store';
 import { BrandLogo } from './BrandLogo';
 import { FORMAT_XOF, PROJECT_STATUS_LABELS } from '@/types';
+import { getProjectGroupForType } from '@/data/project-groups';
 import type { ProjectData, ViewName } from '@/types';
 
 type NavItem = {
@@ -93,6 +94,10 @@ export function ClientDashboardHome() {
 
   const startTypedProject = (projectType: string) => {
     resetConfigurator();
+    const projectGroup = getProjectGroupForType(projectType);
+    if (projectGroup) {
+      setConfiguratorResponse('projectGroup', projectGroup);
+    }
     setConfiguratorResponse('projectType', projectType);
     navigate('create');
   };

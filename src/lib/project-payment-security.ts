@@ -35,7 +35,7 @@ interface PaymentSecurityOptions {
   remoteValidationReady?: boolean;
 }
 
-const REQUIRED_FINANCE_DOCUMENTS = ['id', 'income-proof', 'bank-statements', 'quote-or-plans'];
+const REQUIRED_FINANCE_DOCUMENTS = ['id', 'land-document', 'quote-or-plans', 'fund-proof'];
 const BANK_READY_STAGES = ['under-review', 'pre-approved', 'funds-available'];
 
 function amountOrMissing(value?: number) {
@@ -198,7 +198,7 @@ export function buildPaymentSecurityPlan(
       {
         label: 'Pièces clés',
         value: `${REQUIRED_FINANCE_DOCUMENTS.length - missingDocumentCount}/${REQUIRED_FINANCE_DOCUMENTS.length}`,
-        help: 'Identité, revenus, relevés et base devis/plans.',
+        help: 'Identité, terrain, preuve de budget et base devis/plans.',
       },
     ],
     controls,

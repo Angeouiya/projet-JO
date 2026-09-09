@@ -271,6 +271,12 @@ export interface ProjectFinancingData {
   requestedLoanAmount?: number;
   desiredLoanDurationYears?: number;
   availableSavings?: number;
+  contingencyReserve?: number;
+  declaredFundingCoveragePercent?: number;
+  financingSourceType?: string;
+  budgetConfidence?: string;
+  fundingReference?: string;
+  paymentEnvelopeNote?: string;
   employmentStatus?: string;
   financialSector?: string;
   contractType?: string;

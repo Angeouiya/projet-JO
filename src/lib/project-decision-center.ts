@@ -149,8 +149,8 @@ export function buildProjectDecisionCenter(project: ProjectData, audience: Proje
       id: 'finance',
       title: financeTone === 'good' ? 'Financement lisible' : 'Renforcer le financement',
       description: financeTone === 'good'
-        ? 'Les revenus, charges, apport, banque et garanties sont assez lisibles pour avancer.'
-        : 'Complétez les revenus, charges, apport, banque et pièces avant engagement.',
+        ? 'Le budget, l’apport, la banque et les garanties sont assez lisibles pour avancer.'
+        : 'Complétez budget, apport, montant à structurer, banque et pièces avant engagement.',
       status: financing?.affordabilityScore ? `${financing.affordabilityScore}/100` : 'À compléter',
       owner: 'Client',
       actionLabel: 'Ouvrir finance',
@@ -243,7 +243,7 @@ export function buildProjectDecisionCenter(project: ProjectData, audience: Proje
     {
       id: 'finance',
       title: financeTone === 'good' ? 'Finance exploitable' : 'Analyse financière à sécuriser',
-      description: paymentBlocked ? 'Un jalon est bloqué : clarifier avant nouvel appel de fonds.' : 'Contrôler revenus, charges, apport, banque, garanties et documents.',
+      description: paymentBlocked ? 'Un jalon est bloqué : clarifier avant nouvel appel de fonds.' : 'Contrôler budget, apport, reste à structurer, banque, garanties et documents.',
       status: paymentBlocked ? 'Jalon bloqué' : paymentDue ? 'Paiement dû' : financing?.affordabilityScore ? `${financing.affordabilityScore}/100` : 'À compléter',
       owner: 'Finance',
       actionLabel: 'Ouvrir jalons',

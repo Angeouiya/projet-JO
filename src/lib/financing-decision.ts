@@ -59,37 +59,23 @@ export function buildFinancingDecisionPlan(
   projectBudget?: number
 ): FinancingDecisionPlan {
   const estimatedBudget = financing.estimatedBudget || projectBudget;
-  const monthlyIncome = financing.monthlyIncome;
-  const existingDebt = financing.existingMonthlyDebt ?? 0;
-  const monthlyCapacity = financing.monthlyPaymentCapacity;
   const ownContribution = financing.ownContribution ?? 0;
   const requestedLoan = financing.requestedLoanAmount ?? 0;
-  const desiredYears = financing.desiredLoanDurationYears;
-  const currentDebtRatio = ratio(existingDebt, monthlyIncome);
-  const projectedDebtRatio = financing.projectedDebtRatioPercent ?? ratio(existingDebt + (monthlyCapacity ?? 0), monthlyIncome);
+  const declaredFunding = ownContribution + requestedLoan;
+  const hasFundingFrame = financing.ownContribution !== undefined || financing.requestedLoanAmount !== undefined;
+  const coverageRatio = financing.declaredFundingCoveragePercent ?? (
+    hasFundingFrame ? ratio(declaredFunding, estimatedBudget) : undefined
+  );
   const equityRatio = financing.equityRatioPercent ?? ratio(ownContribution, estimatedBudget);
-  const monthlyCeiling = monthlyIncome !== undefined ? Math.max(0, Math.round(monthlyIncome * 0.35 - existingDebt)) : undefined;
-  const livingMargin = monthlyIncome !== undefined && monthlyCapacity !== undefined
-    ? monthlyIncome - existingDebt - monthlyCapacity
-    : undefined;
   const fundingGap = estimatedBudget !== undefined
-    ? Math.max(0, estimatedBudget - ownContribution - requestedLoan)
-    : undefined;
-  const grossLoanCapacity = monthlyCapacity !== undefined && desiredYears !== undefined
-    ? Math.round(monthlyCapacity * desiredYears * 12)
+    ? Math.max(0, estimatedBudget - declaredFunding)
     : undefined;
   const bankReady = hasBankStage(financing.bankAgreementStage);
-  const hasRevenueProfile = Boolean(monthlyIncome && financing.employmentStatus && financing.contractType && financing.incomeStability);
+  const hasBudgetFrame = Boolean(estimatedBudget && financing.budgetConfidence && hasFundingFrame);
   const hasSecurity = Boolean(financing.notaryContract || financing.escrowRequested);
   const hasMilestones = (financing.milestones ?? []).length > 0;
 
   const warnings = [
-    projectedDebtRatio !== undefined && projectedDebtRatio > 45
-      ? 'Effort projeté au-dessus du seuil prudentiel : réduire la mensualité, augmenter l’apport ou allonger la durée.'
-      : undefined,
-    livingMargin !== undefined && livingMargin < 0
-      ? 'Reste mensuel négatif après projet : le dossier ne doit pas avancer sans restructuration.'
-      : undefined,
     fundingGap !== undefined && fundingGap > 0
       ? `Écart de financement à sécuriser : ${FORMAT_XOF(fundingGap)}.`
       : undefined,
@@ -102,11 +88,11 @@ export function buildFinancingDecisionPlan(
   ].filter((item): item is string => Boolean(item));
 
   let tone: FinancingDecisionTone = 'missing';
-  if (!monthlyIncome || !estimatedBudget) {
+  if (!estimatedBudget || !hasFundingFrame) {
     tone = 'missing';
-  } else if ((projectedDebtRatio ?? 100) > 50 || (livingMargin !== undefined && livingMargin < 0)) {
+  } else if ((coverageRatio ?? 0) < 45 || (fundingGap ?? 0) > (estimatedBudget * 0.45)) {
     tone = 'risk';
-  } else if ((projectedDebtRatio ?? 100) <= 35 && (fundingGap ?? 0) === 0 && (bankReady || (equityRatio ?? 0) >= 25)) {
+  } else if ((coverageRatio ?? 0) >= 100 && (bankReady || (equityRatio ?? 0) >= 25)) {
     tone = 'ready';
   } else {
     tone = 'structure';
@@ -128,32 +114,32 @@ export function buildFinancingDecisionPlan(
 
   const advisoryByTone: Record<FinancingDecisionTone, string> = {
     ready: 'Buildify peut préparer la séquence devis, contrat, planning et paiements par avancement documenté.',
-    structure: 'Priorité : renforcer les preuves de revenus, confirmer la banque, protéger l’apport et publier un échéancier par jalons.',
-    risk: 'Priorité : baisser le budget, augmenter l’apport, réduire les charges ou obtenir un accord bancaire plus solide.',
-    missing: 'Priorité : renseigner revenus, charges, apport, montant à financer, banque, durée et garanties.',
+    structure: 'Priorité : confirmer le budget, sécuriser les preuves de financement, protéger l’apport et publier un échéancier par jalons.',
+    risk: 'Priorité : recalibrer le périmètre, augmenter l’apport, phaser les travaux ou obtenir un accord bancaire plus solide.',
+    missing: 'Priorité : renseigner budget, apport, montant à compléter, banque, durée et garanties.',
   };
 
   return {
     tone,
     label: labelByTone[tone],
     title: titleByTone[tone],
-    summary: `Lecture calculée avec un budget de ${amountOrMissing(estimatedBudget)}, un revenu retenu de ${amountOrMissing(monthlyIncome)} et une mensualité cible de ${amountOrMissing(monthlyCapacity)}.`,
+    summary: `Lecture calculée avec un budget de ${amountOrMissing(estimatedBudget)}, des fonds déclarés de ${amountOrMissing(hasFundingFrame ? declaredFunding : undefined)} et une couverture de ${percentOrMissing(coverageRatio)}.`,
     advisory: advisoryByTone[tone],
     metrics: [
       {
-        label: 'Plafond prudent',
-        value: amountOrMissing(monthlyCeiling),
-        help: 'Mensualité projet conseillée autour de 35% des revenus, après charges existantes.',
+        label: 'Budget retenu',
+        value: amountOrMissing(estimatedBudget),
+        help: 'Enveloppe utilisée pour l’analyse technique et financière gratuite.',
       },
       {
-        label: 'Reste mensuel',
-        value: amountOrMissing(livingMargin),
-        help: 'Marge restante après charges existantes et mensualité cible du projet.',
+        label: 'Fonds déclarés',
+        value: amountOrMissing(hasFundingFrame ? declaredFunding : undefined),
+        help: 'Apport mobilisable + montant à compléter déclaré.',
       },
       {
-        label: 'Ratio projete',
-        value: percentOrMissing(projectedDebtRatio),
-        help: `Ratio actuel: ${percentOrMissing(currentDebtRatio)}. Zone confortable sous 35%.`,
+        label: 'Couverture budget',
+        value: percentOrMissing(coverageRatio),
+        help: 'Part du budget couverte par les fonds déclarés.',
       },
       {
         label: 'Écart à sécuriser',
@@ -166,16 +152,16 @@ export function buildFinancingDecisionPlan(
         help: `Montant déclaré : ${amountOrMissing(ownContribution)}.`,
       },
       {
-        label: 'Capacité brute',
-        value: amountOrMissing(grossLoanCapacity),
-        help: 'Mensualité cible multipliée par la durée souhaitée, hors intérêts et frais.',
+        label: 'Marge travaux',
+        value: amountOrMissing(financing.contingencyReserve),
+        help: 'Réserve dédiée aux imprévus du chantier.',
       },
     ],
     actions: [
       {
-        label: 'Revenus documentés',
-        status: hasRevenueProfile ? 'ok' : 'missing',
-        detail: hasRevenueProfile ? 'Profil revenu exploitable.' : 'Ajouter situation, contrat, stabilité et revenu net.',
+        label: 'Budget cadré',
+        status: hasBudgetFrame ? 'ok' : 'missing',
+        detail: hasBudgetFrame ? 'Budget, apport et niveau de certitude lisibles.' : 'Ajouter budget, apport, montant à compléter et certitude.',
       },
       {
         label: 'Banque ou fonds',

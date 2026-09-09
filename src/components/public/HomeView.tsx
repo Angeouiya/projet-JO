@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion, useInView, type Variants } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Home, Building2, Building, Landmark, MapPin,
   Grid3X3, Hammer, Route, Construction, Droplets, DraftingCompass,
@@ -17,6 +17,7 @@ import { FORMAT_SHORT_XOF } from '@/types';
 import type { CatalogModelData, TeamMemberData } from '@/types';
 import { DEPARTMENT_LABELS, ROLE_LABELS } from '@/data/team';
 import { PLATFORM_RELEASE } from '@/data/platform-release';
+import { PROJECT_GROUP_LABELS, type ProjectGroupId } from '@/data/project-groups';
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 30 },
@@ -24,19 +25,30 @@ const fadeUp: Variants = {
 };
 const stagger: Variants = { visible: { transition: { staggerChildren: 0.1 } } };
 
-const categories = [
-  { name: 'Villa basse', icon: Home, image: '/images/villa-1.png' },
-  { name: 'Duplex', icon: Building2, image: '/images/duplex-1.png' },
-  { name: 'Triplex', icon: Building, image: '/images/triplex-1.png' },
-  { name: 'Immeuble', icon: Landmark, image: '/images/immeuble-1.png' },
-  { name: 'Promotion', icon: Landmark, image: '/images/cite-1.png' },
-  { name: 'Cité', icon: MapPin, image: '/images/cite-1.png' },
-  { name: 'Lotissement', icon: Grid3X3, image: '/images/chantier-1.png' },
-  { name: 'Rénovation', icon: Hammer, image: '/images/interieur-1.png' },
-  { name: 'Route', icon: Route, image: '/images/road-1.png' },
-  { name: 'VRD', icon: Construction, image: '/images/chantier-1.png' },
-  { name: 'Hydraulique', icon: Droplets, image: '/images/hydraulique-1.png' },
-  { name: 'Étude', icon: DraftingCompass, image: '/images/plan-1.png' },
+const projectGroups: Array<{
+  id: ProjectGroupId;
+  title: string;
+  icon: typeof Building2;
+  image: string;
+  headline: string;
+  items: string[];
+}> = [
+  {
+    id: 'batiment',
+    title: PROJECT_GROUP_LABELS.batiment,
+    icon: Building2,
+    image: '/images/immeuble-1.png',
+    headline: 'Maisons, immeubles, promotions et lots de travaux.',
+    items: ['Maison basse', 'Duplex / Triplex', 'Immeuble R+', 'Promotion', 'Rénovation', 'Études'],
+  },
+  {
+    id: 'travaux-publics',
+    title: PROJECT_GROUP_LABELS['travaux-publics'],
+    icon: Route,
+    image: '/images/road-1.png',
+    headline: 'VRD, voiries, hydraulique, réseaux et aménagements.',
+    items: ['VRD', 'Route', 'Hydraulique', 'Assainissement', 'Lotissement', 'Réseaux'],
+  },
 ];
 
 const popularModels: (CatalogModelData & { image: string })[] = [
@@ -91,6 +103,18 @@ const realizations = [
   { image: '/images/chantier-1.png', title: 'Lotissement Bingerville', category: 'Lotissement' },
 ];
 
+const siteSignals = [
+  { image: '/images/chantier-1.png', title: 'Projet en cours', desc: 'Contrôle gros œuvre, avancement et photos de chantier.', icon: FolderKanban },
+  { image: '/images/plan-1.png', title: 'Vie de site', desc: 'Plans, réunions, décisions et validations documentées.', icon: ClipboardCheck },
+  { image: '/images/hydraulique-1.png', title: 'Actualités', desc: 'Notes Buildify sur VRD, budget, financement et livraison.', icon: ServerCog },
+];
+
+const freeAnalysis = [
+  { title: 'Analyse technique gratuite', desc: 'Catégorie, terrain, accès, surfaces, lots, pièces et risques techniques.', icon: ClipboardCheck },
+  { title: 'Analyse financière gratuite', desc: 'Budget, apport, reste à structurer, banque, jalons et garanties.', icon: BadgeCheck },
+  { title: 'Proposition client', desc: 'Images professionnelles, synthèse claire, validation et téléchargement.', icon: FolderKanban },
+];
+
 const services = [
   { icon: Home, title: 'Construction maison', desc: 'Villas, duplex, triplex sur mesure' },
   { icon: Landmark, title: 'Immeuble R+', desc: 'Résidences et immeubles collectifs' },
@@ -117,12 +141,11 @@ const releaseIcons = [ServerCog, ClipboardCheck, FolderKanban, RefreshCw] as con
 
 function AnimatedSection({ children, className }: { children: React.ReactNode; className?: string }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-60px' });
   return (
     <motion.section
       ref={ref}
-      initial="hidden"
-      animate={isInView ? 'visible' : 'hidden'}
+      initial="visible"
+      animate="visible"
       variants={stagger}
       className={className}
     >
@@ -133,6 +156,8 @@ function AnimatedSection({ children, className }: { children: React.ReactNode; c
 
 export function HomeView() {
   const navigate = useAppStore(s => s.navigate);
+  const resetConfigurator = useAppStore(s => s.resetConfigurator);
+  const setConfiguratorResponse = useAppStore(s => s.setConfiguratorResponse);
   const teamMembers = useAppStore(s => s.teamMembers);
   const [homeModels, setHomeModels] = useState<CatalogModelData[]>(popularModels);
   const fallbackPublicTeam = useMemo(
@@ -161,6 +186,12 @@ export function HomeView() {
     setPublicTeam(fallbackPublicTeam);
   }, [fallbackPublicTeam]);
 
+  const startProjectGroup = (groupId: ProjectGroupId) => {
+    resetConfigurator();
+    setConfiguratorResponse('projectGroup', groupId);
+    navigate('create');
+  };
+
   useEffect(() => {
     let active = true;
     const loadPublicTeam = async () => {
@@ -188,28 +219,13 @@ export function HomeView() {
         />
         <div className="absolute inset-0 bg-black/50" />
         <div className="relative z-10 flex h-full flex-col justify-end px-6 pb-16 md:pb-24 md:px-12 lg:px-20">
-          <motion.h1
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-tight"
-          >
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-tight">
             Buildify
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
-            className="mt-4 text-white/70 text-base md:text-lg max-w-md"
-          >
-            Construction, architecture, VRD et suivi financier pour vos projets en Côte d'Ivoire et à l'international.
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4, ease: 'easeOut' }}
-            className="mt-8 flex flex-col sm:flex-row gap-3"
-          >
+          </h1>
+          <p className="mt-4 text-white/70 text-base md:text-lg max-w-md">
+            Construction, architecture, VRD, suivi projet et analyse technique + financière gratuite pour vos projets en Côte d'Ivoire et à l'international.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <Button
               size="lg"
               className="bg-white text-black hover:bg-white/90 h-12 px-8 text-sm font-semibold"
@@ -225,7 +241,7 @@ export function HomeView() {
             >
               Explorer les modèles
             </Button>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -257,26 +273,72 @@ export function HomeView() {
         </div>
       </AnimatedSection>
 
-      {/* Categories */}
+      {/* Analyse gratuite */}
+      <AnimatedSection className="border-b bg-foreground py-10 text-background md:py-14">
+        <div className="px-6 md:px-12 lg:px-20">
+          <motion.div variants={fadeUp} className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <Badge className="rounded-md border-white/20 bg-white/10 text-white hover:bg-white/15">
+                Gratuit avant engagement
+              </Badge>
+              <h2 className="mt-3 text-2xl font-bold tracking-tight md:text-3xl">
+                Analyse technique et financière offerte
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
+                Le client peut remplir le formulaire pour recevoir une lecture claire de son ouvrage, de son budget, de l’apport disponible, du reste à structurer et des garanties utiles avant tout paiement.
+              </p>
+            </div>
+            <Button className="h-11 rounded-lg bg-background px-5 text-sm font-semibold text-foreground hover:bg-background/90" onClick={() => navigate('create')}>
+              Lancer l’analyse <ArrowRight className="ml-1 size-4" />
+            </Button>
+          </motion.div>
+          <div className="mt-6 grid gap-3 md:grid-cols-3">
+            {freeAnalysis.map(item => (
+              <motion.div key={item.title} variants={fadeUp} className="rounded-lg border border-white/15 bg-white/5 p-4">
+                <item.icon className="size-5 text-white" />
+                <h3 className="mt-3 text-sm font-semibold text-white">{item.title}</h3>
+                <p className="mt-1 text-xs leading-5 text-white/65">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </AnimatedSection>
+
+      {/* Familles d'ouvrages */}
       <AnimatedSection className="py-16 md:py-24">
         <div className="px-6 md:px-12 lg:px-20">
           <motion.h2 variants={fadeUp} className="text-2xl md:text-3xl font-bold tracking-tight">
-            Nos catégories
+            Deux grandes familles
           </motion.h2>
           <motion.p variants={fadeUp} className="mt-2 text-muted-foreground text-sm">
-            Trouvez le type de projet qui vous correspond.
+            Un choix simple au départ, puis un formulaire spécifique à l’ouvrage.
           </motion.p>
         </div>
-        <div className="mt-8 flex gap-3 overflow-x-auto no-scrollbar px-6 md:px-12 lg:px-20 md:grid md:grid-cols-4 lg:grid-cols-6 md:overflow-visible">
-          {categories.map((cat) => (
+        <div className="mt-8 grid gap-4 px-6 md:grid-cols-2 md:px-12 lg:px-20">
+          {projectGroups.map((group) => (
             <motion.button
-              key={cat.name}
+              key={group.id}
               variants={fadeUp}
-              onClick={() => navigate('explore', { type: cat.name })}
-              className="flex-shrink-0 w-28 md:w-auto flex flex-col items-center gap-3 p-4 rounded-xl border bg-card hover:bg-accent transition-colors"
+              onClick={() => startProjectGroup(group.id)}
+              className="group overflow-hidden rounded-lg border bg-card text-left transition-colors hover:bg-accent"
             >
-              <cat.icon className="size-6" />
-              <span className="text-xs font-medium text-center leading-tight">{cat.name}</span>
+              <div className="aspect-[16/9] overflow-hidden">
+                <img src={group.image} alt={group.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              </div>
+              <div className="p-5">
+                <div className="flex items-center gap-2">
+                  <group.icon className="size-5" />
+                  <h3 className="text-lg font-semibold">{group.title}</h3>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{group.headline}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {group.items.map(item => (
+                    <span key={item} className="rounded-md border px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </motion.button>
           ))}
         </div>
@@ -362,6 +424,37 @@ export function HomeView() {
                 <p className="text-white/60 text-[10px] mt-0.5">{r.category}</p>
               </div>
             </motion.div>
+          ))}
+        </div>
+      </AnimatedSection>
+
+      {/* Projets actifs, vie de site, actualités */}
+      <AnimatedSection className="border-y bg-muted/35 py-16 md:py-24">
+        <div className="px-6 md:px-12 lg:px-20">
+          <motion.h2 variants={fadeUp} className="text-2xl md:text-3xl font-bold tracking-tight">
+            Projets, vie de site et actualités
+          </motion.h2>
+          <motion.p variants={fadeUp} className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            La plateforme montre l’activité réelle : avancement, documents, validations, décisions et informations utiles aux clients sur place ou hors du pays.
+          </motion.p>
+        </div>
+        <div className="mt-8 grid gap-4 px-6 md:grid-cols-3 md:px-12 lg:px-20">
+          {siteSignals.map(item => (
+            <motion.button
+              key={item.title}
+              variants={fadeUp}
+              onClick={() => navigate(item.title === 'Actualités' ? 'services' : 'projects')}
+              className="group overflow-hidden rounded-lg border bg-background text-left transition-colors hover:bg-accent"
+            >
+              <div className="aspect-[4/3] overflow-hidden">
+                <img src={item.image} alt={item.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              </div>
+              <div className="p-4">
+                <item.icon className="size-5" />
+                <h3 className="mt-3 text-sm font-semibold">{item.title}</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.desc}</p>
+              </div>
+            </motion.button>
           ))}
         </div>
       </AnimatedSection>

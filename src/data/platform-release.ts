@@ -1,12 +1,12 @@
 export const PLATFORM_RELEASE = {
-  id: 'buildify-2026-08-24-platform-visible-refresh',
-  label: 'Buildify 2026.08.24',
-  date: '24 août 2026',
-  status: 'Production synchronisée',
+  id: 'buildify-2026-09-09-cloudflare-refonte',
+  label: 'Buildify 2026.09.09',
+  date: '9 septembre 2026',
+  status: 'Refonte Buildify active',
   notes: [
-    'Accueil, dashboard client et espace admin séparés',
-    'Formulaire BTP compact avec contrôle professionnel',
-    'Catalogue, équipe, projets et finance reliés à la production',
-    'Cache mobile corrigé pour afficher la dernière version',
+    'Accueil enrichi avec familles Bâtiment et Travaux publics',
+    'Analyse technique et financière gratuite mise en avant',
+    'Formulaire finance centré sur budget, apport, banque et garanties',
+    'Exploration, dashboard client et contrôle professionnel synchronisés',
   ],
 } as const;
