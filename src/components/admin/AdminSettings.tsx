@@ -391,7 +391,7 @@ export function AdminSettings({ defaultTab = 'general' }: { defaultTab?: 'genera
                 {teamMembers.map(member => (
                   <div key={member.id} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[72px_minmax(0,1fr)_auto]">
                     <div className="relative size-20 overflow-hidden rounded-lg bg-muted">
-                      <img src={member.photoUrl} alt={member.name} className="h-full w-full object-cover grayscale" />
+                      <img src={member.photoUrl} alt={member.name} className="h-full w-full object-cover" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">

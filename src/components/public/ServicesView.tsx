@@ -6,7 +6,7 @@ import {
   ArrowLeft, Home, Building2, Building, Landmark, Hammer,
   Route, Construction, Droplets, DraftingCompass, HardHat, Ruler,
   ClipboardCheck, Truck, ArrowRight, Phone, Mail, MapPinIcon,
-  CheckCircle2, FileSignature,
+  CheckCircle2, FileSignature, WalletCards, Images,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,6 +28,27 @@ interface Service {
 }
 
 const SERVICES: Service[] = [
+  {
+    icon: ClipboardCheck,
+    title: 'Analyse gratuite de projet',
+    description: 'Vous décrivez votre idée, votre terrain et votre budget. Nous vous aidons à voir ce qui est possible.',
+    details: ['Projet clarifié', 'Terrain compris', 'Budget indicatif', 'Premières priorités'],
+    image: '/images/chantier-1.png',
+  },
+  {
+    icon: WalletCards,
+    title: 'Budget & financement',
+    description: 'Lecture simple de l’enveloppe à prévoir, de l’apport disponible, du reste à financer et des garanties utiles.',
+    details: ['Budget du projet', 'Apport', 'Banque', 'Paiement par étapes'],
+    image: '/images/bureau-1.png',
+  },
+  {
+    icon: Images,
+    title: 'Propositions visuelles',
+    description: 'Images, variantes et présentation claire pour mieux se projeter avant de valider la suite.',
+    details: ['Images couleur', 'Variantes', 'Synthèse client', 'Validation simple'],
+    image: '/images/hero-villa.png',
+  },
   {
     icon: Home,
     title: 'Construction de villas',
@@ -93,43 +114,43 @@ const SERVICES: Service[] = [
   },
   {
     icon: DraftingCompass,
-    title: 'Études techniques',
-    description: 'Études de faisabilité, avant-projets, dossiers techniques et supervision.',
-    details: ['Étude de faisabilité', 'Avant-projet', 'Dossier BET', 'Expertise technique'],
-    image: '/images/plan-1.png',
+    title: 'Plans et étude de faisabilité',
+    description: 'Plans, premières surfaces, estimation et conseils pour préparer le devis et les autorisations.',
+    details: ['Plans', 'Surfaces', 'Estimation', 'Avis professionnel'],
+    image: '/images/bureau-1.png',
   },
 ];
 
 const PROCESS = [
   {
     icon: ClipboardCheck,
-    title: 'Cahier des charges',
-    desc: 'Définition précise de vos besoins, contraintes budgétaires et attentes esthétiques.',
+    title: 'Votre besoin',
+    desc: 'Nous rassemblons vos attentes, votre terrain, votre budget et les documents déjà disponibles.',
   },
   {
     icon: Ruler,
-    title: 'Conception & plans',
-    desc: 'Nos architectes conçoivent les plans adaptés à votre terrain et vos envies.',
+    title: 'Plans et estimation',
+    desc: 'Nous préparons une première lecture claire pour comprendre les choix possibles.',
   },
   {
     icon: FileSignature,
     title: 'Devis & contrat',
-    desc: 'Devis détaillé, transparent. Contrat clair avec planning et conditions.',
+    desc: 'Vous recevez une proposition lisible avec prix, délais, étapes et conditions.',
   },
   {
     icon: Truck,
     title: 'Approvisionnement',
-    desc: 'Sélection et approvisionnement en matériaux de qualité, conformes aux normes.',
+    desc: 'Les matériaux et intervenants sont préparés selon le niveau de finition attendu.',
   },
   {
     icon: HardHat,
     title: 'Exécution',
-    desc: 'Équipe qualifiée, suivi rigoureux, respect des normes et délais de construction.',
+    desc: 'Le chantier avance avec photos, points de suivi et décisions visibles.',
   },
   {
     icon: CheckCircle2,
     title: 'Livraison & réception',
-    desc: 'Réception conjointe, garanties décennales et accompagnement après-vente.',
+    desc: 'Vous contrôlez la livraison, les réserves éventuelles et la suite après réception.',
   },
 ];
 
@@ -158,7 +179,7 @@ export function ServicesView() {
         <div className="mt-8 mb-10">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Ce que nous faisons</h2>
           <p className="mt-3 text-sm text-muted-foreground leading-relaxed max-w-xl">
-            De la villa familiale à l\'immeuble collectif, en passant par les routes et l\'hydraulique, nous couvrons l\'ensemble du BTP en Côte d\'Ivoire.
+            Buildify accompagne les particuliers, investisseurs et entreprises pour construire, rénover, aménager un terrain ou suivre un projet à distance.
           </p>
         </div>
 
@@ -175,8 +196,7 @@ export function ServicesView() {
               <Card className="py-0 gap-0 overflow-hidden border-border/50 hover:border-foreground/20 transition-colors">
                 <CardContent className="p-0">
                   <div className="flex flex-col md:flex-row">
-                    {/* Image - visible on md+ */}
-                    <div className="hidden md:block md:w-56 lg:w-64 flex-shrink-0">
+                    <div className="h-40 w-full flex-shrink-0 md:h-auto md:w-56 lg:w-64">
                       <img
                         src={service.image}
                         alt={service.title}
@@ -217,7 +237,7 @@ export function ServicesView() {
         {/* Process */}
         <div>
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Notre processus</h2>
-          <p className="mt-2 text-sm text-muted-foreground">De l\'idée aux clés en main.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Une méthode simple, de l’idée à la livraison.</p>
         </div>
         <motion.div
           ref={processRef}
@@ -252,7 +272,7 @@ export function ServicesView() {
         <div className="bg-foreground text-primary-foreground rounded-2xl p-8 md:p-12 text-center">
           <h2 className="text-xl md:text-2xl font-bold">Vous avez un projet ?</h2>
           <p className="mt-2 text-primary-foreground/60 text-sm max-w-md mx-auto">
-            Parlez-nous de votre projet. Nous vous revenons sous 48h avec une première évaluation.
+            Parlez-nous de votre projet. Nous vous revenons sous 48h avec une première analyse claire.
           </p>
           <Button
             size="lg"
@@ -268,7 +288,7 @@ export function ServicesView() {
         <div className="mt-12 flex flex-col md:flex-row justify-between gap-6 text-sm text-muted-foreground">
           <div className="flex items-center gap-2"><Phone className="size-4" /> +225 07 00 00 00 00</div>
           <div className="flex items-center gap-2"><Mail className="size-4" /> contact@buildify.ci</div>
-          <div className="flex items-center gap-2"><MapPinIcon className="size-4" /> Abidjan, Côte d\'Ivoire</div>
+          <div className="flex items-center gap-2"><MapPinIcon className="size-4" /> Abidjan, Côte d’Ivoire</div>
         </div>
       </div>
     </main>

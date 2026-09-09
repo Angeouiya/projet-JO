@@ -736,11 +736,11 @@ function getProposalVariantTemplates(project?: ProjectData): ProposalVariantTemp
         estimate,
         duration: '3 à 6 semaines d’études',
         confidence: 'Priorité exécution',
-        deliverable: 'Plan de principe, surfaces utiles, points BET et arbitrages de programme.',
+        deliverable: 'Plan de principe, surfaces utiles et points à vérifier avant choix final.',
         strengths: ['Noyaux rationnels', 'Surfaces maîtrisées', 'Études plus fiables'],
         decisionCriteria: [...decisionBase, { label: 'Priorité', value: 'Plans, surfaces et faisabilité technique' }],
         technicalScope: [...scopeBase, 'Distribution, noyaux, gaines techniques, typologies, parkings et surfaces utiles.'],
-        riskControls: [...baseRisks, 'Risques liés aux normes, à la structure et aux circulations à lever avec les BET.'],
+        riskControls: [...baseRisks, 'Points liés aux normes, à la structure et aux circulations à vérifier avant lancement.'],
         nextSteps: baseNext,
       },
     ];
@@ -2008,7 +2008,7 @@ export function AdminProjectDetail() {
                   </select>
                   {selectedLead && (
                     <div className="mt-3 flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
-                      <img src={selectedLead.photoUrl} alt={selectedLead.name} className="size-10 shrink-0 rounded-lg object-cover grayscale" />
+                      <img src={selectedLead.photoUrl} alt={selectedLead.name} className="size-10 shrink-0 rounded-lg object-cover" />
                       <div className="min-w-0">
                         <p className="text-sm font-semibold">{selectedLead.name}</p>
                         <p className="text-xs text-muted-foreground">{leadRoleLabel} · {leadDepartmentLabel}</p>
@@ -2189,7 +2189,7 @@ export function AdminProjectDetail() {
                                 src={template.image}
                                 alt={template.title}
                                 fill
-                                className="object-cover grayscale"
+                                className="object-cover"
                                 sizes="(min-width: 1024px) 20vw, 90vw"
                               />
                               <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
@@ -2723,7 +2723,7 @@ export function AdminProjectDetail() {
                     <div key={update.id} className="overflow-hidden rounded-lg border">
                       <div className="grid grid-cols-[88px_minmax(0,1fr)]">
                         <div className="h-full min-h-24 bg-muted">
-                          <img src={update.imageUrl} alt={update.caption} className="h-full w-full object-cover grayscale" />
+                          <img src={update.imageUrl} alt={update.caption} className="h-full w-full object-cover" />
                         </div>
                         <div className="min-w-0 p-3">
                           <div className="flex items-start justify-between gap-2">

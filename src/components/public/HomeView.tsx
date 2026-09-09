@@ -6,7 +6,8 @@ import {
   Home, Building2, Building, Landmark, MapPin,
   Grid3X3, Hammer, Route, Construction, Droplets, DraftingCompass,
   ArrowRight, ChevronRight, Phone, Mail, MapPinIcon,
-  Maximize2, BedDouble, BadgeCheck, ClipboardCheck, FolderKanban, RefreshCw, ServerCog,
+  Maximize2, BedDouble, BadgeCheck, ClipboardCheck, FolderKanban,
+  WalletCards, Images, Newspaper, Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,7 +17,6 @@ import { BrandLogo } from '@/components/shared/BrandLogo';
 import { FORMAT_SHORT_XOF } from '@/types';
 import type { CatalogModelData, TeamMemberData } from '@/types';
 import { DEPARTMENT_LABELS, ROLE_LABELS } from '@/data/team';
-import { PLATFORM_RELEASE } from '@/data/platform-release';
 import { PROJECT_GROUP_LABELS, type ProjectGroupId } from '@/data/project-groups';
 
 const fadeUp: Variants = {
@@ -104,15 +104,38 @@ const realizations = [
 ];
 
 const siteSignals = [
-  { image: '/images/chantier-1.png', title: 'Projet en cours', desc: 'Contrôle gros œuvre, avancement et photos de chantier.', icon: FolderKanban },
-  { image: '/images/plan-1.png', title: 'Vie de site', desc: 'Plans, réunions, décisions et validations documentées.', icon: ClipboardCheck },
-  { image: '/images/hydraulique-1.png', title: 'Actualités', desc: 'Notes Buildify sur VRD, budget, financement et livraison.', icon: ServerCog },
+  { image: '/images/chantier-1.png', title: 'Chantiers en cours', desc: 'Photos, avancement et points importants partagés avec le client.', icon: Camera },
+  { image: '/images/bureau-1.png', title: 'Vie du projet', desc: 'Plans, choix, rendez-vous et validations regroupés au même endroit.', icon: FolderKanban },
+  { image: '/images/hydraulique-1.png', title: 'Conseils utiles', desc: 'Repères simples pour préparer son terrain, son budget et ses documents.', icon: Newspaper },
 ];
 
 const freeAnalysis = [
-  { title: 'Analyse technique gratuite', desc: 'Catégorie, terrain, accès, surfaces, lots, pièces et risques techniques.', icon: ClipboardCheck },
-  { title: 'Analyse financière gratuite', desc: 'Budget, apport, reste à structurer, banque, jalons et garanties.', icon: BadgeCheck },
-  { title: 'Proposition client', desc: 'Images professionnelles, synthèse claire, validation et téléchargement.', icon: FolderKanban },
+  { title: 'Projet étudié gratuitement', desc: 'Vous décrivez ce que vous voulez construire, rénover ou aménager.', icon: ClipboardCheck },
+  { title: 'Budget clarifié', desc: 'Vous indiquez votre enveloppe et les options possibles pour avancer sereinement.', icon: WalletCards },
+  { title: 'Propositions visuelles', desc: 'Vous recevez une présentation claire avec images, variantes et prochaines étapes.', icon: Images },
+];
+
+const clientPromises = [
+  {
+    icon: Building,
+    title: 'Un projet bien compris',
+    desc: 'Maison, immeuble, VRD, rénovation ou lot de travaux : le parcours s’adapte à votre besoin.',
+  },
+  {
+    icon: WalletCards,
+    title: 'Un budget lisible',
+    desc: 'Vous gardez la main sur le montant à prévoir, l’apport disponible et les étapes à sécuriser.',
+  },
+  {
+    icon: Images,
+    title: 'Des idées visibles',
+    desc: 'Les propositions sont présentées avec des images et une lecture simple pour décider plus vite.',
+  },
+  {
+    icon: BadgeCheck,
+    title: 'Un suivi rassurant',
+    desc: 'Même hors du pays, vous suivez les échanges, les documents, les photos et les validations.',
+  },
 ];
 
 const services = [
@@ -122,7 +145,7 @@ const services = [
   { icon: Hammer, title: 'Rénovation', desc: 'Réhabilitation et mise aux normes' },
   { icon: Route, title: 'VRD & Route', desc: 'Voirie, assainissement, réseau' },
   { icon: Droplets, title: 'Hydraulique', desc: 'Adduction d\'eau et forage' },
-  { icon: DraftingCompass, title: 'Études techniques', desc: 'Faisabilité, avant-projet, BET' },
+  { icon: DraftingCompass, title: 'Plans & estimation', desc: 'Faisabilité, plans, budget' },
   { icon: Construction, title: 'Suivi de chantier', desc: 'Contrôle qualité et planning' },
 ];
 
@@ -137,7 +160,28 @@ const testimonials = [
   { name: 'Fatou C.', quote: 'Notre immeuble R+ a été livré en 16 mois. Excellent rapport qualité-prix.', role: 'Investisseuse, Plateau' },
 ];
 
-const releaseIcons = [ServerCog, ClipboardCheck, FolderKanban, RefreshCw] as const;
+const teamFallbackImages = [
+  '/images/bureau-1.png',
+  '/images/chantier-1.png',
+  '/images/interieur-1.png',
+  '/images/hero-villa.png',
+];
+
+const publicRoleLabels: Record<string, string> = {
+  super_admin: 'Direction générale',
+  admin: 'Coordination projet',
+  direction: 'Direction',
+  commercial: 'Relation client',
+  architecte: 'Architecture',
+  ingenieur: 'Étude projet',
+  economiste: 'Budget & estimation',
+  metreur: 'Estimation travaux',
+  conducteur: 'Suivi chantier',
+  chef_projet: 'Chef de projet',
+  comptable: 'Finance',
+  support: 'Support client',
+  lecteur: 'Suivi dossier',
+};
 
 function AnimatedSection({ children, className }: { children: React.ReactNode; className?: string }) {
   const ref = useRef(null);
@@ -223,7 +267,7 @@ export function HomeView() {
             Buildify
           </h1>
           <p className="mt-4 text-white/70 text-base md:text-lg max-w-md">
-            Construction, architecture, VRD, suivi projet et analyse technique + financière gratuite pour vos projets en Côte d'Ivoire et à l'international.
+            Construisez, rénovez ou viabilisez votre terrain avec une équipe qui vous aide à comprendre le projet, le budget et les prochaines étapes.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <Button
@@ -245,27 +289,28 @@ export function HomeView() {
         </div>
       </section>
 
-      {/* Version active */}
+      {/* Promesse client */}
       <AnimatedSection className="border-b bg-background py-8 md:py-10">
         <div className="grid gap-4 px-6 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:px-12 lg:px-20">
           <motion.div variants={fadeUp} className="min-w-0">
             <Badge variant="outline" className="h-7 rounded-lg px-2.5 text-[11px] font-semibold">
-              {PLATFORM_RELEASE.status}
+              Accompagnement complet
             </Badge>
             <h2 className="mt-3 text-xl font-bold tracking-tight md:text-2xl">
-              {PLATFORM_RELEASE.label}
+              Un parcours simple pour décider en confiance
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Mise à jour active depuis le {PLATFORM_RELEASE.date}.
+              Buildify vous aide à cadrer votre besoin, comparer les options et suivre votre dossier sans vous perdre dans le vocabulaire du chantier.
             </p>
           </motion.div>
           <motion.div variants={fadeUp} className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {PLATFORM_RELEASE.notes.map((note, index) => {
-              const ReleaseIcon = releaseIcons[index] || BadgeCheck;
+            {clientPromises.map((item) => {
+              const PromiseIcon = item.icon;
               return (
-                <div key={note} className="min-h-[96px] rounded-lg border bg-card p-3">
-                  <ReleaseIcon className="size-4 text-muted-foreground" />
-                  <p className="mt-3 text-xs font-semibold leading-5">{note}</p>
+                <div key={item.title} className="min-h-[118px] rounded-lg border bg-card p-3">
+                  <PromiseIcon className="size-4 text-muted-foreground" />
+                  <p className="mt-3 text-xs font-semibold leading-5">{item.title}</p>
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{item.desc}</p>
                 </div>
               );
             })}
@@ -285,7 +330,7 @@ export function HomeView() {
                 Analyse technique et financière offerte
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
-                Le client peut remplir le formulaire pour recevoir une lecture claire de son ouvrage, de son budget, de l’apport disponible, du reste à structurer et des garanties utiles avant tout paiement.
+                Remplissez le formulaire pour recevoir une première lecture de votre projet, une estimation de budget et les points à sécuriser avant de vous engager.
               </p>
             </div>
             <Button className="h-11 rounded-lg bg-background px-5 text-sm font-semibold text-foreground hover:bg-background/90" onClick={() => navigate('create')}>
@@ -311,7 +356,7 @@ export function HomeView() {
             Deux grandes familles
           </motion.h2>
           <motion.p variants={fadeUp} className="mt-2 text-muted-foreground text-sm">
-            Un choix simple au départ, puis un formulaire spécifique à l’ouvrage.
+            Choisissez d’abord votre famille de projet. Buildify affiche ensuite les bonnes questions, sans formulaire inutile.
           </motion.p>
         </div>
         <div className="mt-8 grid gap-4 px-6 md:grid-cols-2 md:px-12 lg:px-20">
@@ -432,10 +477,10 @@ export function HomeView() {
       <AnimatedSection className="border-y bg-muted/35 py-16 md:py-24">
         <div className="px-6 md:px-12 lg:px-20">
           <motion.h2 variants={fadeUp} className="text-2xl md:text-3xl font-bold tracking-tight">
-            Projets, vie de site et actualités
+            Chantiers, réalisations et conseils
           </motion.h2>
           <motion.p variants={fadeUp} className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            La plateforme montre l’activité réelle : avancement, documents, validations, décisions et informations utiles aux clients sur place ou hors du pays.
+            Retrouvez ce qui compte vraiment : réalisations, photos de chantier, choix à valider et conseils pratiques pour avancer depuis la Côte d’Ivoire ou l’étranger.
           </motion.p>
         </div>
         <div className="mt-8 grid gap-4 px-6 md:grid-cols-3 md:px-12 lg:px-20">
@@ -469,8 +514,8 @@ export function HomeView() {
         <div className="mt-12 grid md:grid-cols-3 gap-12 md:gap-8 px-6 md:px-12 lg:px-20">
           {[
             { num: '01', title: 'Décrivez', desc: 'Parlez-nous de votre projet : type, budget, terrain, envies.' },
-            { num: '02', title: 'Étudions', desc: 'Nos ingénieurs analysent la faisabilité et vous proposent des solutions.' },
-            { num: '03', title: 'Construisons', desc: 'Suivi rigoureux, respect des délais et qualité de livraison.' },
+            { num: '02', title: 'Étudions', desc: 'Nous préparons une première lecture claire : faisabilité, budget, priorités et prochaines étapes.' },
+            { num: '03', title: 'Construisons', desc: 'Vous gardez le suivi, les validations et les informations importantes au même endroit.' },
           ].map((step) => (
             <motion.div key={step.num} variants={fadeUp} className="text-center md:text-left">
               <span className="text-5xl md:text-6xl font-bold text-muted-foreground/30">{step.num}</span>
@@ -566,7 +611,7 @@ export function HomeView() {
               <div>
                 <h2 className="text-2xl md:text-3xl font-bold tracking-tight">L’équipe Buildify</h2>
                 <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-                  Des profils terrain, techniques et financiers pour cadrer chaque décision avant d’engager le client.
+                  Une équipe disponible pour écouter, étudier, chiffrer et suivre vos travaux.
                 </p>
               </div>
               <Button variant="ghost" size="sm" className="hidden md:flex" onClick={() => navigate('services')}>
@@ -575,7 +620,7 @@ export function HomeView() {
             </motion.div>
           </div>
           <div className="mt-8 grid grid-cols-2 gap-3 px-6 md:grid-cols-3 md:gap-4 md:px-12 lg:grid-cols-6 lg:px-20">
-            {publicTeam.map((member) => (
+            {publicTeam.map((member, index) => (
               <motion.article
                 key={member.id}
                 variants={fadeUp}
@@ -583,17 +628,23 @@ export function HomeView() {
               >
                 <div className="aspect-[4/5] overflow-hidden bg-muted">
                   <img
-                    src={member.photoUrl}
+                    src={member.photoUrl || teamFallbackImages[index % teamFallbackImages.length]}
                     alt={member.name}
-                    loading="lazy"
+                    loading="eager"
                     referrerPolicy="no-referrer"
-                    className="h-full w-full object-cover grayscale transition-transform duration-500 hover:scale-105"
+                    onError={(event) => {
+                      const image = event.currentTarget;
+                      if (image.dataset.fallbackApplied) return;
+                      image.dataset.fallbackApplied = 'true';
+                      image.src = teamFallbackImages[index % teamFallbackImages.length];
+                    }}
+                    className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                   />
                 </div>
                 <div className="p-3 md:p-4">
                   <p className="truncate text-sm font-semibold">{member.name}</p>
                   <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                    {ROLE_LABELS[member.role] || member.role}
+                    {publicRoleLabels[member.role] || ROLE_LABELS[member.role] || member.role}
                   </p>
                   <Badge variant="outline" className="mt-3 max-w-full truncate px-2 py-1 text-[10px]">
                     {DEPARTMENT_LABELS[member.department] || member.department}
@@ -626,7 +677,7 @@ export function HomeView() {
               className="mt-8 bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8 text-sm font-semibold"
               onClick={() => navigate('create')}
             >
-              Démarrer mon projet
+              Recevoir une première analyse
               <ArrowRight className="size-4 ml-1" />
             </Button>
           </motion.div>

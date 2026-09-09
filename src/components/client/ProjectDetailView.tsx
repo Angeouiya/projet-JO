@@ -953,7 +953,7 @@ function buildVisualProposals(data: ProjectDetailData): VisualProposal[] {
         estimate: baseEstimate,
         duration: '3 à 6 semaines d’études',
         confidence: 'Priorité exécution',
-        deliverable: 'Plans de principe, surfaces utiles et points BET à arbitrer.',
+        deliverable: 'Plans de principe, surfaces utiles et points à vérifier avant choix final.',
         strengths: ['Noyaux rationnels', 'Surfaces mieux cadrées', 'Études plus rapides'],
       },
     ];
@@ -2211,7 +2211,7 @@ function ResumeTab({
               {data.team.map((member) => (
                 <div key={member.name} className="flex items-start gap-3 rounded-lg border p-3">
                   {member.photoUrl ? (
-                    <img src={member.photoUrl} alt={member.name} className="size-12 shrink-0 rounded-lg object-cover grayscale" />
+                    <img src={member.photoUrl} alt={member.name} className="size-12 shrink-0 rounded-lg object-cover" />
                   ) : (
                     <div className="size-12 rounded-lg bg-muted flex items-center justify-center text-xs font-bold flex-shrink-0">
                       {member.name.split(' ').map(n => n[0]).join('')}
